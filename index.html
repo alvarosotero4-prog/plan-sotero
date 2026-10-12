@@ -274,6 +274,7 @@ var BASE=[
 ['clara','Claras de huevo',52,11,0.7,0.2,60],
 ['huevo','Huevo',155,12.5,1,11,100,50],
 ['pan','Pan',250,8.5,49,1.5,40,40],
+['pan_integral','Pan de molde 100 % integral (Hacendado, Mercadona)',231,11,37,3.2,40],
 ['pavo_fiambre','Pavo en lonchas',105,17,1.5,3,30],
 ['arroz','Arroz (crudo)',350,7,77,1,100],
 ['pasta','Pasta (cruda)',355,12,72,2,90],
@@ -568,10 +569,14 @@ function offSearch(d,slot){
   ui.off={status:'loading',list:[],q:q};var box=document.getElementById('offres');if(box)box.innerHTML=offHTML(d,slot);
   var ctl=typeof AbortController!=='undefined'?new AbortController():null,tm=setTimeout(function(){if(ctl)ctl.abort();},15000);
   var url='https://world.openfoodfacts.org/cgi/search.pl?action=process&json=1&page_size=30&search_simple=1&search_terms='+encodeURIComponent(q)+'&tagtype_0=stores&tag_contains_0=contains&tag_0=mercadona&fields=code,product_name,brands,nutriments';
-  fetch(url,ctl?{signal:ctl.signal}:{}).then(function(r){if(!r.ok)throw new Error('http');return r.json();}).then(function(j){
+  var url2='https://search.openfoodfacts.org/search?q='+encodeURIComponent(q)+'&fq=stores_tags:mercadona&page_size=30&fields=code,product_name,brands,nutriments';
+  function getJ(u){return fetch(u,ctl?{signal:ctl.signal}:{}).then(function(r){if(!r.ok)throw new Error('http');return r.json();});}
+  getJ(url).catch(function(){return getJ(url2);}).then(function(j){
     clearTimeout(tm);
     var seen={},list=[];
-    (j.products||[]).forEach(function(p){
+    (j.products||j.hits||[]).forEach(function(p){
+      if(Array.isArray(p.brands))p.brands=p.brands.join(',');
+      if(Array.isArray(p.product_name))p.product_name=String((p.product_name[0]&&p.product_name[0].text)||p.product_name[0]||'');
       var n=p.nutriments||{},k=offKcal(n),name=offName(p);
       if(!name||k==null||!p.code||seen[p.code])return;seen[p.code]=1;
       list.push({code:p.code,name:name,kcal:Math.round(k),p:+n['proteins_100g']||0,c:+n['carbohydrates_100g']||0,g:+n['fat_100g']||0});
