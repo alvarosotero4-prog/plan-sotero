@@ -1,9 +1,12 @@
 # Plan Sotero
 
-App web (PWA) para el plan de definición de 4 semanas: peso diario con media semanal, comidas con kcal y macros automáticos, rutina diaria y partido del domingo.
+App web (PWA) para el plan de definición de 4 semanas.
+
+- Hoy: kcal y macros del día, peso, seguimiento de agua, creatina y sueño, y rutina con casillas.
+- Comidas: menú del plan, alimentos con botones +/− por unidad, comidas guardadas, copiar un día y buscador de Mercadona (Open Food Facts) con escáner de código de barras.
+- Progreso: resumen semanal, peso con media semanal y recomendaciones, y medidas (cintura y pliegues) con gráficos.
+- Rutina: horario de cada día y de la semana, con el partido del domingo.
+- Plan: objetivos, partidos, alimentos y comidas propias, y copia de seguridad.
 
 Los datos se guardan solo en el dispositivo (localStorage). En Plan > Tus datos puedes descargar y restaurar una copia.
-
-## Buscar en Mercadona
-
-Al añadir un alimento, el botón "Buscar en Mercadona" consulta Open Food Facts (productos de Mercadona, con kcal y macros por 100 g). Necesita internet y los datos son colaborativos: revisa la etiqueta. Los productos que añades quedan guardados en el dispositivo.
+El escáner usa la API BarcodeDetector (Chrome en Android); en otros navegadores se puede escribir el código de barras en el buscador.
