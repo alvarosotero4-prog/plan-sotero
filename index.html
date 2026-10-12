@@ -274,6 +274,8 @@ var BASE=[
 ['clara','Claras de huevo',52,11,0.7,0.2,60],
 ['huevo','Huevo',155,12.5,1,11,100,50],
 ['pan','Pan',250,8.5,49,1.5,40,40],
+['pan_integral','Pan de molde integral 100 % (Hacendado)',231,12,37,2.4,50,0],
+['jamon_serrano','Jamón serrano (Hacendado)',248,33.5,1,12.2,30,0],
 ['pan_integral','Pan de molde 100 % integral (Hacendado, Mercadona)',231,11,37,3.2,40],
 ['pavo_fiambre','Pavo en lonchas',105,17,1.5,3,30],
 ['arroz','Arroz (crudo)',350,7,77,1,100],
@@ -558,7 +560,7 @@ function offKcal(n){var k=n['energy-kcal_100g'];if(typeof k!=='number'||!isFinit
 function offHTML(d,slot){
   var o=ui.off;
   if(o.status==='loading')return '<p class="muted">Buscando en Mercadona…</p>';
-  if(o.status==='error')return '<p class="muted">No se pudo buscar. Comprueba la conexión e inténtalo de nuevo.</p>';
+  if(o.status==='error')return '<p class="muted">No se pudo buscar ahora mismo (la base de datos no responde o no hay conexión). Los productos más habituales ya están en la lista; el resto puedes crearlos en Plan, en Mis alimentos.</p>';
   if(o.status==='empty')return '<p class="muted">No hay productos de Mercadona con ese nombre y datos nutricionales. Prueba con otra palabra o crea el alimento en Plan.</p>';
   if(o.status!=='ok')return '<p class="muted">Escribe el producto y pulsa Buscar en Mercadona. Los datos vienen de Open Food Facts y pueden tener errores: revisa la etiqueta.</p>';
   return '<div class="picklist">'+o.list.map(function(x,i){return '<button data-act="offpick" data-d="'+d+'" data-s="'+slot+'" data-i="'+i+'"><span>'+esc(x.name)+'</span><small>'+f0(x.kcal)+' kcal · P '+f1(x.p)+' · C '+f1(x.c)+' · G '+f1(x.g)+'</small></button>';}).join('')+'</div><p class="muted">Valores por 100 g, de Open Food Facts. Revisa la etiqueta.</p>';
@@ -567,22 +569,28 @@ function offSearch(d,slot){
   var q=(ui.q||'').trim();
   if(q.length<2){toast('Escribe al menos 2 letras');return;}
   ui.off={status:'loading',list:[],q:q};var box=document.getElementById('offres');if(box)box.innerHTML=offHTML(d,slot);
-  var ctl=typeof AbortController!=='undefined'?new AbortController():null,tm=setTimeout(function(){if(ctl)ctl.abort();},15000);
-  var url='https://world.openfoodfacts.org/cgi/search.pl?action=process&json=1&page_size=30&search_simple=1&search_terms='+encodeURIComponent(q)+'&tagtype_0=stores&tag_contains_0=contains&tag_0=mercadona&fields=code,product_name,brands,nutriments';
-  var url2='https://search.openfoodfacts.org/search?q='+encodeURIComponent(q)+'&fq=stores_tags:mercadona&page_size=30&fields=code,product_name,brands,nutriments';
-  function getJ(u){return fetch(u,ctl?{signal:ctl.signal}:{}).then(function(r){if(!r.ok)throw new Error('http');return r.json();});}
-  getJ(url).catch(function(){return getJ(url2);}).then(function(j){
-    clearTimeout(tm);
-    var seen={},list=[];
-    (j.products||j.hits||[]).forEach(function(p){
-      if(Array.isArray(p.brands))p.brands=p.brands.join(',');
-      if(Array.isArray(p.product_name))p.product_name=String((p.product_name[0]&&p.product_name[0].text)||p.product_name[0]||'');
+  var enc=encodeURIComponent,urls=[
+    'https://world.openfoodfacts.org/cgi/search.pl?action=process&json=1&page_size=30&search_simple=1&search_terms='+enc(q)+'&tagtype_0=stores&tag_contains_0=contains&tag_0=mercadona&fields=code,product_name,brands,nutriments',
+    'https://search.openfoodfacts.org/search?q='+enc(q+' stores_tags:mercadona')+'&page_size=30&fields=code,product_name,brands,nutriments',
+    'https://world.openfoodfacts.org/cgi/search.pl?action=process&json=1&page_size=30&search_simple=1&search_terms='+enc(q+' mercadona')+'&fields=code,product_name,brands,stores,nutriments'
+  ],last=urls.length-1;
+  function parse(j){
+    var seen={},list=[],arr=(j&&(j.products||j.hits))||[];
+    arr.forEach(function(p){
       var n=p.nutriments||{},k=offKcal(n),name=offName(p);
       if(!name||k==null||!p.code||seen[p.code])return;seen[p.code]=1;
       list.push({code:p.code,name:name,kcal:Math.round(k),p:+n['proteins_100g']||0,c:+n['carbohydrates_100g']||0,g:+n['fat_100g']||0});
     });
-    ui.off={status:list.length?'ok':'empty',list:list,q:q};
-  }).catch(function(){clearTimeout(tm);ui.off={status:'error',list:[],q:q};}).then(function(){
+    return list;
+  }
+  function one(url){
+    var ctl=typeof AbortController!=='undefined'?new AbortController():null,tm=setTimeout(function(){if(ctl)ctl.abort();},12000);
+    return fetch(url,ctl?{signal:ctl.signal}:{}).then(function(r){clearTimeout(tm);if(!r.ok)throw new Error('http');return r.json();},function(e){clearTimeout(tm);throw e;});
+  }
+  function attempt(i){
+    return one(urls[i]).then(function(j){var l=parse(j);return (l.length||i>=last)?l:attempt(i+1);},function(err){if(i<last)return attempt(i+1);throw err;});
+  }
+  attempt(0).then(function(list){ui.off={status:list.length?'ok':'empty',list:list,q:q};},function(){ui.off={status:'error',list:[],q:q};}).then(function(){
     var b2=document.getElementById('offres');if(b2)b2.innerHTML=offHTML(d,slot);
   });
 }
