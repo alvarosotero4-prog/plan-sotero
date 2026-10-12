@@ -329,7 +329,7 @@ function mergeState(o){
 }
 var S=DEF();
 try{var raw=localStorage.getItem(KEY);if(raw)S=mergeState(JSON.parse(raw));}catch(e){}
-var ui={tab:'hoy',date:todayS(),picker:null,q:'',open:{},confirm:false,sync:'local',rwd:null};
+var ui={off:{status:'idle',list:[],q:''},tab:'hoy',date:todayS(),picker:null,q:'',open:{},confirm:false,sync:'local',rwd:null};
 ui.rwd=wdOf(ui.date);
 
 /* ---------- persistence ---------- */
@@ -551,6 +551,36 @@ function pickList(d,slot){
   if(!l.length) return '<p class="muted" style="padding:8px 4px">No hay ningún alimento con ese nombre. Puedes crearlo en Plan, en Mis alimentos.</p>';
   return l.map(function(f){return '<button data-act="pick" data-d="'+d+'" data-s="'+slot+'" data-f="'+esc(f.id)+'"><span>'+esc(f.name)+'</span><small>'+f0(f.kcal)+' kcal/100 g</small></button>';}).join('');
 }
+
+function offName(p){var n=(p.product_name||'').trim(),b=(p.brands||'').split(',')[0].trim();return n?(b&&n.toLowerCase().indexOf(b.toLowerCase())<0?n+' ('+b+')':n):'';}
+function offKcal(n){var k=n['energy-kcal_100g'];if(typeof k!=='number'||!isFinite(k)){var kj=n['energy_100g'];if(typeof kj==='number'&&isFinite(kj))k=kj/4.184;else return null;}return k;}
+function offHTML(d,slot){
+  var o=ui.off;
+  if(o.status==='loading')return '<p class="muted">Buscando en Mercadona…</p>';
+  if(o.status==='error')return '<p class="muted">No se pudo buscar. Comprueba la conexión e inténtalo de nuevo.</p>';
+  if(o.status==='empty')return '<p class="muted">No hay productos de Mercadona con ese nombre y datos nutricionales. Prueba con otra palabra o crea el alimento en Plan.</p>';
+  if(o.status!=='ok')return '<p class="muted">Escribe el producto y pulsa Buscar en Mercadona. Los datos vienen de Open Food Facts y pueden tener errores: revisa la etiqueta.</p>';
+  return '<div class="picklist">'+o.list.map(function(x,i){return '<button data-act="offpick" data-d="'+d+'" data-s="'+slot+'" data-i="'+i+'"><span>'+esc(x.name)+'</span><small>'+f0(x.kcal)+' kcal · P '+f1(x.p)+' · C '+f1(x.c)+' · G '+f1(x.g)+'</small></button>';}).join('')+'</div><p class="muted">Valores por 100 g, de Open Food Facts. Revisa la etiqueta.</p>';
+}
+function offSearch(d,slot){
+  var q=(ui.q||'').trim();
+  if(q.length<2){toast('Escribe al menos 2 letras');return;}
+  ui.off={status:'loading',list:[],q:q};var box=document.getElementById('offres');if(box)box.innerHTML=offHTML(d,slot);
+  var ctl=typeof AbortController!=='undefined'?new AbortController():null,tm=setTimeout(function(){if(ctl)ctl.abort();},15000);
+  var url='https://world.openfoodfacts.org/cgi/search.pl?action=process&json=1&page_size=30&search_simple=1&search_terms='+encodeURIComponent(q)+'&tagtype_0=stores&tag_contains_0=contains&tag_0=mercadona&fields=code,product_name,brands,nutriments';
+  fetch(url,ctl?{signal:ctl.signal}:{}).then(function(r){if(!r.ok)throw new Error('http');return r.json();}).then(function(j){
+    clearTimeout(tm);
+    var seen={},list=[];
+    (j.products||[]).forEach(function(p){
+      var n=p.nutriments||{},k=offKcal(n),name=offName(p);
+      if(!name||k==null||!p.code||seen[p.code])return;seen[p.code]=1;
+      list.push({code:p.code,name:name,kcal:Math.round(k),p:+n['proteins_100g']||0,c:+n['carbohydrates_100g']||0,g:+n['fat_100g']||0});
+    });
+    ui.off={status:list.length?'ok':'empty',list:list,q:q};
+  }).catch(function(){clearTimeout(tm);ui.off={status:'error',list:[],q:q};}).then(function(){
+    var b2=document.getElementById('offres');if(b2)b2.innerHTML=offHTML(d,slot);
+  });
+}
 function slotCard(d,s,k){
   var list=(S.logs[d]||{})[s.id]||[],n=slotN(list),t=slotTime(d,s.id),plan=planSlot(k,s.id,d);
   var h='<section class="card slot"><div class="hd"><h3>'+s.name+(t?'<span>'+t+'</span>':'')+'</h3><span class="muted num">'+(list.length?f0(n.kcal)+' kcal · P '+f0(n.p)+' g':'Menú: '+f0(slotN(plan).kcal)+' kcal')+'</span></div>';
@@ -562,7 +592,7 @@ function slotCard(d,s,k){
   if((k==='f'&&s.id==='snack')||(k==='r'&&s.id==='mid')) h+='<button class="btn sm" data-act="tortitas" data-d="'+d+'" data-s="'+s.id+'">Cambiar por tortitas</button>';
   if(list.length) h+='<button class="btn sm" data-act="clearslot" data-d="'+d+'" data-s="'+s.id+'">Vaciar</button>';
   h+='</div>';
-  if(ui.picker===s.id) h+='<div class="pick"><input type="text" id="q" placeholder="Buscar alimento" value="'+esc(ui.q)+'" autocomplete="off"><div class="picklist" id="picklist">'+pickList(d,s.id)+'</div></div>';
+  if(ui.picker===s.id) h+='<div class="pick"><input type="text" id="q" placeholder="Buscar alimento" value="'+esc(ui.q)+'" autocomplete="off"><div class="picklist" id="picklist">'+pickList(d,s.id)+'</div><div class="btns"><button class="btn sm" data-act="offsearch" data-d="'+d+'" data-s="'+s.id+'">Buscar en Mercadona</button></div><div id="offres">'+offHTML(d,s.id)+'</div></div>';
   return h+'</section>';
 }
 function vComidas(){
@@ -680,8 +710,12 @@ app.addEventListener('click',function(e){
   if(a==='date'){ui.date=d;ui.rwd=wdOf(d);render();return;}
   if(a==='wk'){ui.date=addDays(ui.date,+b.dataset.n);render();return;}
   if(a==='check'){var c=S.checks[d]||(S.checks[d]={});if(b.checked)c[i]=true;else delete c[i];save();render();return;}
-  if(a==='openpick'){ui.picker=ui.picker===s?null:s;ui.q='';render();var q=document.getElementById('q');if(q)q.focus();return;}
+  if(a==='openpick'){ui.picker=ui.picker===s?null:s;ui.q='';ui.off={status:'idle',list:[],q:''};render();var q=document.getElementById('q');if(q)q.focus();return;}
   if(a==='pick'){var f=findFood(b.dataset.f);if(f){logArr(d,s).push({f:f.id,g:f.def});save();ui.picker=null;ui.q='';render();toast(f.name+' añadido');}return;}
+  if(a==='offsearch'){offSearch(d,s);return;}
+  if(a==='offpick'){var x=ui.off.list[i];if(!x)return;var fid='off'+x.code;
+    if(!S.foods.some(function(f){return f.id===fid;}))S.foods.push({id:fid,name:x.name,kcal:x.kcal,p:x.p,c:x.c,g:x.g,def:100});
+    logArr(d,s).push({f:fid,g:100});save();ui.picker=null;ui.q='';ui.off={status:'idle',list:[],q:''};render();toast(x.name+' añadido (100 g)');return;}
   if(a==='rm'){var arr=logArr(d,s);arr.splice(i,1);if(!arr.length)delete S.logs[d][s];save();render();return;}
   if(a==='useplan'){logArr(d,s);S.logs[d][s]=planSlot(dayKind(d),s,d);save();render();return;}
   if(a==='useplanall'){var k=dayKind(d);S.logs[d]=S.logs[d]||{};slotsFor(d).forEach(function(x){if(!(S.logs[d][x.id]&&S.logs[d][x.id].length))S.logs[d][x.id]=planSlot(k,x.id,d);});save();render();toast('Menú cargado');return;}
