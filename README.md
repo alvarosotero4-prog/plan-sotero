@@ -1,6 +1,8 @@
 # Plan Sotero
 
-App web (PWA) para el plan de definición de 4 semanas.
+App web (PWA) con plan de comidas, entreno y rutina de 4 semanas.
+
+- Perfiles: cada persona crea el suyo con un cuestionario (datos, objetivo, actividad, horario, dieta y alergias, salud). La app calcula calorías y macros (Mifflin-St Jeor + actividad), genera menús adaptados y un horario semanal. Sin cuentas ni contraseñas: cada perfil vive en el dispositivo. El plan original de Sotero sigue disponible como perfil.
 
 - Hoy: kcal y macros del día, peso, seguimiento de agua, pasos, cardio, creatina y sueño, diario con etiquetas, rachas y metas semanales, y rutina con casillas.
 - Entreno: sensaciones del día (energía, cansancio, hambre) con aviso de fatiga, registro de fuerza (series, kg y repeticiones) y progresión por ejercicio.
