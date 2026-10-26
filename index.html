@@ -417,7 +417,7 @@ function mergeState(o){
 }
 var PROF=null, INDEX=null, G=null;
 var S=DEF();
-var ui={liftSel:null,saving:null,pwk:0,off:{status:'idle',list:[],q:''},tab:'hoy',date:todayS(),picker:null,q:'',open:{},confirm:false,sync:'local',rwd:null,screen:null,delp:null,confirmBlock:false,authMode:'login',au:{email:'',pw:'',pw2:''},authMsg:null,busy:false,rec:null,claim:null};
+var ui={liftSel:null,saving:null,pwk:0,off:{status:'idle',list:[],q:''},tab:'hoy',date:todayS(),picker:null,q:'',open:{},confirm:false,sync:'local',rwd:null,screen:null,delp:null,confirmBlock:false,authMode:'login',au:{email:'',pw:'',pw2:''},authMsg:null,busy:false,rec:null,claim:null,prev:null,delAcct:0};
 ui.rwd=wdOf(ui.date);
 var MAINT=2450;
 
@@ -1344,7 +1344,7 @@ function vPlan(){
     '<section class="card"><h2>Mis comidas guardadas</h2>'+(S.meals.length?'<ul class="plain">'+S.meals.map(function(m,i){return '<li>'+esc(m.name)+' · '+f0(mealN(m).kcal)+' kcal · P '+f0(mealN(m).p)+' g <button class="btn sm" data-act="delmeal" data-i="'+i+'">Quitar</button></li>';}).join('')+'</ul>':'<p class="muted">Aún no tienes ninguna. En Comidas, pulsa Guardar como comida en cualquier bloque para reutilizarlo.</p>')+'</section>'+
     '<section class="card"><h2>Mis alimentos</h2><div class="form"><label>Nombre<input type="text" id="cf-n" placeholder="Ej. Pan de centeno"></label><label>kcal / 100 g<input type="text" inputmode="decimal" id="cf-k"></label><label>Proteína<input type="text" inputmode="decimal" id="cf-p"></label><label>Carbohidratos<input type="text" inputmode="decimal" id="cf-c"></label><label>Grasas<input type="text" inputmode="decimal" id="cf-g"></label><button class="btn main" data-act="addfood">Guardar alimento</button></div><p class="muted">Todos los valores son por cada 100 g.</p>'+
     (S.foods.length?'<ul class="plain">'+S.foods.map(function(f,i){return '<li>'+esc(f.name)+' · '+f0(f.kcal)+' kcal · P '+f1(f.p)+' · C '+f1(f.c)+' · G '+f1(f.g)+' <button class="btn sm" data-act="delfood" data-i="'+i+'">Quitar</button></li>';}).join('')+'</ul>':'')+'</section>'+
-    '<section class="card"><h2>Tus datos</h2><p id="sync" class="muted">'+syncText()+'. Descarga una copia de vez en cuando por si borras los datos del navegador o cambias de móvil.</p><div class="btns"><button class="btn sm" data-act="export">Descargar copia</button><button class="btn sm" data-act="import">Restaurar copia</button><input type="file" id="imp" accept="application/json,.json" hidden><button class="btn danger sm" data-act="reset">'+(ui.confirm?'Confirmar: borrar todos los datos':'Borrar todos los datos')+'</button>'+(ui.confirm?'<button class="btn sm" data-act="resetno">Cancelar</button>':'')+'</div></section>';
+    accountCard()+'<section class="card"><h2>Tus datos</h2><p id="sync" class="muted">'+syncText()+'. Descarga una copia de vez en cuando por si borras los datos del navegador o cambias de móvil.</p><div class="btns"><button class="btn sm" data-act="export">Descargar copia</button><button class="btn sm" data-act="import">Restaurar copia</button><input type="file" id="imp" accept="application/json,.json" hidden><button class="btn danger sm" data-act="reset">'+(ui.confirm?'Confirmar: borrar todos los datos':'Borrar todos los datos')+'</button>'+(ui.confirm?'<button class="btn sm" data-act="resetno">Cancelar</button>':'')+'</div></section>';
   return h;
 }
 /* ---------- plan: perfil, reglas del plan generado ---------- */
@@ -1755,7 +1755,7 @@ function afterLogin(){
   });
 }
 function readAu(){
-  Array.prototype.forEach.call(app.querySelectorAll('[data-au]'),function(el){ui.au[el.dataset.au]=el.value;});
+  Array.prototype.forEach.call(app.querySelectorAll('[data-au]'),function(el){ui.au[el.dataset.au]=el.type==='checkbox'?el.checked:el.value;});
 }
 function validEmail(s){return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s);}
 function authSubmit(){
@@ -1763,7 +1763,7 @@ function authSubmit(){
   function fail(t){ui.authMsg={k:'err',t:t};ui.busy=false;render();}
   if(!validEmail(em))return fail('Escribe un correo válido.');
   if(!pw)return fail('Escribe la contraseña.');
-  if(reg){if(pw.length<8)return fail('La contraseña debe tener al menos 8 caracteres.');if(pw!==ui.au.pw2)return fail('Las contraseñas no coinciden.');}
+  if(reg){if(pw.length<8)return fail('La contraseña debe tener al menos 8 caracteres.');if(pw!==ui.au.pw2)return fail('Las contraseñas no coinciden.');if(!ui.au.terms)return fail('Marca la casilla para poder crear la cuenta.');}
   ui.busy=true;ui.authMsg=null;render();
   var rq=reg?sbReq('POST','/auth/v1/signup',{email:em,password:pw}):sbReq('POST','/auth/v1/token?grant_type=password',{email:em,password:pw});
   rq.then(function(j){
@@ -1811,9 +1811,10 @@ function vAuth(){
     '<section class="card"><div class="chips" role="group" aria-label="Acceso"><button class="chip" aria-pressed="'+!reg+'" data-act="aumode" data-v="login" type="button">Entrar</button><button class="chip" aria-pressed="'+reg+'" data-act="aumode" data-v="reg" type="button">Crear cuenta</button></div>'+
     '<form data-form="auth" class="fld" style="gap:12px" novalidate><div class="two" style="grid-template-columns:1fr"><label>Correo electrónico<input type="email" inputmode="email" data-au="email" value="'+esc(ui.au.email||'')+'" autocomplete="email" autocapitalize="none" spellcheck="false"></label>'+
     pwField('pw','Contraseña',0,ui.au.pw,reg?'new-password':'current-password')+(reg?pwField('pw2','Repite la contraseña',0,ui.au.pw2,'new-password'):'')+'</div>'+
+    (reg?'<label class="chk" style="cursor:pointer;align-items:flex-start"><input type="checkbox" data-au="terms"'+(ui.au.terms?' checked':'')+'><span>Tengo 18 años o más y he leído la <a href="#" data-act="privacy">información de privacidad</a></span></label>':'')+
     (m?'<p class="'+(m.k==='err'?'err':'note')+'" role="alert">'+esc(m.t)+'</p>':'')+
     '<div class="btns"><button class="btn main" type="submit"'+(b?' disabled':'')+'>'+(b?'Un momento…':reg?'Crear cuenta':'Entrar')+'</button>'+(reg?'':'<button class="btn" type="button" data-act="aurecover"'+(b?' disabled':'')+'>He olvidado la contraseña</button>')+'</div></form>'+
-    (reg?'<p class="muted">Mínimo 8 caracteres. Después te haré unas preguntas para preparar tu plan.</p>':'')+'</section>';
+    (reg?'<p class="muted">Mínimo 8 caracteres. Después te haré unas preguntas para preparar tu plan.</p>':'')+'<p class="muted"><a href="#" data-act="privacy">Información de privacidad</a></p></section>';
 }
 function vNewPw(){
   var b=ui.busy,m=ui.authMsg;
@@ -1835,10 +1836,56 @@ function claimOk(){
   saveIndex();ui.claim=null;openActive();syncPush();
 }
 
+/* ---------- privacidad, exportar y borrar la cuenta ---------- */
+function vPrivacy(){
+  return '<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Privacidad</h1></div></header><section class="card">'+
+    '<h3>Qué datos se guardan</h3><p>Tu correo electrónico y, por cada perfil, los datos que escribes: edad, altura, peso, medidas, dieta, alergias, horarios, comidas, entrenos y notas. Son datos de salud, así que se tratan con cuidado.</p>'+
+    '<h3>Para qué</h3><p>Solo para calcular y mostrarte tu plan y sincronizarlo entre tus dispositivos. No se venden ni se usan para publicidad.</p>'+
+    '<h3>Dónde y quién puede verlos</h3><p>Se guardan en tu cuenta, en los servidores de Supabase, con la contraseña cifrada y protegidos para que cada persona solo acceda a lo suyo. La persona que administra la app puede ver técnicamente los datos guardados en el servidor, y se compromete a usarlos solo para resolver fallos.</p>'+
+    '<h3>Fotos</h3><p>Las fotos de progreso se quedan solo en tu dispositivo: no se suben a la cuenta.</p>'+
+    '<h3>Tus derechos</h3><p>Puedes descargar todos tus datos y borrar tu cuenta y todo lo que contiene cuando quieras, desde la pestaña Plan, en Cuenta y privacidad. El borrado es inmediato y definitivo.</p>'+
+    '<h3>Aviso</h3><p>El plan es orientativo y no sustituye el consejo de un médico o dietista. La app es solo para mayores de 18 años.</p>'+
+    '<div class="btns"><button class="btn main" data-act="privback">Volver</button></div></section>';
+}
+function accountCard(){
+  if(!cloudOn()||!AUTH)return '';
+  var h='<section class="card"><h2>Cuenta y privacidad</h2><p class="muted">'+esc(AUTH.email)+' · <span id="sync2">'+syncLabel().replace(' ('+esc(AUTH.email)+')','')+'</span></p><div class="btns"><button class="btn sm" data-act="logout">Cerrar sesión</button><button class="btn sm" data-act="acctexport">Descargar todos mis datos</button><button class="btn sm" data-act="privacy">Información de privacidad</button></div>';
+  if(ui.delAcct){
+    h+='<p class="note">Se borrarán para siempre tu cuenta, todos tus perfiles y sus registros, en el servidor y en este dispositivo. No se puede deshacer. Descarga antes una copia si quieres conservarla.</p><label class="fld"><span class="lb">Escribe BORRAR para confirmar</span><input type="text" data-au="delconfirm" value="'+esc(ui.au.delconfirm||'')+'" autocomplete="off" autocapitalize="characters"></label><div class="btns"><button class="btn danger sm" data-act="acctdel"'+(ui.busy?' disabled':'')+'>Borrar mi cuenta definitivamente</button><button class="btn sm" data-act="acctdelno">Cancelar</button></div>';
+  } else h+='<div class="btns"><button class="btn danger sm" data-act="acctdel">Borrar mi cuenta</button></div>';
+  return h+'</section>';
+}
+function exportAll(){
+  try{
+    var out={cuenta:AUTH.email,exportado:new Date().toISOString(),perfiles:[]};
+    INDEX.list.forEach(function(e){var raw=null;try{raw=JSON.parse(localStorage.getItem(e.key)||'null');}catch(x){}out.perfiles.push({id:e.id,nombre:e.name,tipo:e.type,datos:raw});});
+    var blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'}),a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);a.download='mis-datos-plan-'+todayS()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);toast('Datos descargados');
+  }catch(e){toast('No se pudieron descargar los datos');}
+}
+function wipeLocal(){
+  var uid=AUTH?AUTH.uid:'';
+  (INDEX?INDEX.list:[]).forEach(function(e){
+    try{localStorage.removeItem(e.key);}catch(x){}
+    idbDo('readwrite',function(st){var rq=st.openCursor();rq.onsuccess=function(){var c=rq.result;if(c){if((c.value.pid||'sotero')===e.id)c.delete();c.continue();}};return rq;}).catch(function(){});
+  });
+  try{localStorage.removeItem(IDX_KEY+':'+uid);localStorage.removeItem('plan-sync:'+uid);localStorage.removeItem(AUTH_KEY);}catch(x){}
+}
+function deleteAccount(){
+  ui.busy=true;render();
+  ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/delete_my_account',{},AUTH.access);}).then(function(){
+    wipeLocal();AUTH=null;PROF=null;INDEX=null;S=DEF();ui.busy=false;ui.delAcct=0;ui.au={email:'',pw:'',pw2:''};ui.authMode='login';ui.authMsg={k:'info',t:'Tu cuenta y todos tus datos se han borrado.'};ui.screen='auth';render();toTop();
+  },function(e){
+    ui.busy=false;
+    toast(e&&e.net?'Sin conexión: no se pudo borrar la cuenta':(e&&(e.status===404||e.code==='PGRST202')?'El borrado de cuentas aún no está activado en el servidor':'No se pudo borrar la cuenta'));
+    render();
+  });
+}
+
 function render(){
   var y=window.scrollY;
   if(ui.screen){
-    app.innerHTML=ui.screen==='welcome'?vWelcome():ui.screen==='profiles'?vProfiles():ui.screen==='auth'?vAuth():ui.screen==='newpw'?vNewPw():ui.screen==='claim'?vClaim():vOnb();
+    app.innerHTML=ui.screen==='welcome'?vWelcome():ui.screen==='profiles'?vProfiles():ui.screen==='auth'?vAuth():ui.screen==='newpw'?vNewPw():ui.screen==='claim'?vClaim():ui.screen==='privacy'?vPrivacy():vOnb();
     document.title='Plan';
     return;
   }
@@ -1856,6 +1903,14 @@ function toTop(){try{window.scrollTo(0,0);}catch(e){}}
 function profileAct(a,b){
   var f=b.dataset.f,v=b.dataset.v,i;
   switch(a){
+  case 'privacy':if(ui.screen==='auth')readAu();ui.prev=ui.screen;ui.screen='privacy';render();toTop();return true;
+  case 'privback':ui.screen=ui.prev||null;ui.prev=null;render();toTop();return true;
+  case 'acctexport':exportAll();return true;
+  case 'acctdel':
+    if(!ui.delAcct){ui.delAcct=1;render();return true;}
+    readAu();if((ui.au.delconfirm||'').trim().toUpperCase()!=='BORRAR'){toast('Escribe BORRAR para confirmar');return true;}
+    deleteAccount();return true;
+  case 'acctdelno':ui.delAcct=0;ui.au.delconfirm='';render();return true;
   case 'aumode':readAu();ui.authMode=v;ui.authMsg=null;render();return true;
   case 'aurecover':authRecover();return true;
   case 'logout':doLogout();return true;
@@ -1903,6 +1958,7 @@ function profileAct(a,b){
 
 app.addEventListener('click',function(e){
   var b=e.target.closest('[data-act]');if(!b)return;
+  if(b.tagName==='A')e.preventDefault();
   var a=b.dataset.act,d=b.dataset.d,s=b.dataset.s,i=+b.dataset.i;
   if(profileAct(a,b))return;
   if(a==='tab'){ui.tab=b.dataset.t;ui.picker=null;ui.q='';render();return;}
