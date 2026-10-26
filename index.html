@@ -178,6 +178,13 @@ input[type=text],input[type=time],input[type=email],input[type=password],select{
 .legend .c::before{width:16px;border-top:2px dashed var(--ink2)}
 .rec{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .rec.warn{border-left-color:var(--warn)}
+details.fold summary{cursor:pointer;display:flex;list-style:none;justify-content:space-between;align-items:center;gap:12px;font-family:var(--font-d);font-size:21px;line-height:1.15;font-weight:600;list-style-position:inside}
+details.fold summary span{font-family:var(--font-b);font-size:13px;font-weight:500;color:var(--ink2)}
+details.fold summary::-webkit-details-marker{display:none}
+details.fold summary::after{content:'';flex:none;width:8px;height:8px;margin-left:2px;border-right:2px solid var(--ink2);border-bottom:2px solid var(--ink2);transform:rotate(45deg) translateY(-2px);transition:transform .15s}
+details.fold[open] summary::after{transform:rotate(-135deg) translateY(-2px)}
+details.fold summary span{margin-left:auto}
+details.fold[open] summary{margin-bottom:12px}
 details.week{border:1px solid var(--line);border-radius:10px;background:var(--surface)}
 details.week summary{cursor:pointer;padding:12px 14px;display:flex;justify-content:space-between;gap:12px;font-family:var(--font-d);font-size:19px;font-weight:600;list-style-position:inside}
 details.week summary span{font-family:var(--font-b);font-size:13px;font-weight:500;color:var(--ink2)}
@@ -1261,7 +1268,7 @@ function vPeso(){
   return h;
 }
 function vAlimentos(){
-  return '<section class="card"><h2>Mis comidas guardadas</h2>'+(S.meals.length?'<ul class="plain">'+S.meals.map(function(m,i){return '<li>'+esc(m.name)+' · '+f0(mealN(m).kcal)+' kcal · P '+f0(mealN(m).p)+' g <button class="btn sm" data-act="delmeal" data-i="'+i+'">Quitar</button></li>';}).join('')+'</ul>':'<p class="muted">Aún no tienes ninguna. En Comidas, pulsa Guardar como comida en cualquier bloque para reutilizarlo.</p>')+'</section>'+
+  return '<details class="card fold" data-wk="meals"'+(ui.open.meals?' open':'')+'><summary>Mis comidas guardadas<span class="num">'+S.meals.length+'</span></summary>'+(S.meals.length?'<ul class="plain">'+S.meals.map(function(m,i){return '<li>'+esc(m.name)+' · '+f0(mealN(m).kcal)+' kcal · P '+f0(mealN(m).p)+' g <button class="btn sm" data-act="delmeal" data-i="'+i+'">Quitar</button></li>';}).join('')+'</ul>':'<p class="muted">Aún no tienes ninguna. En Comidas, pulsa Guardar como comida en cualquier bloque para reutilizarlo.</p>')+'</details>'+
     '<section class="card"><h2>Añadir un alimento</h2><div class="form"><label>Nombre<input type="text" id="cf-n" placeholder="Ej. Pan de centeno"></label><label>kcal / 100 g<input type="text" inputmode="decimal" id="cf-k"></label><label>Proteína<input type="text" inputmode="decimal" id="cf-p"></label><label>Carbohidratos<input type="text" inputmode="decimal" id="cf-c"></label><label>Grasas<input type="text" inputmode="decimal" id="cf-g"></label><button class="btn main" data-act="addfood">Guardar alimento</button></div><p class="muted">Todos los valores son por cada 100 g.</p>'+
     (S.foods.length?'<ul class="plain">'+S.foods.map(function(f,i){return '<li>'+esc(f.name)+' · '+f0(f.kcal)+' kcal · P '+f1(f.p)+' · C '+f1(f.c)+' · G '+f1(f.g)+' <button class="btn sm" data-act="delfood" data-i="'+i+'">Quitar</button></li>';}).join('')+'</ul>':'')+'</section>';
 }
