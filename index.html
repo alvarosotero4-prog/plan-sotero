@@ -427,7 +427,7 @@ function mergeState(o){
 }
 var PROF=null, INDEX=null, G=null;
 var S=DEF();
-var ui={liftSel:null,saving:null,pwk:0,tab:'hoy',date:todayS(),picker:null,alt:null,q:'',open:{},confirm:false,sync:'local',rwd:null,screen:null,delp:null,confirmBlock:false,authMode:'login',au:{email:'',pw:'',pw2:''},authMsg:null,busy:false,rec:null,claim:null,prev:null,delAcct:0};
+var ui={liftSel:null,saving:null,pwk:0,tab:'hoy',date:todayS(),picker:null,alt:null,set:'plan',q:'',open:{},confirm:false,sync:'local',rwd:null,screen:null,delp:null,confirmBlock:false,authMode:'login',au:{email:'',pw:'',pw2:''},authMsg:null,busy:false,rec:null,claim:null,prev:null,delAcct:0};
 ui.rwd=wdOf(ui.date);
 var MAINT=2450;
 
@@ -935,7 +935,7 @@ function header(){
   return '<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>'+esc(title)+'</h1></div>'+whoBtn()+'<p class="sub">'+kind+' · '+sub+'</p></header>';
 }
 function tabs(){
-  var T=[['hoy','Hoy'],['comidas','Comidas'],['peso','Progreso'],['alim','Alimentos'],['plan','Plan'],['cuenta','Cuenta']];
+  var T=[['hoy','Hoy'],['comidas','Comidas'],['peso','Progreso'],['alim','Alimentos'],['ajustes','Ajustes']];
   return '<nav class="tabs" role="tablist" aria-label="Secciones">'+T.map(function(t){return '<button role="tab" aria-selected="'+(ui.tab===t[0])+'" data-act="tab" data-t="'+t[0]+'">'+t[1]+'</button>';}).join('')+'</nav>';
 }
 function strip(){
@@ -1029,13 +1029,19 @@ function trackCard(d){
     '<label class="hrow chk" style="cursor:pointer"><span>Creatina de hoy (3–5 g)</span><input type="checkbox" data-bind="track" data-k="creatine" data-d="'+d+'"'+(T.creatine?' checked':'')+'></label>'+
     '<div class="hrow"><label for="ts">Sueño de anoche (objetivo 7,5–8 h)</label><div class="inp"><input id="ts" type="text" inputmode="decimal" data-bind="track" data-k="sleep" data-d="'+d+'" value="'+(T.sleep!=null?f1(T.sleep):'')+'" placeholder="—"><span>h</span></div></div></section>';
 }
+function asFold(key,html,def){
+  var m=html.match(/^<section class="card"><h2>(.*?)<\/h2>/);if(!m)return html;
+  var open=ui.open[key]!=null?ui.open[key]:def;
+  return '<details class="card fold" data-wk="'+key+'"'+(open?' open':'')+'><summary>'+m[1]+'</summary>'+html.slice(m[0].length).replace(/<\/section>$/,'</details>');
+}
+function foldEach(prefix,html,def){return html.split('</section>').filter(function(x){return x.trim();}).map(function(x,i){return asFold(prefix+i,x+'</section>',def);}).join('');}
 function vHoy(){
   var d=ui.date,k=dayKind(d),rows=sched(d),ck=S.checks[d]||{},done=0,total=0,li='';
   rows.forEach(function(r,i){if(r.type!=='meal')return;total++;if(ck[i])done++;li+=schedRow(r,i,ck[i],k,d);});
-  return strip()+dayHead(d)+alertBox()+totalsCard(d)+matchCard(d)+
-    '<section class="card"><h2>Peso de hoy</h2>'+weightField(d)+'</section>'+trackCard(d)+feelCard(d)+diaryCard(d)+constCard(d)+
-    '<section class="card"><div class="hrow"><h2>Horario de comidas</h2><span class="muted num">'+done+' de '+total+' hechas</span></div><ul class="sched">'+li+'</ul></section>'+
-    weekTable();
+  var schedCard='<details class="card fold" data-wk="h-sched"'+((ui.open['h-sched']!=null?ui.open['h-sched']:true)?' open':'')+'><summary>Horario de comidas<span class="num">'+done+' de '+total+' hechas</span></summary><ul class="sched">'+li+'</ul></details>';
+  return strip()+dayHead(d)+alertBox()+totalsCard(d)+matchCard(d)+schedCard+
+    '<section class="card"><h2>Peso de hoy</h2>'+weightField(d)+'</section>'+trackCard(d)+
+    asFold('h-feel',feelCard(d),false)+asFold('h-diary',diaryCard(d),false)+asFold('h-const',constCard(d),false)+asFold('h-week',weekTable(),false);
 }
 function stepOf(f){return f&&f.piece?f.piece:(f&&f.id==='aceite'?5:10);}
 function entryRow(d,slot,e,i){
@@ -1108,7 +1114,8 @@ function copyDay(to,from){
 function vComidas(){
   var d=ui.date,k=dayKind(d);
   return strip()+dayHead(d)+totalsCard(d)+matchCard(d)+
-    '<div class="btns"><button class="btn main" data-act="useplanall" data-d="'+d+'">Cargar el menú del plan en todo el día</button><button class="btn" data-act="copyday" data-d="'+d+'" data-from="'+addDays(d,-1)+'">Copiar de ayer</button>'+copySelect(d)+'<button class="btn" data-act="clearday" data-d="'+d+'">Vaciar el día</button></div>'+
+    '<div class="btns"><button class="btn main" data-act="useplanall" data-d="'+d+'">Cargar el menú del plan en todo el día</button></div>'+
+    '<details class="card fold" data-wk="c-act"'+(ui.open['c-act']?' open':'')+'><summary>Copiar o vaciar el día</summary><div class="btns"><button class="btn" data-act="copyday" data-d="'+d+'" data-from="'+addDays(d,-1)+'">Copiar de ayer</button>'+copySelect(d)+'<button class="btn danger" data-act="clearday" data-d="'+d+'">Vaciar el día</button></div></details>'+
     slotsFor(d).map(function(s){return slotCard(d,s,k);}).join('');
 }
 function chartSVG(ws){
@@ -1351,7 +1358,7 @@ function vPeso(){
   var cur=recent.length?recent.reduce(function(a,b){return a+b;},0)/recent.length:null;
   var delta=cur!=null?cur-S.settings.kg:null;
   var elapsed=last?Math.max(1,diffDays(last,START)+1):0,pace=(delta!=null&&elapsed>=7)?delta/(elapsed/7):null;
-  var h=summaryCard()+'<section class="card"><h2>Peso</h2><div class="stats">'+
+  var h='<section class="card"><h2>Peso</h2><div class="stats">'+
     '<div class="stat"><div class="l">Peso inicial</div><div class="v">'+f1(S.settings.kg)+' <small>kg</small></div></div>'+
     '<div class="stat"><div class="l">Media últimos 7 días</div><div class="v">'+(cur!=null?f1(cur):'—')+' <small>kg</small></div></div>'+
     '<div class="stat"><div class="l">Cambio total</div><div class="v">'+(delta!=null?(delta>0?'+':'')+f1(delta):'—')+' <small>kg</small></div></div>'+
@@ -1362,7 +1369,7 @@ function vPeso(){
       (rec.kind==='cut'?'<div class="btns"><button class="btn main sm" data-act="adj" data-n="-1">Restar 150 kcal a los objetivos</button></div>':'')+
       (rec.kind==='add'?'<div class="btns"><button class="btn main sm" data-act="adj" data-n="1">Sumar 200 kcal a los objetivos</button></div>':'')+'</section>';
   } else h+='<section class="rec"><p>Apunta el peso cada mañana en ayunas. A partir de la semana 2 verás aquí si tienes que ajustar las calorías.</p></section>';
-  h+=measuresCard()+photosCard();
+  h+=summaryCard()+asFold('p-med',measuresCard(),false)+asFold('p-foto',photosCard(),false);
   var t=todayS(),cw=Math.floor(diffDays(t,START)/7);
   ws.forEach(function(w){
     var openW=ui.open[w.w]!=null?ui.open[w.w]:(w.w===cw||(cw<0&&w.w===0)||(cw>3&&w.w===3));
@@ -1381,6 +1388,10 @@ function vAlimentos(){
     '</section>'+
     '<details class="card fold" data-wk="foods"'+(ui.open.foods?' open':'')+'><summary>Mis alimentos<span class="num">'+S.foods.length+'</span></summary>'+(S.foods.length?'<ul class="plain">'+S.foods.map(function(f,i){return '<li>'+esc(f.name)+' · '+f0(f.kcal)+' kcal · P '+f1(f.p)+' · C '+f1(f.c)+' · G '+f1(f.g)+' <button class="btn sm" data-act="delfood" data-i="'+i+'">Quitar</button></li>';}).join('')+'</ul>':'<p class="muted">Aún no has creado ningún alimento.</p>')+'</details>';
 }
+function vAjustes(){
+  var seg=ui.set==='cuenta'?'cuenta':'plan';
+  return '<div class="chips" role="group" aria-label="Ajustes">'+[['plan','Plan'],['cuenta','Cuenta y datos']].map(function(x){return '<button class="chip" aria-pressed="'+(seg===x[0])+'" data-act="set" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>'+(seg==='cuenta'?vCuenta():vPlan());
+}
 function vCuenta(){
   return accountCard()+'<section class="card"><h2>Tus datos</h2><p id="sync" class="muted">'+syncText()+'. Descarga una copia de vez en cuando por si borras los datos del navegador o cambias de móvil.</p><div class="btns"><button class="btn sm" data-act="export">Descargar copia</button><button class="btn sm" data-act="import">Restaurar copia</button><input type="file" id="imp" accept="application/json,.json" hidden><button class="btn danger sm" data-act="reset">'+(ui.confirm?'Confirmar: borrar todos los datos':'Borrar todos los datos')+'</button>'+(ui.confirm?'<button class="btn sm" data-act="resetno">Cancelar</button>':'')+'</div></section>';
 }
@@ -1392,8 +1403,8 @@ function vPlan(){
     '<tr><th>Suma de macros</th><td class="num">'+f0(byMacros('f'))+' kcal</td><td class="num">'+f0(byMacros('r'))+' kcal</td></tr></tbody></table></div><p class="muted">'+(isSot()?'Los días de fútbol son lunes, miércoles, jueves y sábado. Martes, viernes y domingo son días sin fútbol. El menú de la app incluye la verdura y la ensalada, así que puede sumar unas kcal más que el plan.':'Tus días de entreno son: '+(G.nTrain?G.a.days.map(function(on,i){return on?DAYS[i].toLowerCase():null;}).filter(Boolean).join(', '):'ninguno')+'. Los demás son días de descanso. Puedes retocar los objetivos; los menús se recalculan solos.')+'</p></section>'+
     (isSot()?'<section class="card"><h2>Partidos de los domingos</h2><p class="muted">El domingo comes siempre como día de fútbol, porque no sabes si juegas hasta la hora del partido. Pon la hora de cada semana y marca si al final juegas: si juegas, el lunes pasa a ser casi sin entreno.</p>'+[addDays(START,-1),addDays(START,6),addDays(START,13),addDays(START,20),addDays(START,27)].map(function(s){return matchRow(s);}).join('')+'</section>':'')+
     '<section class="card"><h2>Peso de referencia</h2><div class="hrow"><label for="kg0">Peso inicial</label><div class="inp"><input id="kg0" type="text" inputmode="decimal" data-bind="kg" value="'+f1(S.settings.kg)+'"><span>kg</span></div></div><p class="muted">Sirve de punto de partida del gráfico y del ritmo '+(isSot()?'de −0,3 kg por semana':G.pace===0?'(mantener el peso)':'previsto de '+(G.pace>0?'+':'−')+f2(Math.abs(G.pace))+' kg por semana')+'.</p></section>'+
-    (isSot()?'<section class="card"><h2>Reglas de ajuste</h2><ul class="plain"><li>Si la media semanal baja menos de 0,2 kg, resta 150 kcal (carbohidrato de la cena).</li><li>Si baja más de 0,6 kg, suma 200 kcal (pan o fruta en la merienda).</li><li>Para y sube 200–300 kcal de carbohidratos si hay cansancio que no se va, bajada clara de rendimiento, mal sueño, mareos o una pérdida de más de 0,6 kg por semana.</li><li>Después del mes, una semana a mantenimiento (≈2.450 kcal) antes de decidir si repites.</li></ul></section>'+
-    '<section class="card"><h2>Hidratación, suplementos y sueño</h2><ul class="plain"><li>Agua: 35–40 ml por kg al día (≈2,7–3,1 L), más 500 ml por sesión de fútbol.</li><li>Opcionales: proteína whey, creatina de 3 a 5 g al día y cafeína antes del fútbol, nunca por la tarde.</li><li>Sueño: de 23:30 a 7:30, sin pantallas la última media hora.</li></ul></section>':genRules())+
+    foldEach('pl-r',(isSot()?'<section class="card"><h2>Reglas de ajuste</h2><ul class="plain"><li>Si la media semanal baja menos de 0,2 kg, resta 150 kcal (carbohidrato de la cena).</li><li>Si baja más de 0,6 kg, suma 200 kcal (pan o fruta en la merienda).</li><li>Para y sube 200–300 kcal de carbohidratos si hay cansancio que no se va, bajada clara de rendimiento, mal sueño, mareos o una pérdida de más de 0,6 kg por semana.</li><li>Después del mes, una semana a mantenimiento (≈2.450 kcal) antes de decidir si repites.</li></ul></section>'+
+    '<section class="card"><h2>Hidratación, suplementos y sueño</h2><ul class="plain"><li>Agua: 35–40 ml por kg al día (≈2,7–3,1 L), más 500 ml por sesión de fútbol.</li><li>Opcionales: proteína whey, creatina de 3 a 5 g al día y cafeína antes del fútbol, nunca por la tarde.</li><li>Sueño: de 23:30 a 7:30, sin pantallas la última media hora.</li></ul></section>':genRules()),false)+
     '';
   return h;
 }
@@ -1586,7 +1597,7 @@ function obStep(){
       (a.kg/Math.pow(a.h/100,2)>=35?'<p class="note">Con tu IMC conviene que un médico te acompañe en el proceso.</p>':'')+
       (a.age>=65?'<p class="note">Por encima de los 65 años, consulta el plan con tu médico, sobre todo la proteína y el entreno de fuerza.</p>':'')+
       (ob.edit?'<p class="muted">Se actualizan tu plan, tus objetivos y tus menús. Tus registros se conservan.</p>':'<div class="fld"><span class="lb">¿Cuándo empiezas?</span><div class="opts">'+oOpt('startOpt','this','Esta semana','Lunes '+dayLabel(mondayOf(todayS())).split(' ').slice(1).join(' '),ob.startOpt==='this')+oOpt('startOpt','next','La semana que viene','Lunes '+dayLabel(addDays(mondayOf(todayS()),7)).split(' ').slice(1).join(' '),ob.startOpt==='next')+'</div></div>')+
-      '<p class="muted">Los menús de cada día se ajustan a estas cifras, a tu dieta y a lo que evitas. Puedes retocarlo todo después en Plan.</p>';
+      '<p class="muted">Los menús de cada día se ajustan a estas cifras, a tu dieta y a lo que evitas. Puedes retocarlo todo después en Ajustes, Plan.</p>';
   }
   return h;
 }
@@ -1939,7 +1950,7 @@ function render(){
     document.title='Plan';
     return;
   }
-  var v=ui.tab==='hoy'?vHoy():ui.tab==='comidas'?vComidas():ui.tab==='peso'?vPeso():ui.tab==='alim'?vAlimentos():ui.tab==='cuenta'?vCuenta():vPlan();
+  var v=ui.tab==='hoy'?vHoy():ui.tab==='comidas'?vComidas():ui.tab==='peso'?vPeso():ui.tab==='alim'?vAlimentos():ui.tab==='ajustes'?vAjustes():vPlan();
   app.innerHTML=header()+tabs()+v;
   window.scrollTo(0,y);
   try{var at=document.querySelector('.tabs [aria-selected="true"]');if(at&&at.scrollIntoView)at.scrollIntoView({inline:'nearest',block:'nearest'});}catch(e){}
@@ -1999,7 +2010,7 @@ function profileAct(a,b){
   case 'obcreate':
     readOb();
     for(i=0;i<=5;i++){var er=obValidate(i);if(er){ob.step=i;ob.err=er;render();toTop();return true;}}
-    if(ob.edit){saveEdit();ob=null;ui.screen=null;ui.tab='plan';render();toTop();toast('Plan actualizado');}
+    if(ob.edit){saveEdit();ob=null;ui.screen=null;ui.tab='ajustes';ui.set='plan';render();toTop();toast('Plan actualizado');}
     else if(createProfile()){ob=null;ui.screen=null;render();toTop();toast('Perfil creado');}
     return true;
   }
@@ -2011,6 +2022,7 @@ app.addEventListener('click',function(e){
   if(b.tagName==='A')e.preventDefault();
   var a=b.dataset.act,d=b.dataset.d,s=b.dataset.s,i=+b.dataset.i;
   if(profileAct(a,b))return;
+  if(a==='set'){ui.set=b.dataset.v;render();return;}
   if(a==='tab'){ui.tab=b.dataset.t;ui.picker=null;ui.alt=null;ui.q='';render();return;}
   if(a==='date'){ui.date=d;ui.rwd=wdOf(d);render();return;}
   if(a==='wk'){ui.date=addDays(ui.date,+b.dataset.n);render();return;}
