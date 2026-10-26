@@ -89,7 +89,7 @@ button{cursor:pointer}
 .inp input:focus-visible{outline:none}
 .inp:focus-within{border-color:var(--accent)}
 .inp span{color:var(--ink2);font-size:13px}
-input[type=text],input[type=time],select{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+input[type=text],input[type=time],input[type=email],input[type=password],select{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
 
 /* week strip */
 .stripbar{display:flex;align-items:stretch;gap:6px}
@@ -279,7 +279,7 @@ textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-rad
 .fld>label,.fld>.lb{font-size:13px;font-weight:600;color:var(--ink2)}
 .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
 .two label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink2)}
-.two input,.two select,.fld select,.fld input[type=text]{width:100%}
+.two input,.two select,.two input[type=email],.two input[type=password],.fld select,.fld input[type=text]{width:100%}
 .prof{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px}
 .prof .av{width:40px;height:40px;font-size:22px}
 .prof b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -417,7 +417,7 @@ function mergeState(o){
 }
 var PROF=null, INDEX=null, G=null;
 var S=DEF();
-var ui={liftSel:null,saving:null,pwk:0,off:{status:'idle',list:[],q:''},tab:'hoy',date:todayS(),picker:null,q:'',open:{},confirm:false,sync:'local',rwd:null,screen:null,delp:null,confirmBlock:false};
+var ui={liftSel:null,saving:null,pwk:0,off:{status:'idle',list:[],q:''},tab:'hoy',date:todayS(),picker:null,q:'',open:{},confirm:false,sync:'local',rwd:null,screen:null,delp:null,confirmBlock:false,authMode:'login',au:{email:'',pw:'',pw2:''},authMsg:null,busy:false,rec:null,claim:null};
 ui.rwd=wdOf(ui.date);
 var MAINT=2450;
 
@@ -425,6 +425,7 @@ var MAINT=2450;
 var dbDoc=null,writing=false,dirty=false,timer=null;
 function save(){
   try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  if(cloudOn()&&AUTH&&PROF){PROF.ts=Date.now();saveIndex();markDirty(PROF.id);}
   if(dbDoc&&isSot()){dirty=true;clearTimeout(timer);timer=setTimeout(flush,600);}
 }
 function flush(){
@@ -434,8 +435,8 @@ function flush(){
     writing=false;paintSync();if(dirty)flush();
   });
 }
-function paintSync(){var el=document.getElementById('sync');if(el)el.textContent=syncText();}
-function syncText(){return 'Los datos se guardan solo en este dispositivo';}
+function paintSync(){var el=document.getElementById('sync');if(el)el.innerHTML=syncText();}
+function syncText(){return syncLabel();}
 function initCloud(){
   if(!window.claude||!window.claude.use) return;
   Promise.all([window.claude.use('user'),window.claude.use('db')]).then(function(r){
@@ -1367,6 +1368,7 @@ function genRules(){
 }
 function profileCard(){
   var h='<section class="card"><h2>Perfil</h2>';
+  if(cloudOn()&&AUTH)h+='<p class="muted">Cuenta: '+esc(AUTH.email)+'</p>';
   if(isSot()) h+='<p class="muted">Estás usando el plan original de Sotero.</p>';
   else{
     var a=G.a,pl=S.profile.plan,days=a.days.map(function(on,i){return on?DS[i]:null;}).filter(Boolean).join(' ');
@@ -1383,9 +1385,9 @@ function profileCard(){
 
 /* ---------- pantallas: bienvenida, perfiles y cuestionario ---------- */
 function vWelcome(){
-  var hasSot=INDEX.list.some(function(x){return x.type==='sot';});
-  return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tu plan</h1></div><p>Responde unas preguntas y la app te prepara un plan de comidas con calorías y macros, un horario semanal y el seguimiento de tu peso y tus entrenos.</p><p class="muted">Tus datos se quedan solo en este dispositivo: no hay cuentas ni contraseñas. Puedes crear varios perfiles, uno para cada persona.</p></div>'+
-    '<div class="btns"><button class="btn main" data-act="pnew">Crear mi perfil</button>'+(hasSot?'':'<button class="btn" data-act="psotero">Usar el plan original de Sotero</button>')+'</div>';
+  var hasSot=cloudOn()||INDEX.list.some(function(x){return x.type==='sot';});
+  return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tu plan</h1></div><p>Responde unas preguntas y la app te prepara un plan de comidas con calorías y macros, un horario semanal y el seguimiento de tu peso y tus entrenos.</p><p class="muted">'+(cloudOn()&&AUTH?'Has entrado como '+esc(AUTH.email)+'. Tus datos se guardan en tu cuenta.':'Tus datos se quedan solo en este dispositivo: no hay cuentas ni contraseñas. Puedes crear varios perfiles, uno para cada persona.')+'</p></div>'+
+    '<div class="btns"><button class="btn main" data-act="pnew">Crear mi perfil</button>'+(hasSot?'':'<button class="btn" data-act="psotero">Usar el plan original de Sotero</button>')+(cloudOn()&&AUTH?'<button class="btn" data-act="logout">Cerrar sesión</button>':'')+'</div>';
 }
 function profSub(e){
   if(e.type==='sot')return 'Plan original · definición';
@@ -1394,7 +1396,7 @@ function profSub(e){
   return pr&&pr.ans?GOALS[pr.ans.goal]+' · '+f1(pr.ans.kg)+' kg':'Sin plan';
 }
 function vProfiles(){
-  var h='<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Perfiles</h1></div></header><section class="card"><p class="muted">Cada perfil tiene su plan, sus comidas, su peso y sus fotos. Se guardan solo en este dispositivo.</p>';
+  var h='<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Perfiles</h1></div></header><section class="card"><p class="muted">'+(cloudOn()&&AUTH?'Cuenta: '+esc(AUTH.email)+'. Cada perfil tiene su plan, sus comidas y su peso, y se sincroniza con tu cuenta. Las fotos se quedan solo en este dispositivo.':'Cada perfil tiene su plan, sus comidas, su peso y sus fotos. Se guardan solo en este dispositivo.')+'</p>';
   INDEX.list.forEach(function(e){
     var act=INDEX.active===e.id;
     h+='<div class="prof"><span class="av" aria-hidden="true">'+esc(e.name.charAt(0)||'?')+'</span><div style="min-width:0"><b>'+esc(e.name)+'</b><span class="muted">'+esc(profSub(e))+(act?' · activo':'')+'</span></div><div class="btns">'+
@@ -1404,7 +1406,8 @@ function vProfiles(){
   });
   h+='</section><div class="btns">';
   if(INDEX.list.length<6)h+='<button class="btn main" data-act="pnew">Crear un perfil nuevo</button>';
-  if(!INDEX.list.some(function(x){return x.type==='sot';}))h+='<button class="btn" data-act="psotero">Añadir el plan original de Sotero</button>';
+  if(!cloudOn()&&!INDEX.list.some(function(x){return x.type==='sot';}))h+='<button class="btn" data-act="psotero">Añadir el plan original de Sotero</button>';
+  if(cloudOn()&&AUTH)h+='<button class="btn" data-act="logout">Cerrar sesión</button>';
   if(INDEX.active&&INDEX.list.some(function(x){return x.id===INDEX.active;}))h+='<button class="btn" data-act="pback">Volver</button>';
   return h+'</div>';
 }
@@ -1549,17 +1552,18 @@ function vOnb(){
 }
 
 /* ---------- gestión de perfiles ---------- */
+function idxKey(){return cloudOn()&&AUTH?IDX_KEY+':'+AUTH.uid:IDX_KEY;}
 function loadIndex(){
   var idx=null;
-  try{idx=JSON.parse(localStorage.getItem(IDX_KEY)||'null');}catch(e){}
+  try{idx=JSON.parse(localStorage.getItem(idxKey())||'null');}catch(e){}
   if(!idx||!Array.isArray(idx.list)){
     idx={active:null,list:[]};
-    var has=false;try{has=!!localStorage.getItem('plan-sotero-v1');}catch(e){}
+    var has=false;try{has=!cloudOn()&&!!localStorage.getItem('plan-sotero-v1');}catch(e){}
     if(has){idx.list.push({id:'sotero',name:'Sotero',type:'sot',key:'plan-sotero-v1'});idx.active='sotero';}
   }
   return idx;
 }
-function saveIndex(){try{localStorage.setItem(IDX_KEY,JSON.stringify(INDEX));}catch(e){}}
+function saveIndex(){if(!INDEX)return;try{localStorage.setItem(idxKey(),JSON.stringify(INDEX));}catch(e){}}
 function setupPlan(){
   menuMemo={};
   if(isSot()){G=null;START=SOT_START;MAINT=2450;SLOTS=SLOTS_SOT;TYPES=TYPES_SOT;TPL=TPL_SOT;}
@@ -1586,9 +1590,9 @@ function newGenState(a,pl,start){
 }
 function createProfile(){
   var a=obAns(),pl=computePlan(a),start=ob.startOpt==='this'?mondayOf(todayS()):addDays(mondayOf(todayS()),7);
-  var id='p'+Date.now().toString(36),entry={id:id,name:a.name,type:'gen',key:'plan-p-'+id};
+  var id='p'+Date.now().toString(36),entry={id:id,name:a.name,type:'gen',key:'plan-p-'+id,ts:Date.now()};
   try{localStorage.setItem(entry.key,JSON.stringify(newGenState(a,pl,start)));}catch(e){toast('No se pudo guardar el perfil en este navegador');return false;}
-  INDEX.list.push(entry);saveIndex();
+  INDEX.list.push(entry);saveIndex();markDirty(id);
   return activate(id);
 }
 function saveEdit(){
@@ -1610,13 +1614,231 @@ function deleteProfile(id){
   idbDo('readwrite',function(st){var rq=st.openCursor();rq.onsuccess=function(){var c=rq.result;if(c){if((c.value.pid||'sotero')===id)c.delete();c.continue();}};return rq;}).catch(function(){});
   INDEX.list=INDEX.list.filter(function(x){return x.id!==id;});
   if(INDEX.active===id){INDEX.active=null;PROF=null;}
-  saveIndex();
+  saveIndex();markDel(id);
+}
+/* ---------- cuentas (Supabase) y sincronización ---------- */
+var SB_URL='', SB_KEY='';
+var AUTH_KEY='plan-auth-v1', CLAIM_KEY='plan-claimed-v1';
+var AUTH=null, pushing=false, pullAt=0, pushT=null;
+function cloudOn(){return !!(SB_URL&&SB_KEY);}
+function authLoad(){try{var a=JSON.parse(localStorage.getItem(AUTH_KEY)||'null');return a&&a.uid&&a.refresh?a:null;}catch(e){return null;}}
+function authStore(){try{if(AUTH)localStorage.setItem(AUTH_KEY,JSON.stringify(AUTH));else localStorage.removeItem(AUTH_KEY);}catch(e){}}
+function sbReq(method,path,body,token,extra){
+  var ctl=typeof AbortController!=='undefined'?new AbortController():null,tm=setTimeout(function(){if(ctl)ctl.abort();},15000);
+  var h={'apikey':SB_KEY,'Authorization':'Bearer '+(token||SB_KEY),'Content-Type':'application/json'};
+  if(extra)Object.keys(extra).forEach(function(k){h[k]=extra[k];});
+  return fetch(SB_URL+path,{method:method,headers:h,body:body!=null?JSON.stringify(body):undefined,signal:ctl?ctl.signal:undefined}).then(function(r){
+    clearTimeout(tm);
+    return r.text().then(function(t){
+      var j=null;try{j=t?JSON.parse(t):null;}catch(e){}
+      if(!r.ok){var er=new Error((j&&(j.msg||j.error_description||j.message))||('http '+r.status));er.status=r.status;er.code=j&&(j.error_code||j.code||j.error);throw er;}
+      return j;
+    });
+  },function(){clearTimeout(tm);var er=new Error('net');er.net=true;throw er;});
+}
+function authErr(e){
+  var m=String(e&&e.message||'').toLowerCase(),c=String(e&&e.code||'');
+  if(e&&e.net)return 'No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.';
+  if(c==='invalid_credentials'||m.indexOf('invalid login')>-1)return 'Correo o contraseña incorrectos.';
+  if(c==='user_already_exists'||m.indexOf('already registered')>-1)return 'Ya existe una cuenta con ese correo. Entra con tu contraseña.';
+  if(c==='weak_password'||m.indexOf('password')>-1&&m.indexOf('least')>-1)return 'La contraseña es demasiado débil. Usa al menos 8 caracteres.';
+  if(c==='email_not_confirmed')return 'Confirma tu correo antes de entrar.';
+  if(c==='signup_disabled')return 'El registro de cuentas está desactivado.';
+  if(e&&(e.status===429||c.indexOf('rate_limit')>-1))return 'Demasiados intentos. Espera unos minutos.';
+  if(c==='same_password')return 'La nueva contraseña debe ser distinta de la anterior.';
+  return 'No se pudo completar la operación.';
+}
+function setSession(j){
+  if(!j||!j.access_token||!j.user)return false;
+  AUTH={access:j.access_token,refresh:j.refresh_token,exp:Math.floor(Date.now()/1000)+(j.expires_in||3600),uid:j.user.id,email:j.user.email||''};
+  authStore();return true;
+}
+function ensureToken(){
+  if(!AUTH)return Promise.reject(new Error('noauth'));
+  if(AUTH.exp-60>Date.now()/1000)return Promise.resolve();
+  return sbReq('POST','/auth/v1/token?grant_type=refresh_token',{refresh_token:AUTH.refresh}).then(function(j){
+    var u=AUTH.uid,em=AUTH.email;
+    if(!setSession(j))throw new Error('bad');
+    if(AUTH.uid!==u){AUTH.uid=u;AUTH.email=em;authStore();}
+  },function(e){
+    if(e&&!e.net&&(e.status===400||e.status===401||e.status===403)){forceLogout('Tu sesión ha caducado. Entra de nuevo.');}
+    throw e;
+  });
+}
+function forceLogout(msg){
+  AUTH=null;authStore();PROF=null;INDEX=null;S=DEF();
+  ui.screen='auth';ui.authMsg=msg?{k:'info',t:msg}:null;ui.busy=false;render();
+}
+
+/* estado de sincronización pendiente, por cuenta */
+function syncKey(){return 'plan-sync:'+(AUTH?AUTH.uid:'');}
+function syncState(){var s=null;try{s=JSON.parse(localStorage.getItem(syncKey())||'null');}catch(e){}return {dirty:(s&&s.dirty)||[],del:(s&&s.del)||[]};}
+function syncSet(s){try{localStorage.setItem(syncKey(),JSON.stringify(s));}catch(e){}}
+function markDirty(id){if(!cloudOn()||!AUTH)return;var s=syncState();if(s.dirty.indexOf(id)<0)s.dirty.push(id);s.del=s.del.filter(function(x){return x!==id;});syncSet(s);ui.sync='pending';schedulePush();}
+function markDel(id){if(!cloudOn()||!AUTH)return;var s=syncState();s.dirty=s.dirty.filter(function(x){return x!==id;});if(s.del.indexOf(id)<0)s.del.push(id);syncSet(s);ui.sync='pending';schedulePush();}
+function schedulePush(){clearTimeout(pushT);pushT=setTimeout(syncPush,1800);}
+function syncPush(){
+  if(!cloudOn()||!AUTH||pushing)return Promise.resolve();
+  var sy=syncState();if(!sy.dirty.length&&!sy.del.length){if(ui.sync==='pending')ui.sync='ok';paintSync();return Promise.resolve();}
+  pushing=true;
+  return ensureToken().then(function(){
+    var chain=Promise.resolve();
+    sy.dirty.forEach(function(id){chain=chain.then(function(){
+      var e=INDEX&&INDEX.list.filter(function(x){return x.id===id;})[0],raw=null;
+      if(!e){clearFlag('dirty',id);return;}
+      try{raw=localStorage.getItem(e.key);}catch(x){}
+      if(!raw){clearFlag('dirty',id);return;}
+      var ts=e.ts||Date.now();
+      return sbReq('POST','/rest/v1/plan_profiles?on_conflict=user_id,id',[{user_id:AUTH.uid,id:e.id,name:e.name,type:e.type,data:JSON.parse(raw),updated_at:new Date(ts).toISOString()}],AUTH.access,{'Prefer':'resolution=merge-duplicates,return=minimal'}).then(function(){
+        e.synced=true;if((e.ts||0)===(ts)){clearFlag('dirty',id);}saveIndex();
+      });
+    });});
+    sy.del.forEach(function(id){chain=chain.then(function(){
+      return sbReq('DELETE','/rest/v1/plan_profiles?user_id=eq.'+AUTH.uid+'&id=eq.'+encodeURIComponent(id),null,AUTH.access).then(function(){clearFlag('del',id);});
+    });});
+    return chain;
+  }).then(function(){var s2=syncState();ui.sync=(s2.dirty.length||s2.del.length)?'pending':'ok';},function(e){ui.sync=e&&e.net?'offline':'error';}).then(function(){
+    pushing=false;paintSync();var s3=syncState();if((s3.dirty.length||s3.del.length)&&ui.sync==='pending')schedulePush();
+  });
+}
+function clearFlag(kind,id){var s=syncState();s[kind]=s[kind].filter(function(x){return x!==id;});syncSet(s);}
+function syncPull(){
+  if(!cloudOn()||!AUTH||!INDEX)return Promise.resolve(false);
+  return ensureToken().then(function(){
+    return sbReq('GET','/rest/v1/plan_profiles?select=id,name,type,data,updated_at&user_id=eq.'+AUTH.uid,null,AUTH.access);
+  }).then(function(rows){
+    if(!Array.isArray(rows))return false;
+    var sy=syncState(),changed=false,reloadActive=false;
+    rows.forEach(function(r){
+      var e=INDEX.list.filter(function(x){return x.id===r.id;})[0],rt=Date.parse(r.updated_at)||0;
+      if(!e){
+        e={id:r.id,name:r.name,type:r.type,key:'plan-p-'+r.id,ts:rt,synced:true};
+        try{localStorage.setItem(e.key,JSON.stringify(r.data));}catch(x){return;}
+        INDEX.list.push(e);if(!INDEX.active)INDEX.active=e.id;changed=true;
+      } else if(sy.dirty.indexOf(r.id)<0&&rt>(e.ts||0)+1000){
+        try{localStorage.setItem(e.key,JSON.stringify(r.data));}catch(x){return;}
+        e.name=r.name;e.ts=rt;e.synced=true;changed=true;if(INDEX.active===e.id)reloadActive=true;
+      } else e.synced=true;
+    });
+    var gone=[];
+    INDEX.list.forEach(function(e){
+      if(rows.some(function(r){return r.id===e.id;}))return;
+      if(sy.dirty.indexOf(e.id)>-1)return;
+      if(e.synced&&rows.length>0)gone.push(e);else markDirty(e.id);
+    });
+    gone.forEach(function(e){try{localStorage.removeItem(e.key);}catch(x){}INDEX.list=INDEX.list.filter(function(x){return x.id!==e.id;});if(INDEX.active===e.id){INDEX.active=null;}changed=true;reloadActive=false;});
+    saveIndex();
+    pullAt=Date.now();
+    if(reloadActive&&PROF){try{var raw=localStorage.getItem(KEY);if(raw){S=mergeState(JSON.parse(raw));setupPlan();}}catch(x){}}
+    return changed;
+  }).catch(function(e){ui.sync=e&&e.net?'offline':'error';return false;});
+}
+function openActive(){
+  if(INDEX.active&&INDEX.list.some(function(x){return x.id===INDEX.active;})&&activate(INDEX.active)){ui.screen=null;}
+  else{INDEX.active=null;PROF=null;ui.screen=INDEX.list.length?'profiles':'welcome';}
+  render();toTop();
+}
+function legacyEntries(){
+  var l=[];
+  try{if(localStorage.getItem(CLAIM_KEY))return [];var li=JSON.parse(localStorage.getItem(IDX_KEY)||'null');if(li&&Array.isArray(li.list))l=li.list.slice();
+    if(!l.some(function(x){return x.id==='sotero';})&&localStorage.getItem('plan-sotero-v1'))l.push({id:'sotero',name:'Sotero',type:'sot',key:'plan-sotero-v1'});
+    return l.filter(function(e){return e&&e.key&&localStorage.getItem(e.key);});}catch(e){return [];}
+}
+function afterLogin(){
+  INDEX=loadIndex();ui.busy=true;ui.authMsg=null;render();
+  var lg=legacyEntries();
+  var p=syncPull();
+  return p.then(function(){
+    ui.busy=false;
+    if(lg.length){ui.claim=lg;ui.screen='claim';render();toTop();return;}
+    openActive();
+  });
+}
+function readAu(){
+  Array.prototype.forEach.call(app.querySelectorAll('[data-au]'),function(el){ui.au[el.dataset.au]=el.value;});
+}
+function validEmail(s){return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s);}
+function authSubmit(){
+  readAu();var em=(ui.au.email||'').trim().toLowerCase(),pw=ui.au.pw||'',reg=ui.authMode==='reg';
+  function fail(t){ui.authMsg={k:'err',t:t};ui.busy=false;render();}
+  if(!validEmail(em))return fail('Escribe un correo válido.');
+  if(!pw)return fail('Escribe la contraseña.');
+  if(reg){if(pw.length<8)return fail('La contraseña debe tener al menos 8 caracteres.');if(pw!==ui.au.pw2)return fail('Las contraseñas no coinciden.');}
+  ui.busy=true;ui.authMsg=null;render();
+  var rq=reg?sbReq('POST','/auth/v1/signup',{email:em,password:pw}):sbReq('POST','/auth/v1/token?grant_type=password',{email:em,password:pw});
+  rq.then(function(j){
+    if(!setSession(j)){
+      ui.busy=false;ui.authMode='login';ui.authMsg={k:'info',t:'Te hemos enviado un correo para confirmar la cuenta. Ábrelo y vuelve a entrar.'};render();return;
+    }
+    ui.au={email:em,pw:'',pw2:''};
+    return afterLogin();
+  },function(e){fail(authErr(e));});
+}
+function authRecover(){
+  readAu();var em=(ui.au.email||'').trim().toLowerCase();
+  if(!validEmail(em)){ui.authMsg={k:'err',t:'Escribe tu correo arriba y vuelve a pulsar.'};render();return;}
+  ui.busy=true;render();
+  sbReq('POST','/auth/v1/recover?redirect_to='+encodeURIComponent(location.href.split('#')[0]),{email:em}).then(function(){
+    ui.busy=false;ui.authMsg={k:'info',t:'Si existe una cuenta con ese correo, te hemos enviado un enlace para crear una contraseña nueva.'};render();
+  },function(e){ui.busy=false;ui.authMsg={k:'err',t:authErr(e)};render();});
+}
+function newPwSubmit(){
+  readAu();var pw=ui.au.pw||'';
+  function fail(t){ui.authMsg={k:'err',t:t};ui.busy=false;render();}
+  if(pw.length<8)return fail('La contraseña debe tener al menos 8 caracteres.');
+  if(pw!==ui.au.pw2)return fail('Las contraseñas no coinciden.');
+  ui.busy=true;ui.authMsg=null;render();
+  var r=ui.rec;
+  sbReq('PUT','/auth/v1/user',{password:pw},r.access).then(function(u){
+    AUTH={access:r.access,refresh:r.refresh,exp:Math.floor(Date.now()/1000)+(r.expires||3600),uid:u.id,email:u.email||''};authStore();
+    ui.rec=null;ui.au={email:AUTH.email,pw:'',pw2:''};
+    return afterLogin();
+  },function(e){fail(authErr(e));});
+}
+function doLogout(){
+  var go=function(){AUTH=null;authStore();PROF=null;INDEX=null;S=DEF();ui.au={email:'',pw:'',pw2:''};ui.authMode='login';ui.authMsg={k:'info',t:'Has cerrado la sesión.'};ui.screen='auth';ui.busy=false;ui.acct=false;render();toTop();};
+  syncPush().then(go,go);
+}
+function syncLabel(){
+  if(!cloudOn()||!AUTH)return 'Los datos se guardan solo en este dispositivo';
+  var m={ok:'Sincronizado con tu cuenta',pending:'Cambios pendientes de subir a tu cuenta',offline:'Sin conexión: se subirá cuando vuelva',error:'No se pudo sincronizar: se reintentará'}[ui.sync]||'Cuenta conectada';
+  return m+' ('+esc(AUTH.email)+')';
+}
+function pwField(id,label,cur,val,ac){return '<label>'+label+'<input type="password" data-au="'+id+'" value="'+esc(val||'')+'" autocomplete="'+ac+'" minlength="8"></label>';}
+function vAuth(){
+  var reg=ui.authMode==='reg',b=ui.busy,m=ui.authMsg;
+  return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tu plan</h1></div><p class="muted">Plan de comidas, entrenos y rutina personalizado. Tu cuenta guarda tus datos y los sincroniza entre tus dispositivos.</p></div>'+
+    '<section class="card"><div class="chips" role="group" aria-label="Acceso"><button class="chip" aria-pressed="'+!reg+'" data-act="aumode" data-v="login" type="button">Entrar</button><button class="chip" aria-pressed="'+reg+'" data-act="aumode" data-v="reg" type="button">Crear cuenta</button></div>'+
+    '<form data-form="auth" class="fld" style="gap:12px" novalidate><div class="two" style="grid-template-columns:1fr"><label>Correo electrónico<input type="email" inputmode="email" data-au="email" value="'+esc(ui.au.email||'')+'" autocomplete="email" autocapitalize="none" spellcheck="false"></label>'+
+    pwField('pw','Contraseña',0,ui.au.pw,reg?'new-password':'current-password')+(reg?pwField('pw2','Repite la contraseña',0,ui.au.pw2,'new-password'):'')+'</div>'+
+    (m?'<p class="'+(m.k==='err'?'err':'note')+'" role="alert">'+esc(m.t)+'</p>':'')+
+    '<div class="btns"><button class="btn main" type="submit"'+(b?' disabled':'')+'>'+(b?'Un momento…':reg?'Crear cuenta':'Entrar')+'</button>'+(reg?'':'<button class="btn" type="button" data-act="aurecover"'+(b?' disabled':'')+'>He olvidado la contraseña</button>')+'</div></form>'+
+    (reg?'<p class="muted">Mínimo 8 caracteres. Después te haré unas preguntas para preparar tu plan.</p>':'')+'</section>';
+}
+function vNewPw(){
+  var b=ui.busy,m=ui.authMsg;
+  return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Nueva contraseña</h1></div></div><section class="card"><form data-form="newpw" class="fld" style="gap:12px" novalidate><div class="two" style="grid-template-columns:1fr">'+pwField('pw','Contraseña nueva',0,ui.au.pw,'new-password')+pwField('pw2','Repite la contraseña',0,ui.au.pw2,'new-password')+'</div>'+
+    (m?'<p class="'+(m.k==='err'?'err':'note')+'" role="alert">'+esc(m.t)+'</p>':'')+'<div class="btns"><button class="btn main" type="submit"'+(b?' disabled':'')+'>'+(b?'Un momento…':'Guardar y entrar')+'</button></div></form></section>';
+}
+function vClaim(){
+  var l=ui.claim||[];
+  return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tus perfiles</h1></div><p>En este móvil hay perfiles guardados de antes: <b>'+l.map(function(e){return esc(e.name);}).join(', ')+'</b>. ¿Quieres añadirlos a tu cuenta '+esc(AUTH.email)+'?</p><p class="muted">Así los tendrás también en tus otros dispositivos. Solo hazlo si esos perfiles son tuyos.</p></div>'+
+    '<div class="btns"><button class="btn main" data-act="claimok">Añadir a mi cuenta</button><button class="btn" data-act="claimno">Ahora no</button></div>';
+}
+function claimOk(){
+  (ui.claim||[]).forEach(function(e){
+    if(INDEX.list.some(function(x){return x.id===e.id;}))return;
+    var c={id:e.id,name:e.name,type:e.type,key:e.key,ts:Date.now()};INDEX.list.push(c);markDirty(c.id);
+  });
+  try{localStorage.setItem(CLAIM_KEY,'1');}catch(x){}
+  if(!INDEX.active&&INDEX.list.length)INDEX.active=INDEX.list[0].id;
+  saveIndex();ui.claim=null;openActive();syncPush();
 }
 
 function render(){
   var y=window.scrollY;
   if(ui.screen){
-    app.innerHTML=ui.screen==='welcome'?vWelcome():ui.screen==='profiles'?vProfiles():vOnb();
+    app.innerHTML=ui.screen==='welcome'?vWelcome():ui.screen==='profiles'?vProfiles():ui.screen==='auth'?vAuth():ui.screen==='newpw'?vNewPw():ui.screen==='claim'?vClaim():vOnb();
     document.title='Plan';
     return;
   }
@@ -1634,6 +1856,11 @@ function toTop(){try{window.scrollTo(0,0);}catch(e){}}
 function profileAct(a,b){
   var f=b.dataset.f,v=b.dataset.v,i;
   switch(a){
+  case 'aumode':readAu();ui.authMode=v;ui.authMsg=null;render();return true;
+  case 'aurecover':authRecover();return true;
+  case 'logout':doLogout();return true;
+  case 'claimok':claimOk();return true;
+  case 'claimno':ui.claim=null;openActive();return true;
   case 'profiles':ui.screen='profiles';ui.delp=null;render();toTop();return true;
   case 'pback':ui.screen=null;render();toTop();return true;
   case 'pswitch':if(activate(b.dataset.id)){ui.screen=null;render();toTop();toast('Perfil: '+PROF.name);}else toast('No se pudo abrir ese perfil');return true;
@@ -1774,9 +2001,44 @@ app.addEventListener('change',function(e){
   r.onload=function(){try{var o=JSON.parse(r.result);if(!o||typeof o!=='object'||!o.weights)throw 0;if(isSot()===!!o.profile)throw 0;if(!isSot()&&!(o.profile.ans&&o.profile.plan&&o.profile.start))throw 0;S=mergeState(o);if(!isSot()){PROF.name=S.profile.ans.name||PROF.name;saveIndex();}setupPlan();save();render();toast('Copia restaurada');}catch(err){toast('El archivo no es una copia válida');}};
   r.readAsText(file);
 });
-INDEX=loadIndex();
-if(!(INDEX.active&&activate(INDEX.active))){INDEX.active=null;PROF=null;ui.screen=INDEX.list.length?'profiles':'welcome';}
-render();
+app.addEventListener('submit',function(e){
+  var f=e.target;if(!f||!f.dataset||!f.dataset.form)return;
+  e.preventDefault();if(ui.busy)return;
+  if(f.dataset.form==='auth')authSubmit();else if(f.dataset.form==='newpw')newPwSubmit();
+});
+function parseRecovery(){
+  try{
+    var h=location.hash.replace(/^#/,'');if(!h)return null;
+    var q={};h.split('&').forEach(function(x){var i=x.indexOf('=');if(i>0)q[decodeURIComponent(x.slice(0,i))]=decodeURIComponent(x.slice(i+1).replace(/\+/g,' '));});
+    if(q.access_token&&q.type==='recovery'){history.replaceState(null,'',location.pathname+location.search);return {access:q.access_token,refresh:q.refresh_token||'',expires:+q.expires_in||3600};}
+    if(q.error_description){history.replaceState(null,'',location.pathname+location.search);ui.authMsg={k:'err',t:'El enlace ha caducado o no es válido. Pide uno nuevo desde "He olvidado la contraseña".'};}
+  }catch(e){}
+  return null;
+}
+function boot(){
+  if(cloudOn()){
+    var rec=parseRecovery();AUTH=authLoad();
+    if(rec){ui.rec=rec;ui.screen='newpw';render();return;}
+    if(!AUTH){ui.screen='auth';render();return;}
+    INDEX=loadIndex();openActive();
+    syncPull().then(function(ch){
+      if(ui.screen==='onb'||ui.screen==='auth')return;
+      if(INDEX&&(!INDEX.active||!PROF)&&!ui.screen){openActive();return;}
+      if(ch)render();
+    }).then(syncPush);
+    return;
+  }
+  INDEX=loadIndex();
+  if(!(INDEX.active&&activate(INDEX.active))){INDEX.active=null;PROF=null;ui.screen=INDEX.list.length?'profiles':'welcome';}
+  render();
+}
+boot();
+document.addEventListener('visibilitychange',function(){
+  if(!cloudOn()||!AUTH||!INDEX)return;
+  if(document.hidden){syncPush();return;}
+  if(Date.now()-pullAt>30000)syncPull().then(function(ch){if(ch&&!ui.screen)render();});
+});
+window.addEventListener('online',function(){if(cloudOn()&&AUTH&&INDEX){syncPush();syncPull().then(function(ch){if(ch&&!ui.screen)render();});}});
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
 try{if('serviceWorker' in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}catch(e){}
 })();
