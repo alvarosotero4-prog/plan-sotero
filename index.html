@@ -1617,7 +1617,7 @@ function deleteProfile(id){
   saveIndex();markDel(id);
 }
 /* ---------- cuentas (Supabase) y sincronización ---------- */
-var SB_URL='', SB_KEY='';
+var SB_URL='https://elgcagveoleiwgrgtczu.supabase.co', SB_KEY='sb_publishable_NF88wwZaEgWOiQBHOVUF3Q_eOUQR5Cu';
 var AUTH_KEY='plan-auth-v1', CLAIM_KEY='plan-claimed-v1';
 var AUTH=null, pushing=false, pullAt=0, pushT=null;
 function cloudOn(){return !!(SB_URL&&SB_KEY);}
@@ -1625,7 +1625,7 @@ function authLoad(){try{var a=JSON.parse(localStorage.getItem(AUTH_KEY)||'null')
 function authStore(){try{if(AUTH)localStorage.setItem(AUTH_KEY,JSON.stringify(AUTH));else localStorage.removeItem(AUTH_KEY);}catch(e){}}
 function sbReq(method,path,body,token,extra){
   var ctl=typeof AbortController!=='undefined'?new AbortController():null,tm=setTimeout(function(){if(ctl)ctl.abort();},15000);
-  var h={'apikey':SB_KEY,'Authorization':'Bearer '+(token||SB_KEY),'Content-Type':'application/json'};
+  var h={'apikey':SB_KEY,'Content-Type':'application/json'};if(token)h['Authorization']='Bearer '+token;
   if(extra)Object.keys(extra).forEach(function(k){h[k]=extra[k];});
   return fetch(SB_URL+path,{method:method,headers:h,body:body!=null?JSON.stringify(body):undefined,signal:ctl?ctl.signal:undefined}).then(function(r){
     clearTimeout(tm);
