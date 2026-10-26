@@ -183,6 +183,7 @@ input[type=text],input[type=time],input[type=email],input[type=password],select{
 .legend .c::before{width:16px;border-top:2px dashed var(--ink2)}
 .rec{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .rec.warn{border-left-color:var(--warn)}
+@media print{.noprint,#toast{display:none!important}body{background:#fff;color:#000}.card,.rec{break-inside:avoid}}
 details.fold summary{cursor:pointer;display:flex;list-style:none;justify-content:space-between;align-items:center;gap:12px;font-family:var(--font-d);font-size:21px;line-height:1.15;font-weight:600;list-style-position:inside}
 details.fold summary span{font-family:var(--font-b);font-size:13px;font-weight:500;color:var(--ink2)}
 details.fold summary::-webkit-details-marker{display:none}
@@ -809,17 +810,112 @@ function recGen(w,dl,b){
   if(dl<-0.4)return {w:w,dl:dl,kind:'add',msg:m+'bajó '+ab+' kg. Para mantener el peso, suma 200 kcal a los objetivos.'};
   return {w:w,dl:dl,kind:'ok',msg:m+'se mantiene estable ('+(dl>0?'+':dl<0?'−':'')+ab+' kg). Mantén las calorías.'};
 }
-function recommendation(ws){
-  for(var w=3;w>=1;w--){
-    var a=ws[w-1],b=ws[w];
-    if(a.mean!=null&&b.mean!=null&&a.n>=3&&b.n>=3){
-      var dl=b.mean-a.mean;
-      if(!isSot())return recGen(w,dl,b);
-      if(dl>-0.2) return {w:w,dl:dl,kind:'cut',msg:'La media de la semana '+(w+1)+' ('+f1(b.mean)+' kg) bajó solo '+f1(Math.abs(dl))+' kg respecto a la anterior. Resta 150 kcal, del carbohidrato de la cena.'};
-      if(dl<-0.6) return {w:w,dl:dl,kind:'add',msg:'La media de la semana '+(w+1)+' ('+f1(b.mean)+' kg) bajó '+f1(Math.abs(dl))+' kg, más rápido de lo previsto. Suma 200 kcal con pan o fruta en la merienda para no perder músculo.'};
-      return {w:w,dl:dl,kind:'ok',msg:'La media de la semana '+(w+1)+' bajó '+f1(Math.abs(dl))+' kg. El ritmo es el previsto: mantén las calorías.'};
-    }
+
+/* ---------- informe semanal ---------- */
+function reportData(w){
+  var r=weekSummary(w),ws=weeksData(),wm=ws[w].mean,pm=w>0?ws[w-1].mean:null,mon=addDays(START,w*7),i,d;
+  var aK=r.logged?r.sumK/r.logged:null,aT=r.logged?r.sumT/r.logged:null,aP=r.logged?r.sumP/r.logged:null;
+  var fe={energy:[],fatigue:[],hunger:[]},waterOk=0,waterN=0,rows=[],wDays=ws[w].n;
+  for(i=0;i<7;i++){
+    d=addDays(mon,i);var F=S.feel[d]||{},tr=S.track[d]||{},n=dayN(d),t=S.settings.t[dayKind(d)];
+    ['energy','fatigue','hunger'].forEach(function(k){if(F[k]!=null)fe[k].push(F[k]);});
+    if(tr.water!=null){waterN++;if(tr.water>=waterGoal(d))waterOk++;}
+    var st=n.kcal<=0?'—':(n.kcal>t.kcal*1.05?'Pasado':n.kcal<t.kcal*0.9?'Corto':'En objetivo');
+    rows.push({d:d,lab:DS[i]+' '+(+d.slice(8)),kcal:n.kcal,tk:t.kcal,p:n.p,tp:t.p,st:st,kg:S.weights[d]});
   }
+  var good=[],bad=[],focus=[],sAvg=avg(r.sleep);
+  if(r.logged>=6)good.push('Registraste '+r.logged+' de 7 días de comidas.');
+  else{bad.push('Solo registraste '+r.logged+' de 7 días.');focus.push('Apunta todas las comidas, aunque sea aproximado: con más datos los consejos son más fiables.');}
+  if(r.logged>=3){
+    var diff=aK-aT;
+    if(aK>aT*1.05){bad.push('Comiste de media '+f0(diff)+' kcal por encima del objetivo.');focus.push('Vigila las raciones: te sobran unas '+f0(diff)+' kcal al día de media.');}
+    else if(aK<aT*0.75){bad.push('Lo apuntado queda de media '+f0(-diff)+' kcal por debajo del objetivo.');focus.push('Lo apuntado está muy por debajo del objetivo (unas '+f0(-diff)+' kcal al día): antes de comer más, revisa si te dejas comidas sin apuntar.');}
+    else if(aK<aT*0.9){bad.push('Comiste de media '+f0(-diff)+' kcal por debajo del objetivo.');focus.push('Come un poco más: te faltan unas '+f0(-diff)+' kcal al día de media.');}
+    else good.push('Calorías en objetivo (media de '+f0(aK)+' kcal).');
+    if(r.okP>=Math.ceil(r.logged*0.7))good.push('Proteína en objetivo '+r.okP+' de '+r.logged+' días.');
+    else{bad.push('Proteína en objetivo solo '+r.okP+' de '+r.logged+' días.');focus.push('Sube la proteína: añade una ración (huevo, yogur, pollo, tofu…) en la comida que más baja la deje.');}
+  }
+  if(wDays>=5)good.push('Pesaste '+wDays+' días: la media es fiable.');
+  else{bad.push('Pesaste '+wDays+' días.');focus.push('Pésate cada mañana en ayunas para que la media semanal sea fiable.');}
+  if(sAvg!=null){if(sAvg>=7)good.push('Dormiste de media '+f1(sAvg)+' h.');else{bad.push('Dormiste de media '+f1(sAvg)+' h, por debajo de 7.');focus.push('Intenta dormir al menos 7 h: el sueño corto sube el hambre.');}}
+  if(waterN&&waterOk>=5)good.push('Agua en objetivo '+waterOk+' días.');
+  var rec=recFor(ws,w),head,tone;
+  if(r.logged<3){head='Faltan datos';tone='warn';}
+  else if(r.logged>=5&&r.okK>=Math.ceil(r.logged*0.6)&&r.okP>=Math.ceil(r.logged*0.6)){head='Semana sólida';tone='ok';}
+  else if(r.logged>=4&&r.okK+r.okP>=r.logged){head='Buena semana, con margen de mejora';tone='ok';}
+  else{head='Semana para ajustar';tone='warn';}
+  var wk=null;if(wm!=null){wk=pm!=null?wm-pm:(w===0?wm-S.settings.kg:null);}
+  var mw=S.waist[mon],pw=w>0?S.waist[addDays(mon,-7)]:null;
+  return {w:w,r:r,rec:rec,mon:mon,aK:aK,aT:aT,aP:aP,wm:wm,pm:pm,wk:wk,fe:fe,rows:rows,good:good,bad:bad,focus:focus.slice(0,3),head:head,tone:tone,wDays:wDays,waterOk:waterOk,waterN:waterN,sAvg:sAvg,mw:mw,pw:pw};
+}
+function reportText(w){
+  var D=reportData(w),r=D.r,L=[];
+  var who=isSot()?'Sotero':(PROF?PROF.name:'');
+  L.push('Informe semanal · Semana '+(w+1)+' ('+rangeLabel(D.rows[0].d,D.rows[6].d)+')'+(who?' · '+who:''));
+  L.push(D.head);L.push('');
+  if(D.wm!=null)L.push('Peso medio: '+f1(D.wm)+' kg'+(D.wk!=null?' ('+(D.wk>0?'+':D.wk<0?'−':'')+f1(Math.abs(D.wk))+' kg '+(D.pm!=null?'frente a la semana anterior':'frente al peso inicial')+')':'')+' · pesado '+D.wDays+' de 7 días');
+  if(D.mw!=null)L.push('Cintura: '+f1(D.mw)+' cm'+(D.pw!=null?' ('+(D.mw-D.pw>0?'+':D.mw-D.pw<0?'−':'')+f1(Math.abs(D.mw-D.pw))+' cm)':''));
+  if(r.logged)L.push('Calorías: media de '+f0(D.aK)+' kcal (objetivo '+f0(D.aT)+') · '+r.okK+' de '+r.logged+' días en objetivo');
+  if(r.logged)L.push('Proteína: media de '+f0(D.aP)+' g ('+f1(D.aP/S.settings.kg)+' g/kg) · '+r.okP+' de '+r.logged+' días en objetivo');
+  var ex=[];if(D.sAvg!=null)ex.push('Sueño '+f1(D.sAvg)+' h');if(avg(r.water)!=null)ex.push('Agua '+f1(avg(r.water))+' L');if(avg(r.steps)!=null)ex.push('Pasos '+f0(avg(r.steps)));
+  if(avg(D.fe.energy)!=null)ex.push('Energía '+f1(avg(D.fe.energy))+'/10');if(avg(D.fe.hunger)!=null)ex.push('Hambre '+f1(avg(D.fe.hunger))+'/10');
+  if(ex.length)L.push(ex.join(' · '));
+  if(D.good.length){L.push('');L.push('Lo que ha ido bien:');D.good.forEach(function(x){L.push('- '+x);});}
+  if(D.bad.length){L.push('');L.push('A mejorar:');D.bad.forEach(function(x){L.push('- '+x);});}
+  L.push('');L.push('Para la próxima semana:');
+  if(D.rec)L.push('- '+D.rec.msg);
+  D.focus.forEach(function(x){L.push('- '+x);});
+  if(!D.rec&&!D.focus.length)L.push('- Repite lo de esta semana.');
+  return L.join('\n');
+}
+function vReport(){
+  var w=ui.pwk,D=reportData(w),r=D.r,who=isSot()?'Sotero':(PROF?PROF.name:'');
+  function st(l,v,u){return '<div class="stat"><div class="l">'+l+'</div><div class="v">'+v+(u?' <small>'+u+'</small>':'')+'</div></div>';}
+  var chips='<div class="chips noprint" role="group" aria-label="Semana">'+[0,1,2,3].map(function(i){return '<button class="chip" aria-pressed="'+(i===w)+'" data-act="pwk" data-w="'+i+'">Semana '+(i+1)+'</button>';}).join('')+'</div>';
+  var h='<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Informe semanal</h1></div><p class="sub">'+(who?esc(who)+' · ':'')+'Semana '+(w+1)+' · '+rangeLabel(D.rows[0].d,D.rows[6].d)+'</p></header>'+
+    '<div class="btns noprint"><button class="btn sm" data-act="repback">‹ Volver</button><button class="btn sm main" data-act="repshare">Compartir</button><button class="btn sm" data-act="repcopy">Copiar texto</button><button class="btn sm" data-act="repprint">Guardar como PDF</button></div>'+chips;
+  if(!r.logged&&D.wm==null)return h+'<section class="card"><p class="muted">Esta semana todavía no tiene datos. Apunta comidas y peso y aquí verás el informe.</p></section>';
+  h+='<section class="rec'+(D.tone==='ok'?'':' warn')+'"><b>'+esc(D.head)+'</b><p>'+(r.logged?'Registraste '+r.logged+' de 7 días de comidas, con '+r.okK+' en calorías objetivo y '+r.okP+' en proteína objetivo.':'Casi no hay comidas registradas esta semana.')+'</p></section>';
+  h+='<section class="card"><h2>En cifras</h2><div class="stats">'+
+    st('Peso medio',D.wm!=null?f1(D.wm):'—','kg'+(D.wk!=null?' ('+(D.wk>0?'+':D.wk<0?'−':'')+f1(Math.abs(D.wk))+')':''))+
+    st('Media kcal',D.aK!=null?f0(D.aK):'—','de '+(D.aT!=null?f0(D.aT):'—'))+
+    st('Proteína media',D.aP!=null?f0(D.aP):'—','g ('+(D.aP!=null?f1(D.aP/S.settings.kg):'—')+' g/kg)')+
+    st('Días en kcal',r.logged?r.okK+' de '+r.logged:'—','')+
+    st('Días con proteína',r.logged?r.okP+' de '+r.logged:'—','')+
+    st('Días pesado',D.wDays+' de 7','')+
+    (D.mw!=null?st('Cintura',f1(D.mw),'cm'+(D.pw!=null?' ('+(D.mw-D.pw>0?'+':D.mw-D.pw<0?'−':'')+f1(Math.abs(D.mw-D.pw))+')':'')):'')+
+    st('Sueño medio',D.sAvg!=null?f1(D.sAvg):'—','h')+
+    st('Agua media',avg(r.water)!=null?f1(avg(r.water)):'—','L')+
+    st('Pasos medios',avg(r.steps)!=null?f0(avg(r.steps)):'—','')+
+    st('Energía',avg(D.fe.energy)!=null?f1(avg(D.fe.energy)):'—','/10')+
+    st('Hambre',avg(D.fe.hunger)!=null?f1(avg(D.fe.hunger)):'—','/10')+
+    '</div></section>';
+  h+='<section class="card"><h2>Día a día</h2><div class="chartbox fit">'+kcalBars(r)+'</div><div class="legend"><span class="b">Kcal comidas (ámbar si te pasas)</span><span class="c">Objetivo del día</span></div><div class="scroll"><table class="tgt"><thead><tr><th>Día</th><th>Kcal</th><th>Prot.</th><th>Peso</th><th></th></tr></thead><tbody>'+
+    D.rows.map(function(x){return '<tr><td>'+x.lab+'</td><td class="num">'+(x.kcal>0?f0(x.kcal)+' / '+f0(x.tk):'—')+'</td><td class="num">'+(x.kcal>0?f0(x.p)+' / '+f0(x.tp):'—')+'</td><td class="num">'+(x.kg!=null?f1(x.kg):'—')+'</td><td>'+esc(x.st)+'</td></tr>';}).join('')+'</tbody></table></div></section>';
+  h+=macroCard(r);
+  if(D.good.length||D.bad.length)h+='<section class="card"><h2>Balance</h2>'+(D.good.length?'<h3>Ha ido bien</h3><ul class="plain">'+D.good.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>':'')+(D.bad.length?'<h3>A mejorar</h3><ul class="plain">'+D.bad.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>':'')+'</section>';
+  var tg=Object.keys(r.tags);
+  if(tg.length)h+='<section class="card"><h2>Etiquetas del diario</h2><p>'+tg.map(function(k){return esc(k)+' ('+r.tags[k]+')';}).join(' · ')+'</p></section>';
+  h+='<section class="rec'+(D.rec&&D.rec.kind!=='ok'?' warn':'')+'"><b>Para la próxima semana</b>'+(D.rec?'<p>'+esc(D.rec.msg)+'</p>':'')+
+    (D.focus.length?'<ul class="plain">'+D.focus.map(function(x){return '<li>'+esc(x)+'</li>';}).join('')+'</ul>':(D.rec?'':'<p>Repite lo de esta semana.</p>'))+
+    '<p class="muted">Orientativo: no sustituye el consejo de un médico o dietista.</p></section>';
+  return h;
+}
+function copyText(t){
+  function fallback(){var ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();var ok=false;try{ok=document.execCommand('copy');}catch(e){}ta.remove();toast(ok?'Texto copiado':'No se pudo copiar');}
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(function(){toast('Texto copiado');},fallback);else fallback();
+}
+function recFor(ws,w){
+  var a=ws[w-1],b=ws[w];
+  if(!(w>=1&&a&&b&&a.mean!=null&&b.mean!=null&&a.n>=3&&b.n>=3))return null;
+  var dl=b.mean-a.mean;
+  if(!isSot())return recGen(w,dl,b);
+  if(dl>-0.2) return {w:w,dl:dl,kind:'cut',msg:'La media de la semana '+(w+1)+' ('+f1(b.mean)+' kg) bajó solo '+f1(Math.abs(dl))+' kg respecto a la anterior. Resta 150 kcal, del carbohidrato de la cena.'};
+  if(dl<-0.6) return {w:w,dl:dl,kind:'add',msg:'La media de la semana '+(w+1)+' ('+f1(b.mean)+' kg) bajó '+f1(Math.abs(dl))+' kg, más rápido de lo previsto. Suma 200 kcal con pan o fruta en la merienda para no perder músculo.'};
+  return {w:w,dl:dl,kind:'ok',msg:'La media de la semana '+(w+1)+' bajó '+f1(Math.abs(dl))+' kg. El ritmo es el previsto: mantén las calorías.'};
+}
+function recommendation(ws){
+  for(var w=3;w>=1;w--){var r=recFor(ws,w);if(r)return r;}
   return null;
 }
 
@@ -1120,7 +1216,7 @@ function summaryCard(){
     else{var tpk=S.settings.t.f.p/S.settings.kg;if(pk<tpk*0.85)m.push('La proteína media ('+f1(pk)+' g/kg) está baja: el objetivo son ≈'+f1(tpk)+' g/kg.');}
     msg=m.join(' ');
   }
-  return '<section class="card"><h2>Resumen semanal</h2>'+chips+
+  return '<section class="card"><div class="hrow"><h2>Resumen semanal</h2><button class="btn sm main" data-act="report">Ver informe</button></div>'+chips+
     '<p class="muted">'+rangeLabel(r.rows[0].d,r.rows[6].d)+'</p><div class="chartbox fit">'+kcalBars(r)+'</div><div class="legend"><span class="b">Kcal comidas (ámbar si te pasas)</span><span class="c">Objetivo del día</span></div>'+
     '<div class="stats">'+
     st('Días registrados',r.logged+' de 7','')+
@@ -1793,11 +1889,11 @@ function claimOk(){
 /* ---------- privacidad, exportar y borrar la cuenta ---------- */
 function vPrivacy(){
   return '<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Privacidad</h1></div></header><section class="card">'+
-    '<h3>Qué datos se guardan</h3><p>Tu correo electrónico y, por cada perfil, los datos que escribes: edad, altura, peso, medidas, dieta, alergias, horarios, comidas, entrenos y notas. Son datos de salud, así que se tratan con cuidado.</p>'+
+    '<h3>Qué datos se guardan</h3><p>Tu correo electrónico y, por cada perfil, los datos que escribes: edad, altura, peso, medidas, dieta, alergias, horarios, comidas, registros de peso y de sueño, y notas. Son datos de salud, así que se tratan con cuidado.</p>'+
     '<h3>Para qué</h3><p>Solo para calcular y mostrarte tu plan y sincronizarlo entre tus dispositivos. No se venden ni se usan para publicidad.</p>'+
     '<h3>Dónde y quién puede verlos</h3><p>Se guardan en tu cuenta, en los servidores de Supabase, con la contraseña cifrada y protegidos para que cada persona solo acceda a lo suyo. La persona que administra la app puede ver técnicamente los datos guardados en el servidor, y se compromete a usarlos solo para resolver fallos.</p>'+
     '<h3>Fotos</h3><p>Las fotos de progreso se quedan solo en tu dispositivo: no se suben a la cuenta.</p>'+
-    '<h3>Tus derechos</h3><p>Puedes descargar todos tus datos y borrar tu cuenta y todo lo que contiene cuando quieras, desde la pestaña Plan, en Cuenta y privacidad. El borrado es inmediato y definitivo.</p>'+
+    '<h3>Tus derechos</h3><p>Puedes descargar todos tus datos y borrar tu cuenta y todo lo que contiene cuando quieras, desde la pestaña Cuenta. El borrado es inmediato y definitivo.</p>'+
     '<h3>Aviso</h3><p>El plan es orientativo y no sustituye el consejo de un médico o dietista. La app es solo para mayores de 18 años.</p>'+
     '<div class="btns"><button class="btn main" data-act="privback">Volver</button></div></section>';
 }
@@ -1839,7 +1935,7 @@ function deleteAccount(){
 function render(){
   var y=window.scrollY;
   if(ui.screen){
-    app.innerHTML=ui.screen==='welcome'?vWelcome():ui.screen==='profiles'?vProfiles():ui.screen==='auth'?vAuth():ui.screen==='newpw'?vNewPw():ui.screen==='claim'?vClaim():ui.screen==='privacy'?vPrivacy():vOnb();
+    app.innerHTML=ui.screen==='welcome'?vWelcome():ui.screen==='profiles'?vProfiles():ui.screen==='auth'?vAuth():ui.screen==='newpw'?vNewPw():ui.screen==='claim'?vClaim():ui.screen==='privacy'?vPrivacy():ui.screen==='report'?vReport():vOnb();
     document.title='Plan';
     return;
   }
@@ -1939,6 +2035,11 @@ app.addEventListener('click',function(e){
   if(a==='delmeal'){S.meals.splice(i,1);save();render();return;}
   if(a==='copyday'){copyDay(d,b.dataset.from);return;}
   if(a==='water'){var T=S.track[d]||(S.track[d]={});T.water=Math.max(0,Math.round(((T.water||0)+(+b.dataset.n))*100)/100);save();render();return;}
+  if(a==='report'){ui.screen='report';render();toTop();return;}
+  if(a==='repback'){ui.screen=null;render();toTop();return;}
+  if(a==='repcopy'){copyText(reportText(ui.pwk));return;}
+  if(a==='repshare'){var rt=reportText(ui.pwk);if(navigator.share){navigator.share({title:'Informe semanal',text:rt}).catch(function(e){if(!e||e.name!=='AbortError')copyText(rt);});}else copyText(rt);return;}
+  if(a==='repprint'){try{window.print();}catch(e){toast('Tu navegador no permite imprimir desde aquí. Usa Compartir.');}return;}
   if(a==='pwk'){ui.pwk=+b.dataset.w;render();return;}
   if(a==='addmeasure'){addMeasure();return;}
   if(a==='delskin'){S.skin.splice(i,1);save();render();return;}

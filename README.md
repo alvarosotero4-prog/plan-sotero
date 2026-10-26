@@ -6,7 +6,7 @@ App web (PWA) con plan de comidas y seguimiento de peso de 4 semanas.
 
 - Hoy: kcal y macros del día, peso, seguimiento de agua, pasos, creatina y sueño, cómo te encuentras (energía, cansancio y hambre, con aviso de fatiga), diario con etiquetas, rachas y metas semanales, y horario de comidas con casillas.
 - Comidas: menú del plan, botón Cambiar plato (alternativas con kcal y proteína parecidas, respetando la dieta y las alergias), Repetir la última vez, favoritos y usados hace poco con tus gramos, alimentos con botones +/− por unidad, copiar un día.
-- Progreso: resumen semanal con reparto de macros, peso con media semanal y recomendaciones, medidas (cintura y pliegues) con gráficos y fotos de progreso con comparación.
+- Progreso: resumen semanal con informe para compartir (texto, copiar o guardar como PDF), con reparto de macros, peso con media semanal y recomendaciones, medidas (cintura y pliegues) con gráficos y fotos de progreso con comparación.
 - Alimentos: comidas guardadas y alimentos propios.
 - Plan: perfil, objetivos diarios, partidos (plan de Sotero), peso de referencia y reglas de ajuste.
 - Cuenta: sesión, privacidad, descarga de datos, borrado de cuenta y copia de seguridad.
