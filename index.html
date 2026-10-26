@@ -775,7 +775,7 @@ function header(){
   return '<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>'+esc(title)+'</h1></div>'+whoBtn()+'<p class="sub">'+kind+' · '+sub+'</p></header>';
 }
 function tabs(){
-  var T=[['hoy','Hoy'],['comidas','Comidas'],['entreno','Entreno'],['peso','Progreso'],['rutina','Rutina'],['alim','Alimentos'],['plan','Plan']];
+  var T=[['hoy','Hoy'],['comidas','Comidas'],['peso','Progreso'],['alim','Alimentos'],['plan','Plan'],['cuenta','Cuenta']];
   return '<nav class="tabs" role="tablist" aria-label="Secciones">'+T.map(function(t){return '<button role="tab" aria-selected="'+(ui.tab===t[0])+'" data-act="tab" data-t="'+t[0]+'">'+t[1]+'</button>';}).join('')+'</nav>';
 }
 function strip(){
@@ -848,23 +848,16 @@ function streak(test){
 function dayOkProt(d){var n=dayN(d);return n.kcal>0&&n.p>=S.settings.t[dayKind(d)].p*0.9;}
 function waterGoal(d){return S.settings.kg*0.0375+(dayKind(d)==='f'?0.5:0);}
 function goalRow(label,v,g){return '<div class="mac"><div class="hrow"><span>'+label+'</span><b class="num">'+v+' / '+g+'</b></div>'+meter(Math.min(v,g),g)+'</div>';}
-function trainedOn(x){
-  if(sessionSum(x).sets>=2)return true;
-  var tr=S.track[x];if(tr&&tr.cardio>0)return true;
-  var ck=S.checks[x]||{},hit=false;
-  sched(x).forEach(function(r,i){if(r.type==='strength'&&ck[i])hit=true;});
-  return hit;
-}
 function constCard(d){
   var sK=streak(function(x){return dayN(x).kcal>0;}),sW=streak(function(x){return S.weights[x]!=null;}),sP=streak(dayOkProt);
-  var mon=mondayOf(d),dw=0,dk=0,dp=0,dl=0,da=0,i,x;
-  for(i=0;i<7;i++){x=addDays(mon,i);if(S.weights[x]!=null)dw++;if(dayN(x).kcal>0)dk++;if(dayOkProt(x))dp++;if(isSot()?sessionSum(x).sets>=2:trainedOn(x))dl++;var tr=S.track[x];if(tr&&tr.water!=null&&tr.water>=waterGoal(x))da++;}
+  var mon=mondayOf(d),dw=0,dk=0,dp=0,da=0,i,x;
+  for(i=0;i<7;i++){x=addDays(mon,i);if(S.weights[x]!=null)dw++;if(dayN(x).kcal>0)dk++;if(dayOkProt(x))dp++;var tr=S.track[x];if(tr&&tr.water!=null&&tr.water>=waterGoal(x))da++;}
   return '<section class="card"><h2>Constancia</h2><div class="stats">'+
     '<div class="stat"><div class="l">Racha de comidas</div><div class="v">'+sK+' <small>días</small></div></div>'+
     '<div class="stat"><div class="l">Racha de peso</div><div class="v">'+sW+' <small>días</small></div></div>'+
     '<div class="stat"><div class="l">Racha de proteína</div><div class="v">'+sP+' <small>días</small></div></div></div>'+
     '<h3>Metas de la semana del '+rangeLabel(mon,addDays(mon,6))+'</h3><div class="macros">'+
-    goalRow('Peso apuntado',dw,7)+goalRow('Días con comidas',dk,6)+goalRow('Proteína en objetivo',dp,5)+(isSot()?goalRow('Sesiones de fuerza',dl,2):(G.nTrain?goalRow('Entrenos hechos',dl,G.nTrain):''))+goalRow('Agua en objetivo',da,5)+'</div></section>';
+    goalRow('Peso apuntado',dw,7)+goalRow('Días con comidas',dk,6)+goalRow('Proteína en objetivo',dp,5)+goalRow('Agua en objetivo',da,5)+'</div></section>';
 }
 function trackCard(d){
   var T=S.track[d]||{},kc=dayKind(d),goal=Math.round((S.settings.kg*0.0375+(kc==='f'?0.5:0))*10)/10,w=T.water!=null?T.water:0;
@@ -873,16 +866,15 @@ function trackCard(d){
     meter(w,goal)+'<p class="muted">Objetivo ≈ '+f1(goal)+' L ('+(kc==='f'?kLabel('f').toLowerCase()+', con 0,5 L extra':kLabel('r').toLowerCase())+').</p>'+
     '<div class="btns"><button class="btn sm" data-act="water" data-d="'+d+'" data-n="0.25">+250 ml</button><button class="btn sm" data-act="water" data-d="'+d+'" data-n="0.5">+500 ml</button><button class="btn sm" data-act="water" data-d="'+d+'" data-n="-0.25">−250 ml</button></div>'+
     '<div class="hrow"><label for="tst">Pasos</label><div class="inp"><input id="tst" type="text" inputmode="numeric" data-bind="track" data-k="steps" data-d="'+d+'" value="'+(T.steps!=null?Math.round(T.steps):'')+'" placeholder="—"><span>pasos</span></div></div>'+
-    '<div class="hrow"><label for="tcd">'+(isSot()?'Cardio aparte del fútbol':'Cardio extra')+'</label><div class="inp"><input id="tcd" type="text" inputmode="numeric" data-bind="track" data-k="cardio" data-d="'+d+'" value="'+(T.cardio!=null?Math.round(T.cardio):'')+'" placeholder="—"><span>min</span></div></div>'+
     '<label class="hrow chk" style="cursor:pointer"><span>Creatina de hoy (3–5 g)</span><input type="checkbox" data-bind="track" data-k="creatine" data-d="'+d+'"'+(T.creatine?' checked':'')+'></label>'+
     '<div class="hrow"><label for="ts">Sueño de anoche (objetivo 7,5–8 h)</label><div class="inp"><input id="ts" type="text" inputmode="decimal" data-bind="track" data-k="sleep" data-d="'+d+'" value="'+(T.sleep!=null?f1(T.sleep):'')+'" placeholder="—"><span>h</span></div></div></section>';
 }
 function vHoy(){
-  var d=ui.date,k=dayKind(d),rows=sched(d),ck=S.checks[d]||{},done=0;
-  rows.forEach(function(_,i){if(ck[i])done++;});
+  var d=ui.date,k=dayKind(d),rows=sched(d),ck=S.checks[d]||{},done=0,total=0,li='';
+  rows.forEach(function(r,i){if(r.type!=='meal')return;total++;if(ck[i])done++;li+=schedRow(r,i,ck[i],k,d);});
   return strip()+dayHead(d)+alertBox()+totalsCard(d)+matchCard(d)+
-    '<section class="card"><h2>Peso de hoy</h2>'+weightField(d)+'</section>'+trackCard(d)+diaryCard(d)+constCard(d)+
-    '<section class="card"><div class="hrow"><h2>Rutina del día</h2><span class="muted num">'+done+' de '+rows.length+' hechas</span></div><ul class="sched">'+rows.map(function(r,i){return schedRow(r,i,ck[i],k,d);}).join('')+'</ul></section>'+
+    '<section class="card"><h2>Peso de hoy</h2>'+weightField(d)+'</section>'+trackCard(d)+feelCard(d)+diaryCard(d)+constCard(d)+
+    '<section class="card"><div class="hrow"><h2>Horario de comidas</h2><span class="muted num">'+done+' de '+total+' hechas</span></div><ul class="sched">'+li+'</ul></section>'+
     weekTable();
 }
 function stepOf(f){return f&&f.piece?f.piece:(f&&f.id==='aceite'?5:10);}
@@ -1153,35 +1145,6 @@ function liftPoints(ex){
   var useKg=out.some(function(p){return p.e1>0;});
   return {pts:out.map(function(p){return {d:p.d,y:useKg?p.e1:p.reps};}),unit:useKg?' kg':' rep',kg:useKg};
 }
-function liftCard(d){
-  var L=S.lifts[d]||[],wd=wdOf(d),tpl=TPL[wd];
-  var h='<section class="card"><div class="hrow"><h2>Fuerza</h2><span class="muted num" id="lsum">'+sumText(d)+'</span></div>';
-  if(!L.length)h+='<p class="ghost">Aún no hay ejercicios en este día. Añade uno o carga los sugeridos.</p>';
-  L.forEach(function(e,ei){
-    var lt=lastTime(e.ex,d),at='data-d="'+d+'" data-e="'+ei+'"';
-    h+='<div class="ex"><div class="hrow"><b>'+esc(e.ex)+'</b><button class="x" data-act="delex" '+at+' aria-label="Quitar '+esc(e.ex)+'">×</button></div>'+
-      '<p class="muted">'+(lt?'Última vez ('+dayLabel(lt.d).split(' ').slice(1).join(' ')+'): '+lt.sets.filter(function(s){return s.kg!=null||s.reps!=null;}).map(setTxt).join(', '):'Primera vez que lo registras')+'</p>';
-    e.sets.forEach(function(s,si){
-      h+='<div class="setr"><span class="num muted">'+(si+1)+'</span><div class="inp"><input type="text" inputmode="decimal" data-bind="setkg" '+at+' data-si="'+si+'" value="'+(s.kg!=null?f2(s.kg):'')+'" placeholder="0" aria-label="Kilos de la serie '+(si+1)+'"><span>kg</span></div><div class="inp"><input type="text" inputmode="numeric" data-bind="setrep" '+at+' data-si="'+si+'" value="'+(s.reps!=null?s.reps:'')+'" placeholder="0" aria-label="Repeticiones de la serie '+(si+1)+'"><span>rep</span></div><button class="x" data-act="delset" '+at+' data-si="'+si+'" aria-label="Quitar serie '+(si+1)+'">×</button></div>';
-    });
-    h+='<div class="btns"><button class="btn sm" data-act="addset" '+at+'>Añadir serie</button></div></div>';
-  });
-  h+='<div class="hrow"><input type="text" id="exn" list="exlist" placeholder="Ejercicio (elige o escribe uno)" autocomplete="off" style="flex:1"><button class="btn main sm" data-act="addex" data-d="'+d+'">Añadir</button></div><datalist id="exlist">'+allEx().map(function(x){return '<option value="'+esc(x)+'">';}).join('')+'</datalist>';
-  if(tpl)h+='<div class="btns"><button class="btn sm" data-act="tpl" data-d="'+d+'">Cargar ejercicios sugeridos para el '+DAYS[wd].toLowerCase()+'</button></div><p class="muted">'+(isSot()?'Son una propuesta tuya de partida: cámbialos por los de tu rutina real.':'Es una propuesta de partida: cámbiala por los ejercicios de tu rutina real.')+'</p>';
-  return h+'</section>';
-}
-function progCard(){
-  var names={};
-  Object.keys(S.lifts).forEach(function(d){S.lifts[d].forEach(function(e){if(e.sets.some(function(s){return s.reps>0;}))names[e.ex]=(names[e.ex]||0)+1;});});
-  var list=Object.keys(names).sort(function(a,b){return names[b]-names[a]||(a<b?-1:1);});
-  var h='<section class="card"><h2>Progresión</h2>';
-  if(!list.length)return h+'<p class="muted">Registra series con repeticiones y verás aquí cómo evoluciona cada ejercicio.</p></section>';
-  var sel=list.indexOf(ui.liftSel)>-1?ui.liftSel:list[0],lp=liftPoints(sel),pts=lp.pts;
-  h+='<div class="hrow"><label for="lsel">Ejercicio</label><select id="lsel" data-bind="liftsel">'+list.map(function(x){return '<option value="'+esc(x)+'"'+(x===sel?' selected':'')+'>'+esc(x)+'</option>';}).join('')+'</select></div>';
-  h+='<div class="chartbox fit">'+miniLine(pts,lp.unit,'Progresión de '+sel)+'</div>';
-  if(pts.length>=2){var dl=pts[pts.length-1].y-pts[0].y;h+='<p class="plan-line">'+(lp.kg?'Fuerza estimada (1RM, fórmula de Epley)':'Mejor serie en repeticiones')+': de '+f1(pts[0].y)+' a '+f1(pts[pts.length-1].y)+lp.unit+' ('+(dl>0?'+':'')+f1(dl)+'). '+(dl<-0.5&&lp.kg?'Baja la fuerza: en definición puede pasar un poco, pero revisa proteína, sueño y calorías.':'')+'</p>';}
-  return h+'</section>';
-}
 function feelRow(d,k,label,hint){
   var F=S.feel[d]||{},v=F[k],r='';
   for(var i=1;i<=10;i++)r+='<button data-act="feel" data-d="'+d+'" data-k="'+k+'" data-v="'+i+'" aria-pressed="'+(v===i)+'" aria-label="'+label+' '+i+'">'+i+'</button>';
@@ -1202,11 +1165,6 @@ function alertBox(){
   var a=fatigueAlert();if(!a)return '';
   return '<section class="rec warn"><b>Tres registros seguidos con poca energía o mucho cansancio</b><p>Según tu plan, sube 200–300 kcal de carbohidratos (arroz, pasta, fruta) '+(a.low?'y cuida el sueño, que ha estado por debajo de 6,5 h. ':'y revisa el sueño. ')+'Si sigue así una semana, mareos o bajada clara de rendimiento incluidos, para y consúltalo con un profesional.</p></section>';
 }
-function vEntreno(){
-  var d=ui.date;
-  return strip()+dayHead(d)+alertBox()+feelCard(d)+liftCard(d)+progCard();
-}
-
 /* ---------- fotos de progreso (IndexedDB, solo en este dispositivo) ---------- */
 var ANGLES=['Frente','Lado','Espalda'];
 var PH={list:null,state:'idle',cmpA:null,cmpB:null,angle:'Frente'};
@@ -1302,39 +1260,13 @@ function vPeso(){
   });
   return h;
 }
-function gridHTML(){
-  var HP=40,H0=isSot()?420:Math.max(0,Math.floor((G.a.wake-30)/60)*60),TH=(1440-H0)*HP/60,h='<div class="grid"><div class="gin"><div class="gh"></div>';
-  for(var w=0;w<7;w++){h+='<div class="gh">'+DAYS[w].slice(0,3)+'<small>'+kShort(dayKind(addDays(mondayOf(ui.date),w)))+'</small></div>';}
-  h+='<div class="gt" style="height:'+TH+'px">';
-  for(var hr=H0/60;hr<=23;hr++) h+='<span style="top:'+((hr*60-H0)*HP/60)+'px">'+hr+':00</span>';
-  h+='</div>';
-  for(var d0=0;d0<7;d0++){
-    h+='<div class="gc" style="height:'+TH+'px">';
-    sched(addDays(mondayOf(ui.date),d0)).forEach(function(r){
-      var s=Math.max(r.s,H0),e=Math.min(r.e,1440);
-      if(e<=s)return;
-      h+='<div class="blk t-'+r.type+'" style="top:'+((s-H0)*HP/60)+'px;height:'+Math.max((e-s)*HP/60-1,14)+'px" title="'+esc(fmtT(r.s)+' '+r.t)+'"><b>'+fmtT(r.s)+'</b> '+esc(r.t)+'</div>';
-    });
-    h+='</div>';
-  }
-  return h+'</div></div>';
-}
-function vRutina(){
-  var w=ui.rwd,d=addDays(mondayOf(ui.date),w),k=dayKind(d),rows=sched(d);
-  var h='<section class="card"><h2>Rutina diaria</h2><div class="chips" role="group" aria-label="Día de la semana">'+DAYS.map(function(n,i){return '<button class="chip" aria-pressed="'+(i===w)+'" data-act="rwd" data-w="'+i+'">'+n+'</button>';}).join('')+'</div>'+
-    '<div class="dayhead"><div><h3>'+DAYS[w]+'</h3><p class="muted">'+dayName(d)+'</p></div><span class="pill k-'+k+'">'+f0(S.settings.t[k].kcal)+' kcal · '+kLabel(k).toLowerCase()+'</span></div>'+
-    '<ul class="sched">'+rows.map(function(r){
-      var kc='';if(r.slot){kc=/libre/i.test(r.t)?'hasta 800 kcal':f0(slotN(planSlot(k,r.slot,d)).kcal)+' kcal';}
-      var ty=TYPES.filter(function(t){return t[0]===r.type;})[0];
-      return '<li class="srow t-'+r.type+'"><div class="in"><span class="tm">'+fmtT(r.s)+(r.e-r.s>=40?'–'+fmtT(Math.min(r.e,1440)):'')+'</span><span class="tx">'+esc(r.t)+(kc?'<em>'+kc+'</em>':'')+'</span><span class="ty">'+(ty?ty[1]:'')+'</span></div></li>';
-    }).join('')+'</ul></section>'+matchCard(d)+
-    '<section class="card"><h2>La semana completa</h2><div class="lg">'+TYPES.map(function(t){return '<span class="t-'+t[0]+'" style="--tc:var(--t-'+t[0]+')">'+t[1]+'</span>';}).join('')+'</div>'+gridHTML()+'<p class="muted">Desliza hacia los lados en el móvil.'+(isSot()?' El domingo cambia según la hora del partido y el lunes según si juegas. Se ajusta en la tarjeta del partido.':' Las horas se calculan con tu cuestionario; puedes rehacerlo en Plan.')+'</p></section>';
-  return h;
-}
 function vAlimentos(){
   return '<section class="card"><h2>Mis comidas guardadas</h2>'+(S.meals.length?'<ul class="plain">'+S.meals.map(function(m,i){return '<li>'+esc(m.name)+' · '+f0(mealN(m).kcal)+' kcal · P '+f0(mealN(m).p)+' g <button class="btn sm" data-act="delmeal" data-i="'+i+'">Quitar</button></li>';}).join('')+'</ul>':'<p class="muted">Aún no tienes ninguna. En Comidas, pulsa Guardar como comida en cualquier bloque para reutilizarlo.</p>')+'</section>'+
     '<section class="card"><h2>Añadir un alimento</h2><div class="form"><label>Nombre<input type="text" id="cf-n" placeholder="Ej. Pan de centeno"></label><label>kcal / 100 g<input type="text" inputmode="decimal" id="cf-k"></label><label>Proteína<input type="text" inputmode="decimal" id="cf-p"></label><label>Carbohidratos<input type="text" inputmode="decimal" id="cf-c"></label><label>Grasas<input type="text" inputmode="decimal" id="cf-g"></label><button class="btn main" data-act="addfood">Guardar alimento</button></div><p class="muted">Todos los valores son por cada 100 g.</p>'+
     (S.foods.length?'<ul class="plain">'+S.foods.map(function(f,i){return '<li>'+esc(f.name)+' · '+f0(f.kcal)+' kcal · P '+f1(f.p)+' · C '+f1(f.c)+' · G '+f1(f.g)+' <button class="btn sm" data-act="delfood" data-i="'+i+'">Quitar</button></li>';}).join('')+'</ul>':'')+'</section>';
+}
+function vCuenta(){
+  return accountCard()+'<section class="card"><h2>Tus datos</h2><p id="sync" class="muted">'+syncText()+'. Descarga una copia de vez en cuando por si borras los datos del navegador o cambias de móvil.</p><div class="btns"><button class="btn sm" data-act="export">Descargar copia</button><button class="btn sm" data-act="import">Restaurar copia</button><input type="file" id="imp" accept="application/json,.json" hidden><button class="btn danger sm" data-act="reset">'+(ui.confirm?'Confirmar: borrar todos los datos':'Borrar todos los datos')+'</button>'+(ui.confirm?'<button class="btn sm" data-act="resetno">Cancelar</button>':'')+'</div></section>';
 }
 function vPlan(){
   var t=S.settings.t;
@@ -1346,7 +1278,7 @@ function vPlan(){
     '<section class="card"><h2>Peso de referencia</h2><div class="hrow"><label for="kg0">Peso inicial</label><div class="inp"><input id="kg0" type="text" inputmode="decimal" data-bind="kg" value="'+f1(S.settings.kg)+'"><span>kg</span></div></div><p class="muted">Sirve de punto de partida del gráfico y del ritmo '+(isSot()?'de −0,3 kg por semana':G.pace===0?'(mantener el peso)':'previsto de '+(G.pace>0?'+':'−')+f2(Math.abs(G.pace))+' kg por semana')+'.</p></section>'+
     (isSot()?'<section class="card"><h2>Reglas de ajuste</h2><ul class="plain"><li>Si la media semanal baja menos de 0,2 kg, resta 150 kcal (carbohidrato de la cena).</li><li>Si baja más de 0,6 kg, suma 200 kcal (pan o fruta en la merienda).</li><li>Para y sube 200–300 kcal de carbohidratos si hay cansancio que no se va, bajada clara de rendimiento, mal sueño, mareos o una pérdida de más de 0,6 kg por semana.</li><li>Después del mes, una semana a mantenimiento (≈2.450 kcal) antes de decidir si repites.</li></ul></section>'+
     '<section class="card"><h2>Hidratación, suplementos y sueño</h2><ul class="plain"><li>Agua: 35–40 ml por kg al día (≈2,7–3,1 L), más 500 ml por sesión de fútbol.</li><li>Opcionales: proteína whey, creatina de 3 a 5 g al día y cafeína antes del fútbol, nunca por la tarde.</li><li>Sueño: de 23:30 a 7:30, sin pantallas la última media hora.</li></ul></section>':genRules())+
-    accountCard()+'<section class="card"><h2>Tus datos</h2><p id="sync" class="muted">'+syncText()+'. Descarga una copia de vez en cuando por si borras los datos del navegador o cambias de móvil.</p><div class="btns"><button class="btn sm" data-act="export">Descargar copia</button><button class="btn sm" data-act="import">Restaurar copia</button><input type="file" id="imp" accept="application/json,.json" hidden><button class="btn danger sm" data-act="reset">'+(ui.confirm?'Confirmar: borrar todos los datos':'Borrar todos los datos')+'</button>'+(ui.confirm?'<button class="btn sm" data-act="resetno">Cancelar</button>':'')+'</div></section>';
+    '';
   return h;
 }
 /* ---------- plan: perfil, reglas del plan generado ---------- */
@@ -1388,7 +1320,7 @@ function profileCard(){
 /* ---------- pantallas: bienvenida, perfiles y cuestionario ---------- */
 function vWelcome(){
   var hasSot=cloudOn()||INDEX.list.some(function(x){return x.type==='sot';});
-  return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tu plan</h1></div><p>Responde unas preguntas y la app te prepara un plan de comidas con calorías y macros, un horario semanal y el seguimiento de tu peso y tus entrenos.</p><p class="muted">'+(cloudOn()&&AUTH?'Has entrado como '+esc(AUTH.email)+'. Tus datos se guardan en tu cuenta.':'Tus datos se quedan solo en este dispositivo: no hay cuentas ni contraseñas. Puedes crear varios perfiles, uno para cada persona.')+'</p></div>'+
+  return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tu plan</h1></div><p>Responde unas preguntas y la app te prepara un plan de comidas con calorías y macros, un horario de comidas y el seguimiento de tu peso.</p><p class="muted">'+(cloudOn()&&AUTH?'Has entrado como '+esc(AUTH.email)+'. Tus datos se guardan en tu cuenta.':'Tus datos se quedan solo en este dispositivo: no hay cuentas ni contraseñas. Puedes crear varios perfiles, uno para cada persona.')+'</p></div>'+
     '<div class="btns"><button class="btn main" data-act="pnew">Crear mi perfil</button>'+(hasSot?'':'<button class="btn" data-act="psotero">Usar el plan original de Sotero</button>')+(cloudOn()&&AUTH?'<button class="btn" data-act="logout">Cerrar sesión</button>':'')+'</div>';
 }
 function profSub(e){
@@ -1809,7 +1741,7 @@ function syncLabel(){
 function pwField(id,label,cur,val,ac){return '<label>'+label+'<input type="password" data-au="'+id+'" value="'+esc(val||'')+'" autocomplete="'+ac+'" minlength="8"></label>';}
 function vAuth(){
   var reg=ui.authMode==='reg',b=ui.busy,m=ui.authMsg;
-  return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tu plan</h1></div><p class="muted">Plan de comidas, entrenos y rutina personalizado. Tu cuenta guarda tus datos y los sincroniza entre tus dispositivos.</p></div>'+
+  return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tu plan</h1></div><p class="muted">Plan de comidas personalizado. Tu cuenta guarda tus datos y los sincroniza entre tus dispositivos.</p></div>'+
     '<section class="card"><div class="chips" role="group" aria-label="Acceso"><button class="chip" aria-pressed="'+!reg+'" data-act="aumode" data-v="login" type="button">Entrar</button><button class="chip" aria-pressed="'+reg+'" data-act="aumode" data-v="reg" type="button">Crear cuenta</button></div>'+
     '<form data-form="auth" class="fld" style="gap:12px" novalidate><div class="two" style="grid-template-columns:1fr"><label>Correo electrónico<input type="email" inputmode="email" data-au="email" value="'+esc(ui.au.email||'')+'" autocomplete="email" autocapitalize="none" spellcheck="false"></label>'+
     pwField('pw','Contraseña',0,ui.au.pw,reg?'new-password':'current-password')+(reg?pwField('pw2','Repite la contraseña',0,ui.au.pw2,'new-password'):'')+'</div>'+
@@ -1891,7 +1823,7 @@ function render(){
     document.title='Plan';
     return;
   }
-  var v=ui.tab==='hoy'?vHoy():ui.tab==='comidas'?vComidas():ui.tab==='entreno'?vEntreno():ui.tab==='peso'?vPeso():ui.tab==='rutina'?vRutina():ui.tab==='alim'?vAlimentos():vPlan();
+  var v=ui.tab==='hoy'?vHoy():ui.tab==='comidas'?vComidas():ui.tab==='peso'?vPeso():ui.tab==='alim'?vAlimentos():ui.tab==='cuenta'?vCuenta():vPlan();
   app.innerHTML=header()+tabs()+v;
   window.scrollTo(0,y);
   try{var at=document.querySelector('.tabs [aria-selected="true"]');if(at&&at.scrollIntoView)at.scrollIntoView({inline:'nearest',block:'nearest'});}catch(e){}

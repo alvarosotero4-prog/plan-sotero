@@ -1,7 +1,7 @@
 {
   "name": "Plan Sotero",
   "short_name": "Plan Sotero",
-  "description": "Plan de definición de 4 semanas: peso, comidas, macros y rutina.",
+  "description": "Plan de definición de 4 semanas: peso, comidas y macros.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
