@@ -160,6 +160,11 @@ input[type=text],input[type=time],input[type=email],input[type=password],select{
 .picklist{max-height:236px;overflow:auto;display:flex;flex-direction:column}
 .picklist button{display:flex;justify-content:space-between;gap:10px;background:none;border:0;border-bottom:1px solid var(--line);padding:9px 4px;text-align:left}
 .picklist button:hover{background:var(--surface2)}
+.picklist .pr{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+.picklist .pr button:first-child{flex:1;border-bottom:0;min-width:0}
+.picklist .star{border:0;border-bottom:0;background:none;padding:0 12px;font-size:20px;line-height:1;color:var(--ink2);flex:none;justify-content:center;align-items:center}
+.picklist .star.on{color:var(--accent)}
+.picklist .alt-i{white-space:normal;display:block;margin-top:2px}
 .picklist small{color:var(--ink2);font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* weight */
@@ -400,12 +405,12 @@ var SLOTS_SOT=SLOTS, TYPES_SOT=TYPES;
 /* ---------- state ---------- */
 function isSot(){return !PROF||PROF.type==='sot';}
 function DEFGEN(){
-  return {v:1,settings:{match:'12:00',kg:70,t:{f:{kcal:2300,p:150,c:260,g:60},r:{kcal:2000,p:140,c:200,g:65}}},weights:{},waist:{},logs:{},checks:{},foods:[],plays:{},match:{},meals:[],track:{},lifts:{},feel:{},notes:{},tags:{},skin:[],profile:null};
+  return {v:1,settings:{match:'12:00',kg:70,t:{f:{kcal:2300,p:150,c:260,g:60},r:{kcal:2000,p:140,c:200,g:65}}},weights:{},waist:{},logs:{},checks:{},foods:[],plays:{},match:{},meals:[],fav:[],track:{},lifts:{},feel:{},notes:{},tags:{},skin:[],profile:null};
 }
 function DEF(){
   if(!isSot())return DEFGEN();
   var w={};w[SOT_START]=78;
-  return {v:1,settings:{match:'12:00',kg:78,t:{f:{kcal:2300,p:165,c:290,g:55},r:{kcal:1950,p:150,c:185,g:70}}},weights:w,waist:{},logs:{},checks:{},foods:[],plays:{},match:{},meals:[],track:{},lifts:{},feel:{},notes:{},tags:{},skin:[{d:'2026-08-10',sum:62.5,pct:11.78},{d:'2026-08-26',sum:51,pct:10.49},{d:'2026-09-09',sum:56,pct:10.95},{d:'2026-10-07',sum:61,pct:11.46}]};
+  return {v:1,settings:{match:'12:00',kg:78,t:{f:{kcal:2300,p:165,c:290,g:55},r:{kcal:1950,p:150,c:185,g:70}}},weights:w,waist:{},logs:{},checks:{},foods:[],plays:{},match:{},meals:[],fav:[],track:{},lifts:{},feel:{},notes:{},tags:{},skin:[{d:'2026-08-10',sum:62.5,pct:11.78},{d:'2026-08-26',sum:51,pct:10.49},{d:'2026-09-09',sum:56,pct:10.95},{d:'2026-10-07',sum:61,pct:11.46}]};
 }
 function mergeState(o){
   var b=DEF();
@@ -418,13 +423,13 @@ function mergeState(o){
     plays:Object.assign({},o.plays||{}),match:Object.assign({},o.match||{}),
     logs:JSON.parse(JSON.stringify(o.logs||{})),checks:JSON.parse(JSON.stringify(o.checks||{})),
     foods:JSON.parse(JSON.stringify(o.foods||[])),
-    meals:Array.isArray(o.meals)?JSON.parse(JSON.stringify(o.meals)):[],track:JSON.parse(JSON.stringify(o.track||{})),lifts:JSON.parse(JSON.stringify(o.lifts||{})),feel:JSON.parse(JSON.stringify(o.feel||{})),notes:JSON.parse(JSON.stringify(o.notes||{})),tags:JSON.parse(JSON.stringify(o.tags||{})),
+    meals:Array.isArray(o.meals)?JSON.parse(JSON.stringify(o.meals)):[],fav:Array.isArray(o.fav)?o.fav.filter(function(x){return typeof x==='string';}):[],track:JSON.parse(JSON.stringify(o.track||{})),lifts:JSON.parse(JSON.stringify(o.lifts||{})),feel:JSON.parse(JSON.stringify(o.feel||{})),notes:JSON.parse(JSON.stringify(o.notes||{})),tags:JSON.parse(JSON.stringify(o.tags||{})),
     skin:Array.isArray(o.skin)?JSON.parse(JSON.stringify(o.skin)):b.skin,
     profile:o.profile&&typeof o.profile==='object'?JSON.parse(JSON.stringify(o.profile)):null};
 }
 var PROF=null, INDEX=null, G=null;
 var S=DEF();
-var ui={liftSel:null,saving:null,pwk:0,off:{status:'idle',list:[],q:''},tab:'hoy',date:todayS(),picker:null,q:'',open:{},confirm:false,sync:'local',rwd:null,screen:null,delp:null,confirmBlock:false,authMode:'login',au:{email:'',pw:'',pw2:''},authMsg:null,busy:false,rec:null,claim:null,prev:null,delAcct:0};
+var ui={liftSel:null,saving:null,pwk:0,off:{status:'idle',list:[],q:''},tab:'hoy',date:todayS(),picker:null,alt:null,q:'',open:{},confirm:false,sync:'local',rwd:null,screen:null,delp:null,confirmBlock:false,authMode:'login',au:{email:'',pw:'',pw2:''},authMsg:null,busy:false,rec:null,claim:null,prev:null,delAcct:0};
 ui.rwd=wdOf(ui.date);
 var MAINT=2450;
 
@@ -673,6 +678,61 @@ function genPlanSlot(k,slot,d){
   return arr[(d?wdOf(d):0)%arr.length].map(function(x){return {f:x[0],g:x[1]};});
 }
 
+/* ---------- cambiar plato: alternativas con kcal y proteína parecidas ---------- */
+var ALT_X={
+ breakfast:[
+  [rP('huevo','tofu'),rC('pan_integral','pan'),rX(70,'aguacate'),rX.apply(null,[130].concat(FRUIT))],
+  [rP('whey'),rC('avena'),rX(250,'leche','bebida_soja'),rX(100,'platano')],
+  [rP('queso_batido','yogur_griego','yogur_soja'),rC('pan','pan_integral'),rX(15,'mermelada'),rX.apply(null,[130].concat(FRUIT))]],
+ mid:[
+  [rP('whey','skyr','yogur_soja'),rC('platano','manzana'),rF(15,'nueces','almendras')],
+  [rP('atun','pavo_fiambre','tofu'),rC('tortitas_arroz','pan_integral'),rX(100,'tomate')]],
+ lunch:[
+  [rP('pollo','pavo','atun','tofu'),rC('pasta','arroz'),rX(150,'tomate'),rF(10,'aceite')],
+  [rP('legumbres'),rC('arroz'),rX(150,'verdura'),rF(5,'aceite')],
+  [rP('salmon','merluza','tofu'),rC('quinoa','arroz'),rX(150,'verdura'),rF(5,'aceite')]],
+ snack:[
+  [rP('whey','skyr'),rC('platano','manzana'),rF(15,'cacahuete','almendras')],
+  [rP('skyr','yogur_griego','yogur_soja'),rC('avena'),rX(100,'platano'),rF(15,'nueces','almendras')]],
+ dinner:[
+  [rP('merluza','pollo','pavo','tofu'),rC('boniato_air','patata_air'),rX(150,'verdura'),rF(10,'aceite')],
+  [rP('huevo','tofu'),rC('patata'),rX(150,'verdura'),rF(10,'aceite')],
+  [rP('atun','salmon','tofu'),rC('arroz','pasta'),rX(150,'tomate'),rF(10,'aceite')]]
+};
+function shortN(id){var f=findFood(id);return f?f.name.replace(/\s*\(.*?\)/g,'').replace(/^Pechuga de /,'').replace(/^Otra pieza de fruta$/,'Fruta').replace(/\s*%/g,' %').replace(/\s+/g,' ').trim().replace(/^./,function(c){return c.toUpperCase();}):'';}
+function dishName(items){
+  var a=shortN(items[0][0]),b=items[1]?shortN(items[1][0]).toLowerCase():'';
+  return a+(b?' con '+b:'');
+}
+function altDishes(slot,plan,cur){
+  var ok=isSot()?function(){return true;}:allowedFn(G.a),tn=slotN(plan),out=[],seen={},curKey=(cur||[]).map(function(x){return x.f;}).sort().join(',');
+  (RCP[slot]||[]).concat(ALT_X[slot]||[]).forEach(function(rec){
+    if(!rec.every(function(x){return x.o.some(ok);}))return;
+    var P=rec.filter(function(x){return x.r==='P';})[0],C=rec.filter(function(x){return x.r==='C';})[0];
+    var ps=P?P.o.filter(ok).slice(0,4):[null],cs=C?C.o.filter(ok).slice(0,2):[null];
+    ps.forEach(function(p){cs.forEach(function(c){
+      var r2=rec.map(function(x){return x===P?{r:'P',o:[p]}:x===C?{r:'C',o:[c]}:x;});
+      var it=solveRecipe(r2,tn.kcal,tn.p,ok);if(!it||!it.length)return;
+      var list=it.map(function(x){return {f:x[0],g:x[1]};}),n=slotN(list),key=list.map(function(x){return x.f;}).sort().join(',');
+      if(seen[key]||key===curKey)return;
+      var dk=Math.abs(n.kcal-tn.kcal),dp=Math.abs(n.p-tn.p);
+      if(dk>tn.kcal*0.12+30||dp>tn.p*0.25+3)return;
+      seen[key]=1;out.push({name:dishName(it),items:list,n:n,sc:dk/Math.max(tn.kcal,1)+dp/Math.max(tn.p,1)});
+    });});
+  });
+  out.sort(function(a,b){return a.sc-b.sc;});
+  var names={},res=[];
+  out.forEach(function(x){if(res.length>=8)return;var kk=x.name.toLowerCase();if(names[kk])return;names[kk]=1;res.push(x);});
+  return res;
+}
+function altPanel(d,s,plan,list){
+  var L=altDishes(s.id,plan,list);
+  if(!L.length)return '<div class="pick"><p class="muted">No hay otras opciones que encajen con esta comida y tu dieta. Puedes añadir alimentos a mano.</p></div>';
+  return '<div class="pick"><p class="muted">Opciones con unas kcal y una proteína parecidas a las del menú'+(list.length?'. Al elegir una se sustituye lo que tengas apuntado en esta comida':'')+'.</p><div class="picklist">'+L.map(function(x,i){
+    return '<button data-act="altpick" data-d="'+d+'" data-s="'+s.id+'" data-i="'+i+'"><span><b>'+esc(x.name)+'</b><br><small class="alt-i">'+x.items.map(function(y){return esc(shortN(y.f))+' '+f0(y.g)+' g';}).join(' · ')+'</small></span><small>'+f0(x.n.kcal)+' kcal · P '+f0(x.n.p)+'</small></button>';
+  }).join('')+'</div></div>';
+}
+
 /* Horario: despertar, comidas repartidas, entreno, bloque de trabajo y sueño */
 function r15(x){return Math.round(x/15)*15;}
 function mealTimes(a,train){
@@ -896,7 +956,26 @@ function entryRow(d,slot,e,i){
 function pickList(d,slot){
   var q=(ui.q||'').toLowerCase().trim(),l=foods().filter(function(f){return !q||f.name.toLowerCase().indexOf(q)>-1;});
   if(!l.length) return '<p class="muted" style="padding:8px 4px">No hay ningún alimento con ese nombre. Puedes crearlo en la pestaña Alimentos.</p>';
-  return l.map(function(f){return '<button data-act="pick" data-d="'+d+'" data-s="'+slot+'" data-f="'+esc(f.id)+'"><span>'+esc(f.name)+'</span><small>'+f0(f.kcal)+' kcal/100 g</small></button>';}).join('');
+  return l.map(function(f){var fv=S.fav.indexOf(f.id)>-1;return '<div class="pr"><button data-act="pick" data-d="'+d+'" data-s="'+slot+'" data-f="'+esc(f.id)+'"><span>'+esc(f.name)+'</span><small>'+f0(f.kcal)+' kcal/100 g</small></button><button class="star'+(fv?' on':'')+'" data-act="fav" data-f="'+esc(f.id)+'" aria-pressed="'+fv+'" aria-label="'+(fv?'Quitar de favoritos ':'Añadir a favoritos ')+esc(f.name)+'">'+(fv?'★':'☆')+'</button></div>';}).join('');
+}
+/* registro rápido: últimos alimentos usados, con los gramos de la última vez, y favoritos */
+function lastUse(){
+  var ds=Object.keys(S.logs).sort().reverse().slice(0,60),map={},order=[];
+  ds.forEach(function(x){var L=S.logs[x];SLOTS.slice().reverse().forEach(function(sl){(L[sl.id]||[]).slice().reverse().forEach(function(e){
+    if(e.f==='libre'||!findFood(e.f)||map[e.f]!=null)return;map[e.f]=e.g;order.push(e.f);});});});
+  return {map:map,order:order};
+}
+function quickChips(d,slot){
+  var lu=lastUse(),fav=S.fav.filter(function(id){return findFood(id);}),rec=lu.order.filter(function(id){return fav.indexOf(id)<0;}).slice(0,8);
+  function chip(id){var f=findFood(id),g=lu.map[id]!=null?lu.map[id]:f.def;return '<button class="chip" data-act="quick" data-d="'+d+'" data-s="'+slot+'" data-f="'+esc(id)+'" data-g="'+g+'">'+esc(shortN(id))+' · '+f0(g)+' g</button>';}
+  var h='';
+  if(fav.length)h+='<div><p class="muted">★ Favoritos</p><div class="chips">'+fav.map(chip).join('')+'</div></div>';
+  if(rec.length)h+='<div><p class="muted">Usados hace poco (con tus gramos de la última vez)</p><div class="chips">'+rec.map(chip).join('')+'</div></div>';
+  return h;
+}
+function lastSlotDay(d,slot){
+  for(var i=1;i<=30;i++){var x=addDays(d,-i),a=(S.logs[x]||{})[slot];if(a&&a.length)return x;}
+  return null;
 }
 
 function offName(p){var n=(p.product_name||'').trim(),b=(p.brands||'').split(',')[0].trim();return n?(b&&n.toLowerCase().indexOf(b.toLowerCase())<0?n+' ('+b+')':n):'';}
@@ -957,12 +1036,16 @@ function slotCard(d,s,k){
   else h+='<p class="ghost">'+plan.map(function(x){var f=findFood(x[0]||x.f);return esc(f.name)+' '+x.g+' g';}).join(' · ')+'</p>';
   h+='<div class="btns">';
   if(!list.length) h+='<button class="btn main sm" data-act="useplan" data-d="'+d+'" data-s="'+s.id+'">Usar el menú del plan</button>';
+  var prevD=list.length?null:lastSlotDay(d,s.id),isFree=plan.length===1&&plan[0].f==='libre';
+  if(!isFree)h+='<button class="btn sm" data-act="alt" data-d="'+d+'" data-s="'+s.id+'">'+(ui.alt===d+'|'+s.id?'Cerrar opciones':'Cambiar plato')+'</button>';
+  if(prevD)h+='<button class="btn sm" data-act="repeat" data-d="'+d+'" data-s="'+s.id+'" data-from="'+prevD+'">Repetir del '+dayLabel(prevD).toLowerCase()+'</button>';
   h+='<button class="btn sm" data-act="openpick" data-s="'+s.id+'">'+(ui.picker===s.id?'Cerrar lista':'Añadir alimento')+'</button>';
   if(isSot()&&((k==='f'&&s.id==='snack')||(k==='r'&&s.id==='mid'))) h+='<button class="btn sm" data-act="tortitas" data-d="'+d+'" data-s="'+s.id+'">Cambiar por tortitas</button>';
   if(list.length) h+='<button class="btn sm" data-act="savemeal" data-d="'+d+'" data-s="'+s.id+'">Guardar como comida</button><button class="btn sm" data-act="clearslot" data-d="'+d+'" data-s="'+s.id+'">Vaciar</button>';
   h+='</div>';
+  if(ui.alt===d+'|'+s.id) h+=altPanel(d,s,plan,list);
   if(ui.saving===d+'|'+s.id) h+='<div class="pick"><input type="text" id="mn" placeholder="Nombre de la comida, por ejemplo Arroz con pollo" autocomplete="off"><div class="btns"><button class="btn main sm" data-act="savemealok" data-d="'+d+'" data-s="'+s.id+'">Guardar</button><button class="btn sm" data-act="savemealno">Cancelar</button></div></div>';
-  if(ui.picker===s.id) h+='<div class="pick">'+mealChips(d,s.id)+'<input type="text" id="q" placeholder="Buscar alimento o escribir código de barras" value="'+esc(ui.q)+'" autocomplete="off"><div class="picklist" id="picklist">'+pickList(d,s.id)+'</div><div class="btns"><button class="btn sm" data-act="offsearch" data-d="'+d+'" data-s="'+s.id+'">Buscar en Mercadona</button><button class="btn sm" data-act="scan" data-d="'+d+'" data-s="'+s.id+'">Escanear código</button></div><div id="offres">'+offHTML(d,s.id)+'</div></div>';
+  if(ui.picker===s.id) h+='<div class="pick">'+quickChips(d,s.id)+mealChips(d,s.id)+'<input type="text" id="q" placeholder="Buscar alimento o escribir código de barras" value="'+esc(ui.q)+'" autocomplete="off"><div class="picklist" id="picklist">'+pickList(d,s.id)+'</div><div class="btns"><button class="btn sm" data-act="offsearch" data-d="'+d+'" data-s="'+s.id+'">Buscar en Mercadona</button><button class="btn sm" data-act="scan" data-d="'+d+'" data-s="'+s.id+'">Escanear código</button></div><div id="offres">'+offHTML(d,s.id)+'</div></div>';
   return h+'</section>';
 }
 function copySelect(d){
@@ -1520,7 +1603,7 @@ function activate(id){
   if(!isSot()&&!(S.profile&&S.profile.ans&&S.profile.plan)){PROF=prevP;S=prevS;KEY=prevK;return false;}
   INDEX.active=id;saveIndex();
   setupPlan();
-  ui.tab='hoy';ui.date=todayS();ui.rwd=wdOf(ui.date);ui.picker=null;ui.q='';ui.open={};ui.confirm=false;ui.confirmBlock=false;ui.liftSel=null;ui.saving=null;ui.off={status:'idle',list:[],q:''};ui.delp=null;
+  ui.tab='hoy';ui.date=todayS();ui.rwd=wdOf(ui.date);ui.picker=null;ui.alt=null;ui.q='';ui.open={};ui.confirm=false;ui.confirmBlock=false;ui.liftSel=null;ui.saving=null;ui.off={status:'idle',list:[],q:''};ui.delp=null;
   (PH.list||[]).forEach(function(x){try{URL.revokeObjectURL(x.url);}catch(z){}});PH.list=null;PH.state='idle';PH.cmpA=null;PH.cmpB=null;
   return true;
 }
@@ -1903,11 +1986,19 @@ app.addEventListener('click',function(e){
   if(b.tagName==='A')e.preventDefault();
   var a=b.dataset.act,d=b.dataset.d,s=b.dataset.s,i=+b.dataset.i;
   if(profileAct(a,b))return;
-  if(a==='tab'){ui.tab=b.dataset.t;ui.picker=null;ui.q='';render();return;}
+  if(a==='tab'){ui.tab=b.dataset.t;ui.picker=null;ui.alt=null;ui.q='';render();return;}
   if(a==='date'){ui.date=d;ui.rwd=wdOf(d);render();return;}
   if(a==='wk'){ui.date=addDays(ui.date,+b.dataset.n);render();return;}
   if(a==='check'){var c=S.checks[d]||(S.checks[d]={});if(b.checked)c[i]=true;else delete c[i];save();render();return;}
   if(a==='openpick'){ui.picker=ui.picker===s?null:s;ui.q='';ui.off={status:'idle',list:[],q:''};render();var q=document.getElementById('q');if(q)q.focus();return;}
+  if(a==='alt'){ui.alt=ui.alt===d+'|'+s?null:d+'|'+s;render();return;}
+  if(a==='altpick'){
+    var sl0=slotsFor(d).filter(function(x){return x.id===s;})[0];if(!sl0)return;
+    var pl0=planSlot(dayKind(d),s,d),L0=altDishes(s,pl0,(S.logs[d]||{})[s]||[]),ch=L0[i];if(!ch)return;
+    logArr(d,s);S.logs[d][s]=ch.items.map(function(x){return {f:x.f,g:x.g};});ui.alt=null;save();render();toast(ch.name+' puesto en '+sl0.name.toLowerCase());return;}
+  if(a==='repeat'){var src=(S.logs[b.dataset.from]||{})[s];if(src&&src.length){logArr(d,s);S.logs[d][s]=JSON.parse(JSON.stringify(src));save();render();toast('Repetido del '+dayLabel(b.dataset.from).toLowerCase());}return;}
+  if(a==='quick'){var qf=findFood(b.dataset.f);if(qf){logArr(d,s).push({f:qf.id,g:+b.dataset.g||qf.def});save();ui.picker=null;ui.q='';render();toast(qf.name+' añadido');}return;}
+  if(a==='fav'){var fi=S.fav.indexOf(b.dataset.f);if(fi>-1)S.fav.splice(fi,1);else S.fav.push(b.dataset.f);save();render();return;}
   if(a==='pick'){var f=findFood(b.dataset.f);if(f){logArr(d,s).push({f:f.id,g:f.def});save();ui.picker=null;ui.q='';render();toast(f.name+' añadido');}return;}
   if(a==='offsearch'){offSearch(d,s);return;}
   if(a==='offpick'){var x=ui.off.list[i];if(!x)return;var fid='off'+x.code;
