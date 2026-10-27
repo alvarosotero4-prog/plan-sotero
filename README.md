@@ -4,6 +4,8 @@ App web (PWA) con plan de comidas y seguimiento de peso de 4 semanas.
 
 - Perfiles: cada persona crea el suyo con un cuestionario (datos, objetivo, actividad, horario, dieta y alergias, salud). La app calcula calorías y macros (Mifflin-St Jeor + actividad), genera menús adaptados y un horario semanal. Cuentas con correo y contraseña (Supabase) que sincronizan los perfiles entre dispositivos; mientras `SB_URL` y `SB_KEY` estén vacías en index.html, la app funciona sin cuentas y guarda todo en el dispositivo. El plan original de Sotero sigue disponible como perfil.
 
+Diseño: cabecera con degradado, barra de pestañas flotante abajo con iconos, anillo de calorías en Hoy, tarjetas redondeadas y modo oscuro automático (tipografías Bricolage Grotesque y Figtree). Los colores están como variables al principio del CSS.
+
 Cinco pestañas: Hoy, Comidas, Progreso, Alimentos y Ajustes. Lo secundario va en desplegables que recuerdan si los dejaste abiertos.
 
 - Hoy: kcal y macros del día, horario de comidas con casillas, peso, agua, pasos, creatina y sueño. Desplegables: cómo te encuentras (con aviso de fatiga), diario con etiquetas, constancia y la semana.
