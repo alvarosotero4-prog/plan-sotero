@@ -13,3 +13,12 @@ Cinco pestañas: Hoy, Comidas, Progreso, Alimentos y Ajustes. Lo secundario va e
 - Ajustes: Plan (perfil, objetivos diarios, partidos de Sotero, peso de referencia y reglas) y Cuenta y datos (sesión, privacidad, descarga de datos, borrado de cuenta y copia de seguridad).
 
 Los datos de entreno que se registraron antes (fuerza) se conservan en el dispositivo aunque ya no haya pestaña de entreno. Las fotos se guardan en IndexedDB, fuera de la copia de seguridad. En Cuenta > Tus datos puedes descargar y restaurar una copia.
+
+## Modo nutricionista (B2B)
+
+- Al crear cuenta se puede elegir "Soy nutricionista o dietista". Cada profesional recibe un código y un enlace (`?pro=CÓDIGO`) para invitar clientes.
+- El cliente se vincula en Ajustes, Cuenta y datos, tras ver qué comparte (comidas, peso, medidas, seguimiento, notas del diario; las fotos no). Puede dejar de compartir cuando quiera.
+- Panel del profesional: lista de clientes con alertas (sin registros, peso fuera de ritmo, fatiga, baja adherencia), ficha con informe semanal, gráfico de peso, medidas, diario de 7 días, objetivos (que quedan fijados para el cliente), nota para el cliente y notas privadas.
+- Prueba gratuita: 3 clientes por profesional (se aplica en el servidor). Para activar un profesional de pago: `update professionals set status='active' where user_id = '…';`
+- Backend: ejecutar `supabase/profesionales.sql` en el SQL Editor de Supabase (tablas, políticas RLS y funciones).
+- Pendiente: cobro (Stripe) y revisión legal de las condiciones para profesionales (ahora son un borrador).
