@@ -1963,7 +1963,7 @@ function vAjustes(){
   var seg=ui.set==='cuenta'?'cuenta':'plan';
   return '<div class="chips" role="group" aria-label="Ajustes">'+[['plan','Plan'],['cuenta','Cuenta y datos']].map(function(x){return '<button class="chip" aria-pressed="'+(seg===x[0])+'" data-act="set" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>'+(seg==='cuenta'?vCuenta():vPlan());
 }
-var APP_V='45';
+var APP_V='46';
 function appUpdate(){
   toast('Actualizando…');
   var done=function(){location.reload();};
@@ -2564,7 +2564,7 @@ function newPwSubmit(){
 }
 function doLogout(){
   var go=function(){AUTH=null;authStore();PROF=null;INDEX=null;PRO=null;AD={list:null,ov:null,loading:false,err:null,doc:null,aconf:null,arej:null,busy:false};PC={list:null,err:null,loading:false,at:0};CH.msgs=[];CH.unread={};CH.link=null;CH.draft='';ui.links=null;ui.psel=null;ui.perr='';S=DEF();ui.au={email:'',pw:'',pw2:''};ui.authMode='login';ui.authMsg={k:'info',t:'Has cerrado la sesión.'};ui.screen='auth';ui.busy=false;ui.acct=false;render();toTop();};
-  syncPush().then(go,go);
+  pushDrop().then(function(){return syncPush();}).then(go,go);
 }
 function syncLabel(){
   if(!cloudOn()||!AUTH)return 'Los datos se guardan solo en este dispositivo';
@@ -2854,7 +2854,7 @@ function proLoad(){
       var c={link:l.id,client:l.client_id,profile_id:l.profile_id,name:(row&&row.name)||l.client_name||'Cliente',email:l.client_email||'',type:row?row.type:'gen',data:row?row.data:null,updated:row?row.updated_at:null,plan:pp||null,pnote:pn||null,since:l.consented_at,share:!!l.share_photos};
       c.stats=c.data?proStats(c):null;return c;
     });
-    PC.loading=false;PC.at=Date.now();chatUnread();proApptLoad();
+    PC.loading=false;PC.at=Date.now();chatUnread();proApptLoad();pushSync();
   },function(e){PC.loading=false;PC.err=e&&e.net?'Sin conexión. Inténtalo de nuevo.':'No se pudieron cargar los clientes.';}).then(function(){if(ui.screen==='pro')render();});
 }
 function proFind(id){return (PC.list||[]).filter(function(c){return c.link===id;})[0]||null;}
@@ -3188,7 +3188,7 @@ function coachApply(){
   }
   return false;
 }
-function cloudRefresh(){return syncPull().then(function(ch){return coachPull().then(function(c2){chatUnread();apptLoad();return ch||c2;});});}
+function cloudRefresh(){return syncPull().then(function(ch){return coachPull().then(function(c2){chatUnread();apptLoad();pushSync();return ch||c2;});});}
 function coachBanner(){
   var h=apptBanner(),cl=(ui.links||[]).filter(function(x){return PROF&&x.profile_id===PROF.id;})[0];
   if(cl&&cloudOn()&&AUTH&&!AUTH.pro){var cpr=cl.professionals||{};if(Array.isArray(cpr))cpr=cpr[0]||{};
@@ -3440,7 +3440,7 @@ function apptDueNotes(list,who){
 }
 function remTick(){
   try{
-    if(typeof Notification==='undefined'||Notification.permission!=='granted'||!AUTH)return;
+    if(typeof Notification==='undefined'||Notification.permission!=='granted'||!AUTH||pushActive())return;
     var m=remFired(),t=todayS(),ch=false;
     function fire(k,title,body){if(m[k])return;m[k]=t;ch=true;remNotify(title,body,k);}
     if(AUTH.pro){
@@ -3457,9 +3457,51 @@ setInterval(remTick,60000);
 /* aviso dentro de Hoy */
 function remChange(t){
   var k=t.dataset.rem;
-  if(t.type==='checkbox'){remSet(k,t.checked);render();return;}
-  if(/^([01]?\d|2[0-3]):[0-5]\d$/.test(t.value)){remSet(k,t.value);toast('Hora guardada');}
+  if(t.type==='checkbox'){remSet(k,t.checked);render();pushSync();return;}
+  if(/^([01]?\d|2[0-3]):[0-5]\d$/.test(t.value)){remSet(k,t.value);toast('Hora guardada');pushSync();}
   render();
+}
+/* notificaciones push (el envío lo hace la función push-send de Supabase) */
+var VAPID_PUB='BFIVgkVuVnvwjrIVNvAl8zsBn0ku27KahXJO4KJriFMXOR7Ti27NQAZIVJEq4Ic8Ft9LiHObXMROlTkGjrrerCM',pushSig='';
+function pushOk(){return !!(VAPID_PUB&&cloudOn()&&AUTH&&('serviceWorker' in navigator)&&('PushManager' in window)&&typeof Notification!=='undefined');}
+function pushEp(){try{return localStorage.getItem('tupla-push')||'';}catch(e){return '';}}
+function pushActive(){return pushOk()&&Notification.permission==='granted'&&!!pushEp();}
+function b64u8(s){var p='='.repeat((4-s.length%4)%4),b=(s+p).replace(/-/g,'+').replace(/_/g,'/'),r=atob(b),o=new Uint8Array(r.length),i;for(i=0;i<r.length;i++)o[i]=r.charCodeAt(i);return o;}
+function pushRem(){return AUTH&&AUTH.pro?{on:true,appt:{on:true}}:remCfg();}
+function pushSave(sub){
+  var j=sub.toJSON(),k=j.keys||{},tz='',rem=pushRem();
+  try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';}catch(e){}
+  return ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/push_save',{p_endpoint:sub.endpoint,p_p256dh:k.p256dh,p_auth:k.auth,p_tz:tz,p_profile:AUTH.pro?null:(PROF?PROF.id:null),p_rem:rem},AUTH.access);}).then(function(){
+    try{localStorage.setItem('tupla-push',sub.endpoint);}catch(e){}
+    pushSig=JSON.stringify(rem)+(PROF?PROF.id:'');
+  });
+}
+function pushEnable(){
+  if(!pushOk()){toast('Este móvil no admite avisos push');return;}
+  Notification.requestPermission().then(function(p){
+    if(p!=='granted'){render();toast('Avisos no permitidos');return;}
+    return navigator.serviceWorker.ready.then(function(reg){
+      return reg.pushManager.getSubscription().then(function(x){return x||reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u8(VAPID_PUB)});});
+    }).then(pushSave).then(function(){render();toast('Avisos push activados');});
+  }).catch(function(){toast('No se pudieron activar los avisos push');});
+}
+function pushDrop(){
+  return new Promise(function(res){
+    var ep=pushEp();
+    if(!ep||!AUTH){res();return;}
+    ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/push_remove',{p_endpoint:ep},AUTH.access);}).catch(function(){}).then(function(){
+      try{localStorage.removeItem('tupla-push');}catch(e){}
+      pushSig='';
+      try{navigator.serviceWorker.ready.then(function(r){return r.pushManager.getSubscription();}).then(function(x){if(x)x.unsubscribe();}).catch(function(){});}catch(e){}
+      res();
+    });
+  });
+}
+function pushSync(force){
+  if(!pushActive()||(!AUTH.pro&&!PROF))return;
+  var sig=JSON.stringify(pushRem())+(PROF?PROF.id:'');
+  if(!force&&sig===pushSig)return;
+  navigator.serviceWorker.ready.then(function(r){return r.pushManager.getSubscription();}).then(function(x){if(x)return pushSave(x);}).catch(function(){});
 }
 function remBanner(){
   var due=remDue(new Date()).filter(function(r){return !remHidden(r.k);});
@@ -3467,6 +3509,11 @@ function remBanner(){
   return due.map(function(r){return '<section class="rec"><div class="hrow"><b>Recordatorio</b><button class="btn sm" data-act="remhide" data-k="'+r.k+'">Ocultar hoy</button></div><p>'+esc(r.txt)+'</p></section>';}).join('');
 }
 function remPermNote(){
+  if(pushOk()){
+    if(pushActive())return '<p class="note">Avisos push activados: te llegan al móvil aunque la app esté cerrada.</p><div class="btns"><button class="btn sm" data-act="pushoff">Desactivar avisos push</button></div>';
+    if(Notification.permission==='denied')return '<p class="muted">Has bloqueado los avisos en este navegador. Permítelos en los ajustes del navegador o del móvil para recibir avisos push.</p>';
+    return '<div class="btns"><button class="btn main sm" data-act="remperm">Activar avisos push</button></div><p class="muted">En iPhone, primero añade Tupla a la pantalla de inicio (Compartir, Añadir a pantalla de inicio) y ábrela desde ahí.</p>';
+  }
   if(typeof Notification==='undefined')return '<p class="muted">Este navegador no permite avisos. Los recordatorios te saldrán dentro de la pestaña Hoy.</p>';
   if(Notification.permission==='granted')return '<p class="note">Avisos del móvil activados. Suenan mientras la app esté abierta o en segundo plano reciente.</p>';
   if(Notification.permission==='denied')return '<p class="muted">Has bloqueado los avisos en este navegador. Los recordatorios te saldrán dentro de la pestaña Hoy; para recibir avisos, permítelos en los ajustes del navegador.</p>';
@@ -3482,7 +3529,7 @@ function remCard(){
       '<label class="chk" style="cursor:pointer"><input type="checkbox" data-rem="cons.on"'+(c.cons.on?' checked':'')+'><span>Constancia: avisarme si ayer no registré nada</span></label>'+
       '<label class="chk" style="cursor:pointer"><input type="checkbox" data-rem="appt.on"'+(c.appt.on?' checked':'')+'><span>Avisarme de mis citas con el nutricionista</span></label>'+
       '</div><p class="muted">Cada recordatorio solo aparece si todavía no lo has hecho (por ejemplo, el del peso desaparece cuando lo apuntas).</p>'+remPermNote()+
-      '<h3>Que suenen siempre</h3><p class="muted">Una web no puede avisarte con la app cerrada. Para eso, añade los recordatorios al calendario del móvil: sonarán a su hora cada día aunque no abras Tupla.</p><div class="btns"><button class="btn sm" data-act="remics">Añadir al calendario del móvil</button></div>':
+      (pushActive()?'':'<h3>En el calendario del móvil</h3><p class="muted">Otra forma de recibirlos con la app cerrada: añade los recordatorios al calendario del móvil y sonarán a su hora cada día.</p><div class="btns"><button class="btn sm" data-act="remics">Añadir al calendario del móvil</button></div>'):
       '<p class="muted">Te avisa del peso en ayunas, del agua, de registrar las comidas y de tus citas, solo cuando falta hacerlo.</p>')+'</section>';
 }
 /* .ics: calendario del móvil (suena con la app cerrada) */
@@ -3588,7 +3635,9 @@ function proAgendaCard(){
   var h='<section class="card"><h2>Agenda</h2>';
   if(!L.length)h+='<p class="muted">No tienes citas programadas. Se crean desde la ficha de cada cliente.</p>';
   else h+=L.slice(0,8).map(function(x){return '<div class="aprow"><div><b>'+esc(apRel(x.a.starts_at))+' · '+apHM(x.a.starts_at)+'</b><small>'+esc(x.c.name)+' · '+esc(KIND_L[x.a.kind]||'')+'</small></div><div class="btns">'+apStatus(x.a)+'<button class="btn sm" data-act="proopen" data-id="'+x.c.link+'">Abrir</button></div></div>';}).join('');
-  if(typeof Notification!=='undefined'&&Notification.permission==='default')h+='<div class="btns"><button class="btn sm" data-act="remperm">Permitir avisos de citas en este móvil</button></div>';
+  if(pushOk()&&!pushActive()&&Notification.permission!=='denied')h+='<div class="btns"><button class="btn sm" data-act="remperm">Activar avisos push de citas</button></div>';
+  else if(pushActive())h+='<p class="muted">Avisos push de citas activados en este móvil.</p><div class="btns"><button class="btn sm" data-act="pushoff">Desactivar</button></div>';
+  else if(!pushOk()&&typeof Notification!=='undefined'&&Notification.permission==='default')h+='<div class="btns"><button class="btn sm" data-act="remperm">Permitir avisos de citas en este móvil</button></div>';
   return h+'</section>';
 }
 function proApptCard(c,dr){
@@ -3859,6 +3908,8 @@ app.addEventListener('click',function(e){
   if(a==='date'){ui.date=d;ui.rwd=wdOf(d);render();return;}
   if(a==='wk'){ui.date=addDays(ui.date,+b.dataset.n);render();return;}
   if(a==='remhide'){var fm=remFired();fm['h:'+b.dataset.k+':'+todayS()]=todayS();remFiredSet(fm);render();return;}
+  if(a==='pushoff'){pushDrop().then(function(){render();toast('Avisos push desactivados');});return;}
+  if(a==='remperm'&&pushOk()){pushEnable();return;}
   if(a==='remperm'){try{var pr=Notification.requestPermission(function(){});if(pr&&pr.then)pr.then(function(){render();toast(Notification.permission==='granted'?'Avisos activados':'Avisos no permitidos');});}catch(x){toast('Este navegador no permite avisos');}return;}
   if(a==='remics'){remIcs();return;}
   if(a==='apptresp'){apptRespond(b.dataset.id,b.dataset.v);return;}

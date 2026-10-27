@@ -530,6 +530,63 @@ end; $$;
 revoke all on function public.appt_respond(uuid, text) from public, anon;
 grant execute on function public.appt_respond(uuid, text) to authenticated;
 
+-- 11) Notificaciones push en el móvil ----------------------------------------------
+-- Cada móvil que activa los avisos guarda aquí su suscripción y los recordatorios elegidos.
+-- La función "push-send" (supabase/functions/push-send) lee esta tabla cada 5 minutos y envía los avisos.
+create table if not exists public.push_subs (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  profile_id text,                                  -- perfil del cliente (null en cuentas de profesional)
+  endpoint   text not null unique,
+  p256dh     text not null,
+  auth       text not null,
+  tz         text not null default 'Europe/Madrid',
+  rem        jsonb not null default '{}'::jsonb,
+  last_sent  jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists push_subs_user_idx on public.push_subs(user_id);
+alter table public.push_subs enable row level security;
+-- Sin políticas: la app solo accede con las dos funciones de abajo y la función push-send con la clave de servicio.
+revoke all on public.push_subs from anon, authenticated;
+
+create or replace function public.push_save(p_endpoint text, p_p256dh text, p_auth text, p_tz text, p_profile text, p_rem jsonb)
+returns void
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if auth.uid() is null then raise exception 'not_authenticated'; end if;
+  if p_endpoint is null or p_endpoint !~ '^https://' or char_length(p_endpoint) > 1000 then raise exception 'bad_endpoint'; end if;
+  insert into public.push_subs (user_id, profile_id, endpoint, p256dh, auth, tz, rem)
+  values (auth.uid(), p_profile, p_endpoint, p_p256dh, p_auth, coalesce(nullif(p_tz, ''), 'Europe/Madrid'), coalesce(p_rem, '{}'::jsonb))
+  on conflict (endpoint) do update
+     set user_id = auth.uid(), profile_id = excluded.profile_id, p256dh = excluded.p256dh, auth = excluded.auth,
+         tz = excluded.tz, rem = excluded.rem, updated_at = now(),
+         last_sent = case when public.push_subs.user_id = auth.uid() then public.push_subs.last_sent else '{}'::jsonb end;
+end; $$;
+revoke all on function public.push_save(text, text, text, text, text, jsonb) from public, anon;
+grant execute on function public.push_save(text, text, text, text, text, jsonb) to authenticated;
+
+create or replace function public.push_remove(p_endpoint text)
+returns void
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if auth.uid() is null then raise exception 'not_authenticated'; end if;
+  delete from public.push_subs where endpoint = p_endpoint and user_id = auth.uid();
+end; $$;
+revoke all on function public.push_remove(text) from public, anon;
+grant execute on function public.push_remove(text) to authenticated;
+
+-- Programar la función cada 5 minutos (cambia <REF> por el id de tu proyecto y <CRON_SECRET> por el secreto que pongas en la función):
+--   create extension if not exists pg_cron;
+--   create extension if not exists pg_net;
+--   select cron.schedule('tupla-push', '*/5 * * * *', $$
+--     select net.http_post(
+--       url := 'https://<REF>.supabase.co/functions/v1/push-send',
+--       headers := '{"Content-Type":"application/json","x-cron-secret":"<CRON_SECRET>"}'::jsonb,
+--       body := '{}'::jsonb) $$);
+-- Para pararlo:  select cron.unschedule('tupla-push');
+
 -- Para activar a un profesional de pago sin límite de clientes:
 --   update public.professionals set status = 'active' where user_id = '<id>';
 -- Para suspenderlo:
