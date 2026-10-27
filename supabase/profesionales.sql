@@ -587,6 +587,113 @@ grant execute on function public.push_remove(text) to authenticated;
 --       body := '{}'::jsonb) $$);
 -- Para pararlo:  select cron.unschedule('tupla-push');
 
+-- 12) Disponibilidad del profesional y reserva de citas por el cliente ----------------
+-- El profesional publica franjas semanales; el cliente ve los huecos libres y reserva uno.
+-- El cliente nunca lee las citas de otros clientes: los huecos los calcula la función avail_slots.
+create table if not exists public.pro_avail (
+  pro_id     uuid primary key references public.professionals(user_id) on delete cascade,
+  rules      jsonb not null default '[]'::jsonb check (jsonb_typeof(rules) = 'array' and jsonb_array_length(rules) <= 60),
+  blocked    jsonb not null default '[]'::jsonb check (jsonb_typeof(blocked) = 'array' and jsonb_array_length(blocked) <= 200),
+  slot_min   int  not null default 30 check (slot_min between 10 and 120),
+  kind       text not null default 'video' check (kind in ('video','presencial','tel')),
+  place      text check (char_length(place) <= 300),
+  notice_h   int  not null default 12 check (notice_h between 0 and 168),
+  horizon_d  int  not null default 28 check (horizon_d between 7 and 120),
+  tz         text not null default 'Europe/Madrid',
+  updated_at timestamptz not null default now()
+);
+alter table public.pro_avail enable row level security;
+drop policy if exists avail_select on public.pro_avail;
+create policy avail_select on public.pro_avail for select using (pro_id = auth.uid());
+drop policy if exists avail_insert on public.pro_avail;
+create policy avail_insert on public.pro_avail for insert with check (pro_id = auth.uid() and public.pro_ok(auth.uid()));
+drop policy if exists avail_update on public.pro_avail;
+create policy avail_update on public.pro_avail for update using (pro_id = auth.uid() and public.pro_ok(auth.uid())) with check (pro_id = auth.uid() and public.pro_ok(auth.uid()));
+
+-- Huecos libres del profesional vinculado al cliente (próximos horizon_d días)
+create or replace function public.avail_slots(p_link uuid)
+returns jsonb
+language plpgsql security definer set search_path = public, auth as $$
+declare v_pro uuid; v_av public.pro_avail%rowtype; v_slots jsonb;
+begin
+  if auth.uid() is null then raise exception 'not_authenticated'; end if;
+  select l.pro_id into v_pro from public.client_links l
+   where l.id = p_link and l.client_id = auth.uid() and l.status = 'active';
+  if v_pro is null then raise exception 'not_found'; end if;
+  select * into v_av from public.pro_avail where pro_id = v_pro;
+  if not found or not public.pro_ok(v_pro) or jsonb_array_length(v_av.rules) = 0 then
+    return jsonb_build_object('slots', '[]'::jsonb, 'minutes', null, 'kind', null);
+  end if;
+  select coalesce(jsonb_agg(x.st order by x.st), '[]'::jsonb) into v_slots from (
+    select distinct ((d.d + r.s) + make_interval(mins => m.m)) at time zone v_av.tz as st
+      from (select ((now() at time zone v_av.tz)::date + g) as d from generate_series(0, v_av.horizon_d) g) d
+      join (select (e->>'d')::int as dow, (e->>'s')::time as s, (e->>'e')::time as en
+              from jsonb_array_elements(v_av.rules) e) r
+        on extract(isodow from d.d)::int = r.dow
+      cross join lateral generate_series(0, (extract(epoch from (r.en - r.s)) / 60)::int - v_av.slot_min, v_av.slot_min) as m(m)
+     where not jsonb_exists(v_av.blocked, d.d::text)
+  ) x
+  where x.st >= now() + make_interval(hours => v_av.notice_h)
+    and not exists (
+      select 1 from public.appointments a join public.client_links l2 on l2.id = a.link_id
+       where l2.pro_id = v_pro and a.status = 'planned'
+         and a.starts_at < x.st + make_interval(mins => v_av.slot_min)
+         and a.starts_at + make_interval(mins => a.minutes) > x.st);
+  return jsonb_build_object('slots', v_slots, 'minutes', v_av.slot_min, 'kind', v_av.kind);
+end; $$;
+revoke all on function public.avail_slots(uuid) from public, anon;
+grant execute on function public.avail_slots(uuid) to authenticated;
+
+-- El cliente reserva un hueco (máximo 2 citas pendientes a la vez)
+create or replace function public.appt_book(p_link uuid, p_starts timestamptz)
+returns jsonb
+language plpgsql security definer set search_path = public, auth as $$
+declare v_pro uuid; v_av public.pro_avail%rowtype; v_id uuid; v_ok boolean;
+begin
+  if auth.uid() is null then raise exception 'not_authenticated'; end if;
+  select l.pro_id into v_pro from public.client_links l
+   where l.id = p_link and l.client_id = auth.uid() and l.status = 'active';
+  if v_pro is null then raise exception 'not_found'; end if;
+  perform pg_advisory_xact_lock(hashtext(v_pro::text));
+  if (select count(*) from public.appointments a
+       where a.link_id = p_link and a.status = 'planned' and a.starts_at > now()) >= 2 then
+    raise exception 'too_many';
+  end if;
+  select exists (select 1 from jsonb_array_elements_text(public.avail_slots(p_link)->'slots') s
+                  where s::timestamptz = p_starts) into v_ok;
+  if not v_ok then raise exception 'slot_taken'; end if;
+  select * into v_av from public.pro_avail where pro_id = v_pro;
+  insert into public.appointments (link_id, starts_at, minutes, kind, place, topic, client_resp, resp_at)
+  values (p_link, p_starts, v_av.slot_min, v_av.kind, v_av.place, 'Cita reservada por el cliente', 'yes', now())
+  returning id into v_id;
+  insert into public.chat_messages (link_id, sender_id, body)
+  values (p_link, auth.uid(), 'He reservado una cita el ' || to_char(p_starts at time zone v_av.tz, 'DD/MM') || ' a las ' || to_char(p_starts at time zone v_av.tz, 'HH24:MI') || '.');
+  return (select to_jsonb(a) from public.appointments a where a.id = v_id);
+end; $$;
+revoke all on function public.appt_book(uuid, timestamptz) from public, anon;
+grant execute on function public.appt_book(uuid, timestamptz) to authenticated;
+
+-- El cliente cancela una cita suya con la antelación mínima que fijó el profesional
+create or replace function public.appt_cancel(p_appt uuid)
+returns void
+language plpgsql security definer set search_path = public, auth as $$
+declare v_a public.appointments%rowtype; v_pro uuid; v_notice int; v_tz text;
+begin
+  if auth.uid() is null then raise exception 'not_authenticated'; end if;
+  select a.* into v_a from public.appointments a join public.client_links l on l.id = a.link_id
+   where a.id = p_appt and a.status = 'planned' and l.client_id = auth.uid() and l.status = 'active';
+  if not found then raise exception 'not_found'; end if;
+  select l.pro_id into v_pro from public.client_links l where l.id = v_a.link_id;
+  select coalesce(notice_h, 12), coalesce(tz, 'Europe/Madrid') into v_notice, v_tz from public.pro_avail where pro_id = v_pro;
+  if not found then v_notice := 12; v_tz := 'Europe/Madrid'; end if;
+  if v_a.starts_at < now() + make_interval(hours => v_notice) then raise exception 'too_late'; end if;
+  update public.appointments set status = 'cancelled', updated_at = now() where id = p_appt;
+  insert into public.chat_messages (link_id, sender_id, body)
+  values (v_a.link_id, auth.uid(), 'He cancelado la cita del ' || to_char(v_a.starts_at at time zone v_tz, 'DD/MM') || ' a las ' || to_char(v_a.starts_at at time zone v_tz, 'HH24:MI') || '.');
+end; $$;
+revoke all on function public.appt_cancel(uuid) from public, anon;
+grant execute on function public.appt_cancel(uuid) to authenticated;
+
 -- Para activar a un profesional de pago sin límite de clientes:
 --   update public.professionals set status = 'active' where user_id = '<id>';
 -- Para suspenderlo:

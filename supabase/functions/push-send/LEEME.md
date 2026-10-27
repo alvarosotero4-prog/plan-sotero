@@ -21,3 +21,6 @@ En iPhone funciona solo con la app añadida a la pantalla de inicio (iOS 16.4 o 
 
 ## Qué avisa
 Peso en ayunas, agua, registrar comidas y constancia (solo si falta hacerlo, según lo último que haya sincronizado el cliente) y citas (24 h y 1 h antes; también al profesional). Cada aviso se envía una vez al día.
+
+## Reservas de citas
+La sección 12 de `profesionales.sql` añade la disponibilidad del profesional (`pro_avail`) y las funciones `avail_slots`, `appt_book` y `appt_cancel`. Cuando un cliente reserva o cancela, se envía un mensaje al chat del profesional.

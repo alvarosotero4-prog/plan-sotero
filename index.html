@@ -127,6 +127,9 @@ input[type=text],input[type=time],input[type=date],input[type=email],input[type=
 .mac b small{font-size:14px;color:var(--ink2);font-weight:500}
 .mac .l{font-size:12px;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
 .mac.p i{background:var(--p)} .mac.c i{background:var(--c)} .mac.g i{background:var(--g)}
+.bkgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:8px 0}.bkh{text-align:center;font-size:12px;color:var(--ink2);padding:2px 0}
+.bkd{aspect-ratio:1;min-width:0;border-radius:10px;border:1px solid transparent;background:transparent;font-weight:600;color:var(--ink);cursor:pointer}
+.bkd:disabled{opacity:.35;cursor:default}.bkd.has{background:var(--accent-soft);border-color:var(--accent)}.bkd.on{background:var(--accent);color:var(--accent-ink)}
 .aprow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
 .aprow>div:first-child{display:flex;flex-direction:column;gap:2px;min-width:0}.aprow small{color:var(--ink2)}.aprow .btns{align-items:center}.aprow a{color:var(--accent)}
 .remlist{display:flex;flex-direction:column;gap:12px;margin:12px 0}.remlist .hrow{flex-wrap:nowrap;gap:10px}.remlist .hrow .chk{flex:1;min-width:0}.remlist .hrow input[type=time]{width:auto;flex:none}
@@ -1963,7 +1966,7 @@ function vAjustes(){
   var seg=ui.set==='cuenta'?'cuenta':'plan';
   return '<div class="chips" role="group" aria-label="Ajustes">'+[['plan','Plan'],['cuenta','Cuenta y datos']].map(function(x){return '<button class="chip" aria-pressed="'+(seg===x[0])+'" data-act="set" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>'+(seg==='cuenta'?vCuenta():vPlan());
 }
-var APP_V='46';
+var APP_V='47';
 function appUpdate(){
   toast('Actualizando…');
   var done=function(){location.reload();};
@@ -2854,7 +2857,7 @@ function proLoad(){
       var c={link:l.id,client:l.client_id,profile_id:l.profile_id,name:(row&&row.name)||l.client_name||'Cliente',email:l.client_email||'',type:row?row.type:'gen',data:row?row.data:null,updated:row?row.updated_at:null,plan:pp||null,pnote:pn||null,since:l.consented_at,share:!!l.share_photos};
       c.stats=c.data?proStats(c):null;return c;
     });
-    PC.loading=false;PC.at=Date.now();chatUnread();proApptLoad();pushSync();
+    PC.loading=false;PC.at=Date.now();chatUnread();proApptLoad();proAvailLoad();pushSync();
   },function(e){PC.loading=false;PC.err=e&&e.net?'Sin conexión. Inténtalo de nuevo.':'No se pudieron cargar los clientes.';}).then(function(){if(ui.screen==='pro')render();});
 }
 function proFind(id){return (PC.list||[]).filter(function(c){return c.link===id;})[0]||null;}
@@ -2868,6 +2871,7 @@ function vProClients(){
   if(PC.err)h+='<p class="err" role="alert">'+esc(PC.err)+'</p>';
   var L=(PC.list||[]).slice().sort(function(a,b){return proLevelRank(a)-proLevelRank(b)||a.name.localeCompare(b.name);});
   if(L.length)h+=proAgendaCard();
+  h+=proAvailCard();
   if(!L.length)return h+'<section class="card"><p>'+(PC.loading?'Cargando…':'Todavía no tienes clientes vinculados.')+'</p><p class="muted">Pasa a la pestaña Invitar, copia tu código o tu enlace y envíaselo a tus clientes. Cuando lo escriban y den su consentimiento, aparecerán aquí.</p><div class="btns"><button class="btn main sm" data-act="ptab" data-v="invitar">Invitar a un cliente</button></div></section>';
   var bad=L.filter(function(c){return c.stats&&c.stats.level!=='ok';}).length;
   h+='<p class="muted">'+L.length+' '+(L.length===1?'cliente':'clientes')+(bad?' · '+bad+' con avisos':' · todo en orden')+'</p><div class="cls">';
@@ -3590,8 +3594,12 @@ function apptMine(){
   return (APPT.list||[]).filter(function(a){return a.status==='planned'&&a.link_id===lk;});
 }
 function apptBanner(){
-  var l=apptMine()[0];if(!l)return '';
-  var who=S.coach&&S.coach.pro||'tu nutricionista',soon=diffDays(apDay(l.starts_at),todayS())<=1;
+  var l=apptMine()[0],who0=S.coach&&S.coach.pro||'tu nutricionista',pre=bkCard();
+  if(!l){
+    if(!BK.open&&APPT.ok&&S.coach&&S.coach.link)pre+='<section class="rec"><b>¿Quieres una cita?</b><p>Elige un hueco libre en el calendario de '+esc(who0)+'.</p><div class="btns"><button class="btn main sm" data-act="bkopen">Pedir cita</button></div></section>';
+    return pre;
+  }
+  var who=who0,soon=diffDays(apDay(l.starts_at),todayS())<=1;
   var h='<section class="rec'+(soon?' warn':'')+'"><b>'+(soon?esc(apRel(l.starts_at))+' toca revisión · '+apHM(l.starts_at):'Próxima cita · '+esc(apRel(l.starts_at))+' a las '+apHM(l.starts_at))+'</b><p>'+esc(KIND_L[l.kind]||'Cita')+' con '+esc(who)+' · '+(l.minutes||30)+' min'+(l.topic?'<br>'+esc(l.topic):'')+(l.place&&l.kind!=='video'?'<br>'+esc(l.place):'')+'</p>';
   if(l.client_resp==='yes')h+='<p class="note">Has confirmado que irás.</p>';
   else if(l.client_resp==='no')h+='<p class="note">Has avisado de que no puedes. Escríbele por el chat para cambiar la hora.</p>';
@@ -3599,9 +3607,10 @@ function apptBanner(){
     (l.client_resp!=='yes'?'<button class="btn main sm" data-act="apptresp" data-id="'+l.id+'" data-v="yes">Confirmo</button>':'')+
     (l.client_resp!=='no'?'<button class="btn sm" data-act="apptresp" data-id="'+l.id+'" data-v="no">No puedo</button>':'')+
     (l.kind==='video'&&apIsUrl(l.place)?'<a class="btn sm" href="'+esc(l.place)+'" target="_blank" rel="noopener noreferrer">Abrir videollamada</a>':'')+
-    '<button class="btn sm" data-act="apptics" data-id="'+l.id+'">Añadir al calendario</button></div>';
+    '<button class="btn sm" data-act="apptics" data-id="'+l.id+'">Añadir al calendario</button>'+
+    '<button class="btn sm" data-act="apptcancelc" data-id="'+l.id+'">'+(ui.apcc===l.id?'Sí, cancelar mi cita':'Cancelar cita')+'</button></div>';
   if(l.kind==='video'&&l.place&&!apIsUrl(l.place))h+='<p class="muted">'+esc(l.place)+'</p>';
-  return h+'</section>';
+  return pre+h+'</section>';
 }
 function apptRespond(id,v){
   ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/appt_respond',{p_appt:id,p_resp:v},AUTH.access);}).then(function(){
@@ -3693,6 +3702,108 @@ function apptNote(id){
   ensureToken().then(function(){return sbReq('POST','/rest/v1/appointment_notes?on_conflict=appt_id',[{appt_id:id,body:txt,updated_at:new Date().toISOString()}],AUTH.access,{'Prefer':'resolution=merge-duplicates,return=minimal'});}).then(function(){
     f.a.note=txt;var dr=ui.pdraft[f.c.link];if(dr)delete dr['vn:'+id];toast('Nota de la visita guardada');
   },function(){toast('No se pudo guardar la nota');});
+}
+/* ---------- reserva de citas: disponibilidad del profesional y calendario del cliente ---------- */
+var MES_L=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+var AVD={rules:[],blocked:[],slot_min:30,kind:'video',place:'',notice_h:12,horizon_d:28};
+function avCur(){return ui.av||(PC.av?clone(PC.av):clone(AVD));}
+function avEdit(){if(!ui.av)ui.av=avCur();return ui.av;}
+function avRead(){
+  var a=avEdit();
+  Array.prototype.forEach.call(document.querySelectorAll('[data-av]'),function(el){a[el.dataset.av]=el.value;});
+  return a;
+}
+function proAvailLoad(){
+  if(!cloudOn()||!AUTH||!AUTH.pro)return Promise.resolve();
+  return ensureToken().then(function(){
+    return sbReq('GET','/rest/v1/pro_avail?select=rules,blocked,slot_min,kind,place,notice_h,horizon_d&pro_id=eq.'+AUTH.uid,null,AUTH.access);
+  }).then(function(r){
+    PC.avErr=false;PC.av=Array.isArray(r)&&r[0]?r[0]:null;
+    if(ui.screen==='pro'&&!ui.psel&&!ui.av)render();
+  },function(e){PC.avErr=!(e&&e.net);});
+}
+function proAvailCard(){
+  if(PC.avErr)return '<section class="card"><h2>Mi disponibilidad</h2><p class="muted">Las reservas todavía no están activadas en el servidor.</p></section>';
+  var a=avCur(),rules=a.rules.slice().sort(function(x,y){return x.d-y.d||(x.s<y.s?-1:1);}),h='<section class="card"><h2>Mi disponibilidad</h2><p class="muted">Tus clientes verán estos huecos en un calendario y reservarán el que les venga bien. Las reservas aparecen en tu Agenda.</p>';
+  if(!rules.length)h+='<p class="ghost">Todavía no has puesto ninguna franja.</p>';
+  else h+=rules.map(function(r){return '<div class="aprow"><div><b>'+DAYS[r.d-1]+' · '+esc(r.s)+' a '+esc(r.e)+'</b></div><button class="btn sm" data-act="avdel" data-d="'+r.d+'" data-s="'+esc(r.s)+'" data-e="'+esc(r.e)+'">Quitar</button></div>';}).join('');
+  h+='<h3 style="margin-top:16px">Añadir franja</h3><div class="two"><label>Día<select id="av-d">'+DAYS.map(function(n,i){return '<option value="'+(i+1)+'">'+n+'</option>';}).join('')+'</select></label><label>Desde<input type="time" id="av-s" value="09:00"></label><label>Hasta<input type="time" id="av-e" value="13:00"></label></div><div class="btns"><button class="btn sm" data-act="avadd">Añadir franja</button></div>';
+  function sel(k,opts){return '<select data-av="'+k+'">'+opts.map(function(o){return '<option value="'+o[0]+'"'+(String(a[k])===String(o[0])?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>';}
+  h+='<h3 style="margin-top:16px">Cómo son las citas</h3><div class="two"><label>Duración'+sel('slot_min',[[20,'20 min'],[30,'30 min'],[45,'45 min'],[60,'60 min']])+'</label><label>Tipo'+sel('kind',[['video','Videollamada'],['presencial','En consulta'],['tel','Llamada']])+'</label><label>Antelación mínima'+sel('notice_h',[[2,'2 horas'],[12,'12 horas'],[24,'1 día'],[48,'2 días']])+'</label><label>Se puede reservar con'+sel('horizon_d',[[14,'2 semanas'],[28,'4 semanas'],[56,'8 semanas']])+'</label></div>'+
+    '<label class="fld"><span class="lb">Enlace de la videollamada, dirección o teléfono</span><input type="text" data-av="place" maxlength="300" value="'+esc(a.place||'')+'" placeholder="https://meet.google.com/…"></label>';
+  var bl=a.blocked.filter(function(d){return d>=todayS();}).sort();
+  h+='<h3 style="margin-top:16px">Días sin citas</h3><div class="two"><label>Día<input type="date" id="av-b" min="'+todayS()+'"></label></div><div class="btns"><button class="btn sm" data-act="avblock">Bloquear día</button></div>'+
+    (bl.length?'<div class="btns">'+bl.map(function(d){return '<button class="chip" data-act="avunblock" data-d="'+d+'">'+esc(dayLabel(d))+' ×</button>';}).join('')+'</div>':'');
+  h+='<div class="btns"><button class="btn main" data-act="avsave">Guardar disponibilidad</button></div>'+(ui.av?'<p class="note">Tienes cambios sin guardar.</p>':'');
+  return asFold('p-avail',h+'</section>',!PC.av||(PC.av.rules||[]).length===0);
+}
+function avAdd(){
+  var a=avRead(),d=+document.getElementById('av-d').value,s=document.getElementById('av-s').value,e=document.getElementById('av-e').value;
+  if(!/^\d{2}:\d{2}$/.test(s)||!/^\d{2}:\d{2}$/.test(e)||e<=s){toast('Revisa las horas: "hasta" tiene que ser después de "desde"');return;}
+  if((hmMin(e)-hmMin(s))<(+a.slot_min||30)){toast('La franja es más corta que una cita');return;}
+  if(a.rules.some(function(r){return r.d===d&&r.s===s&&r.e===e;})){toast('Esa franja ya está');return;}
+  if(a.rules.length>=60){toast('Demasiadas franjas');return;}
+  a.rules.push({d:d,s:s,e:e});render();
+}
+function avSave(){
+  var a=avRead(),tz='Europe/Madrid',place=(a.place||'').trim().slice(0,300);
+  try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||tz;}catch(e){}
+  if(place&&/^[a-z][a-z0-9+.-]*:/i.test(place)&&!apIsUrl(place)){toast('El enlace debe empezar por https://');return;}
+  var body={pro_id:AUTH.uid,rules:a.rules,blocked:a.blocked,slot_min:+a.slot_min||30,kind:a.kind||'video',place:place||null,notice_h:+a.notice_h,horizon_d:+a.horizon_d||28,tz:tz,updated_at:new Date().toISOString()};
+  ensureToken().then(function(){return sbReq('POST','/rest/v1/pro_avail?on_conflict=pro_id',[body],AUTH.access,{'Prefer':'resolution=merge-duplicates,return=minimal'});}).then(function(){
+    PC.av={rules:body.rules,blocked:body.blocked,slot_min:body.slot_min,kind:body.kind,place:body.place,notice_h:body.notice_h,horizon_d:body.horizon_d};
+    ui.av=null;render();toast('Disponibilidad guardada');
+  },function(e){toast(e&&e.net?'Sin conexión: no se guardó':'No se pudo guardar la disponibilidad');});
+}
+/* cliente: calendario para pedir cita */
+var BK={open:false,loading:false,err:'',slots:[],min:30,kind:'video',m:'',day:'',sel:'',busy:false};
+function bkOpen(){
+  if(!(S.coach&&S.coach.link)){toast('Primero vincula con tu nutricionista');return;}
+  BK.open=true;BK.loading=true;BK.err='';BK.day='';BK.sel='';BK.busy=false;render();
+  ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/avail_slots',{p_link:S.coach.link},AUTH.access);}).then(function(r){
+    BK.loading=false;BK.slots=(r&&r.slots)||[];BK.min=(r&&r.minutes)||30;BK.kind=(r&&r.kind)||'video';
+    BK.m=BK.slots.length?apDay(BK.slots[0]).slice(0,7):todayS().slice(0,7);render();
+  },function(e){BK.loading=false;BK.err=e&&e.net?'Sin conexión. Inténtalo de nuevo.':'Las reservas todavía no están disponibles.';render();});
+}
+function bkCard(){
+  if(!BK.open)return '';
+  var h='<section class="card"><div class="hrow"><h2>Pedir cita</h2><button class="btn sm" data-act="bkclose">Cerrar</button></div>';
+  if(BK.loading)return h+'<p class="muted">Buscando huecos libres…</p></section>';
+  if(BK.err)return h+'<p class="err" role="alert">'+esc(BK.err)+'</p></section>';
+  if(!BK.slots.length)return h+'<p class="muted">Tu nutricionista no tiene huecos libres ahora mismo. Escríbele por el chat para acordar uno.</p></section>';
+  var cnt={},y=+BK.m.slice(0,4),mo=+BK.m.slice(5,7)-1,i;
+  BK.slots.forEach(function(s){var d=apDay(s);cnt[d]=(cnt[d]||0)+1;});
+  var fm=apDay(BK.slots[0]).slice(0,7),lm=apDay(BK.slots[BK.slots.length-1]).slice(0,7),lead=(new Date(y,mo,1).getDay()+6)%7,dim=new Date(y,mo+1,0).getDate();
+  h+='<div class="hrow"><button class="btn sm" data-act="bkmonth" data-n="-1"'+(BK.m<=fm?' disabled':'')+' aria-label="Mes anterior">‹</button><b>'+MES_L[mo]+' '+y+'</b><button class="btn sm" data-act="bkmonth" data-n="1"'+(BK.m>=lm?' disabled':'')+' aria-label="Mes siguiente">›</button></div><div class="bkgrid">'+DS.map(function(x){return '<span class="bkh">'+x+'</span>';}).join('');
+  for(i=0;i<lead;i++)h+='<span></span>';
+  for(i=1;i<=dim;i++){var dd=BK.m+'-'+pad(i),n=cnt[dd]||0;h+='<button class="bkd'+(n?' has':'')+(BK.day===dd?' on':'')+'" data-act="bkday" data-d="'+dd+'"'+(n?'':' disabled')+' aria-label="'+esc(dayLabel(dd))+(n?', '+n+' huecos':', sin huecos')+'">'+i+'</button>';}
+  h+='</div>';
+  if(BK.day){
+    var ts=BK.slots.filter(function(s){return apDay(s)===BK.day;});
+    h+='<h3 style="margin-top:12px">'+esc(dayLabel(BK.day))+'</h3><div class="chips" role="group" aria-label="Horas libres">'+ts.map(function(s){return '<button class="chip" aria-pressed="'+(BK.sel===s)+'" data-act="bksel" data-t="'+esc(s)+'">'+apHM(s)+'</button>';}).join('')+'</div>';
+  }else h+='<p class="muted">Elige un día marcado en verde.</p>';
+  if(BK.sel)h+='<div class="rec" style="margin-top:12px"><b>'+esc(dayLabel(apDay(BK.sel)))+' a las '+apHM(BK.sel)+'</b><p>'+esc(KIND_L[BK.kind]||'Cita')+' · '+BK.min+' min con '+esc(S.coach&&S.coach.pro||'tu nutricionista')+'</p><div class="btns"><button class="btn main" data-act="bkgo"'+(BK.busy?' disabled':'')+'>'+(BK.busy?'Reservando…':'Confirmar cita')+'</button><button class="btn sm" data-act="bkno">Cambiar</button></div></div>';
+  return h+'</section>';
+}
+function bkGo(){
+  if(!BK.sel||BK.busy)return;
+  BK.busy=true;render();
+  ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/appt_book',{p_link:S.coach.link,p_starts:BK.sel},AUTH.access);}).then(function(){
+    BK.busy=false;BK.open=false;BK.sel='';BK.day='';APPT.sig='';toast('Cita reservada. Tu nutricionista ya lo sabe.');return apptLoad();
+  }).then(function(){render();},function(e){
+    BK.busy=false;var m=String(e&&e.message||'');
+    if(m.indexOf('slot_taken')>-1){toast('Ese hueco acaba de ocuparse. Elige otro.');bkOpen();return;}
+    if(m.indexOf('too_many')>-1){toast('Ya tienes 2 citas pendientes. Cancela una para pedir otra.');render();return;}
+    toast(e&&e.net?'Sin conexión: no se reservó':'No se pudo reservar la cita');render();
+  });
+}
+function apptCancelC(id){
+  ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/appt_cancel',{p_appt:id},AUTH.access);}).then(function(){
+    APPT.list=(APPT.list||[]).filter(function(a){return a.id!==id;});APPT.sig=JSON.stringify(APPT.list);ui.apcc=null;render();toast('Cita cancelada');
+  },function(e){
+    ui.apcc=null;var m=String(e&&e.message||'');
+    toast(m.indexOf('too_late')>-1?'Falta muy poco para la cita: escribe a tu nutricionista por el chat.':e&&e.net?'Sin conexión: no se canceló':'No se pudo cancelar');render();
+  });
 }
 /* ---------- chat entre cliente y nutricionista ---------- */
 var CH={link:null,msgs:[],unread:{},draft:'',loading:false,sending:false,err:'',at:0,sig:''};
@@ -3907,6 +4018,19 @@ app.addEventListener('click',function(e){
   if(a==='tab'){ui.tab=b.dataset.t;ui.picker=null;ui.alt=null;ui.q='';render();return;}
   if(a==='date'){ui.date=d;ui.rwd=wdOf(d);render();return;}
   if(a==='wk'){ui.date=addDays(ui.date,+b.dataset.n);render();return;}
+  if(a==='bkopen'){bkOpen();return;}
+  if(a==='bkclose'){BK.open=false;render();return;}
+  if(a==='bkmonth'){var bm=BK.m.split('-'),bd=new Date(+bm[0],+bm[1]-1+(+b.dataset.n),1);BK.m=bd.getFullYear()+'-'+pad(bd.getMonth()+1);BK.day='';BK.sel='';render();return;}
+  if(a==='bkday'){BK.day=b.dataset.d;BK.sel='';render();return;}
+  if(a==='bksel'){BK.sel=b.dataset.t;render();return;}
+  if(a==='bkno'){BK.sel='';render();return;}
+  if(a==='bkgo'){bkGo();return;}
+  if(a==='apptcancelc'){if(ui.apcc!==b.dataset.id){ui.apcc=b.dataset.id;render();return;}apptCancelC(b.dataset.id);return;}
+  if(a==='avadd'){avAdd();return;}
+  if(a==='avdel'){var av1=avRead();av1.rules=av1.rules.filter(function(r){return !(String(r.d)===b.dataset.d&&r.s===b.dataset.s&&r.e===b.dataset.e);});render();return;}
+  if(a==='avblock'){var av2=avRead(),bv=document.getElementById('av-b').value;if(!/^\d{4}-\d{2}-\d{2}$/.test(bv)||bv<todayS()){toast('Elige un día a partir de hoy');return;}if(av2.blocked.indexOf(bv)<0&&av2.blocked.length<200)av2.blocked.push(bv);render();return;}
+  if(a==='avunblock'){var av3=avRead();av3.blocked=av3.blocked.filter(function(x){return x!==b.dataset.d;});render();return;}
+  if(a==='avsave'){avSave();return;}
   if(a==='remhide'){var fm=remFired();fm['h:'+b.dataset.k+':'+todayS()]=todayS();remFiredSet(fm);render();return;}
   if(a==='pushoff'){pushDrop().then(function(){render();toast('Avisos push desactivados');});return;}
   if(a==='remperm'&&pushOk()){pushEnable();return;}
