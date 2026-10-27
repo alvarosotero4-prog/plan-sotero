@@ -196,6 +196,20 @@ ol.plain{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 .bigcode{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:34px;font-weight:700;letter-spacing:.16em;margin:0;text-align:center;padding:10px;background:var(--accent-soft);color:var(--accent);border-radius:8px}
 .selectable{user-select:all;overflow-wrap:anywhere}
 .dslot{border-top:1px solid var(--line);padding-top:8px;display:flex;flex-direction:column;gap:4px}
+.irow{display:flex;gap:10px;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line)}
+.irow b{font-weight:600;flex:none;max-width:42%}
+.irow span{text-align:right;min-width:0;overflow-wrap:anywhere}
+.bdg{display:inline-block;min-width:20px;padding:1px 7px;border-radius:99px;background:var(--bad);color:#fff;font-size:12px;font-weight:700;text-align:center;line-height:1.5}
+.bdg[hidden]{display:none}
+.chatlist{display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow-y:auto;padding:4px 2px}
+.msg{max-width:84%;padding:8px 12px;border-radius:14px;background:var(--surface2);color:var(--ink);align-self:flex-start;overflow-wrap:anywhere;white-space:pre-wrap}
+.msg.me{align-self:flex-end;background:var(--accent-soft)}
+.msg small{display:block;color:var(--ink2);font-size:11px;margin-top:2px}
+.chatbox{display:flex;gap:8px;align-items:flex-end}
+.chatbox textarea{flex:1;min-width:0}
+.pmrow{display:flex;align-items:center;gap:8px}
+.pmn{flex:1;min-width:0;overflow-wrap:anywhere}
+.pmrow .inp{width:104px;flex:none}
 details.fold summary{cursor:pointer;display:flex;list-style:none;justify-content:space-between;align-items:center;gap:12px;font-family:var(--font-d);font-size:21px;line-height:1.15;font-weight:600;list-style-position:inside}
 details.fold summary span{font-family:var(--font-b);font-size:13px;font-weight:500;color:var(--ink2)}
 details.fold summary::-webkit-details-marker{display:none}
@@ -415,7 +429,7 @@ var SLOTS_SOT=SLOTS, TYPES_SOT=TYPES;
 /* ---------- state ---------- */
 function isSot(){return !PROF||PROF.type==='sot';}
 function DEFGEN(){
-  return {v:1,settings:{match:'12:00',kg:70,t:{f:{kcal:2300,p:150,c:260,g:60},r:{kcal:2000,p:140,c:200,g:65}}},weights:{},waist:{},logs:{},checks:{},foods:[],plays:{},match:{},meals:[],fav:[],coach:null,track:{},lifts:{},feel:{},notes:{},tags:{},skin:[],profile:null};
+  return {v:1,settings:{match:'12:00',kg:70,t:{f:{kcal:2300,p:150,c:260,g:60},r:{kcal:2000,p:140,c:200,g:65}}},weights:{},waist:{},logs:{},checks:{},foods:[],plays:{},match:{},meals:[],fav:[],coach:null,track:{},lifts:{},feel:{},notes:{},tags:{},skin:[],profile:null,intake:null};
 }
 function DEF(){
   if(!isSot())return DEFGEN();
@@ -435,11 +449,12 @@ function mergeState(o){
     foods:JSON.parse(JSON.stringify(o.foods||[])),
     meals:Array.isArray(o.meals)?JSON.parse(JSON.stringify(o.meals)):[],fav:Array.isArray(o.fav)?o.fav.filter(function(x){return typeof x==='string';}):[],coach:o.coach&&typeof o.coach==='object'?JSON.parse(JSON.stringify(o.coach)):null,track:JSON.parse(JSON.stringify(o.track||{})),lifts:JSON.parse(JSON.stringify(o.lifts||{})),feel:JSON.parse(JSON.stringify(o.feel||{})),notes:JSON.parse(JSON.stringify(o.notes||{})),tags:JSON.parse(JSON.stringify(o.tags||{})),
     skin:Array.isArray(o.skin)?JSON.parse(JSON.stringify(o.skin)):b.skin,
+    intake:o.intake&&typeof o.intake==='object'?JSON.parse(JSON.stringify(o.intake)):null,
     profile:o.profile&&typeof o.profile==='object'?JSON.parse(JSON.stringify(o.profile)):null};
 }
 var PROF=null, INDEX=null, G=null;
 var S=DEF();
-var ui={liftSel:null,saving:null,pwk:0,tab:'hoy',date:todayS(),picker:null,alt:null,set:'plan',links:null,noPro:false,invite:'',unlink:null,linkMsg:null,ptab:'clientes',psel:null,pday:null,pcur:null,pdraft:{},prc:null,perr:'',q:'',open:{},confirm:false,sync:'local',rwd:null,screen:null,delp:null,confirmBlock:false,authMode:'login',au:{email:'',pw:'',pw2:''},authMsg:null,busy:false,rec:null,claim:null,prev:null,delAcct:0};
+var ui={liftSel:null,saving:null,pwk:0,tab:'hoy',date:todayS(),picker:null,alt:null,set:'plan',links:null,noPro:false,invite:'',unlink:null,linkMsg:null,ptab:'clientes',psel:null,pday:null,pcur:null,pdraft:{},prc:null,perr:'',q:'',open:{},confirm:false,sync:'local',rwd:null,screen:null,delp:null,confirmBlock:false,authMode:'login',au:{email:'',pw:'',pw2:''},authMsg:null,busy:false,rec:null,claim:null,prev:null,delAcct:0,pmenu:{},pmd:0,pms:null,pmq:'',invInfo:null,linkAuto:false,chatBack:null};
 ui.rwd=wdOf(ui.date);
 var MAINT=2450;
 
@@ -497,7 +512,17 @@ function playsOn(sun){return !!S.plays[sun];}
 function sunOf(d){var w=wdOf(d);return w===6?d:(w===0?addDays(d,-1):null);}
 function sunMorning(d){return M(matchT(d))<840;}
 function slotsFor(d){if(!isSot())return SLOTS;if(wdOf(d)===6&&!sunMorning(d))return SLOTS.filter(function(s){return s.id!=='snack';});return SLOTS;}
+/* perfiles de clientes de un nutricionista: sin objetivos ni menús calculados; los pone el profesional */
+function proProf(){return !!(S&&S.profile&&S.profile.pro);}
+function coachMenu(){return S.coach&&S.coach.menu&&typeof S.coach.menu==='object'&&Object.keys(S.coach.menu).length?S.coach.menu:null;}
+function tgtOn(){return !proProf()||!!(S.coach&&S.coach.t);}
+function coachSlot(slot,d){
+  var m=coachMenu();
+  if(m){var day=m[String(wdOf(d||'2026-10-12'))]||{};return (day[slot]||[]).map(function(x){return {f:x.f,g:x.g};}).filter(function(x){return findFood(x.f);});}
+  return proProf()?[]:null;
+}
 function planSlot(k,slot,d){
+  var cs=coachSlot(slot,d);if(cs)return cs;
   if(!isSot())return genPlanSlot(k,slot,d);
   if(d&&wdOf(d)===6){var free=sunMorning(d)?'lunch':'dinner';if(slot===free)return [{f:'libre',g:100}];}
   return MENU[k][slot].map(function(x){return {f:x[0],g:x[1]};});
@@ -946,18 +971,18 @@ function header(){
   else if(dd<0&&!isSot()) sub='Empieza el '+dayLabel(START).toLowerCase();
   else sub='Plan del '+rangeLabel(START,addDays(START,27));
   if(isSot()){title='Plan Sotero';kind='Definición de 4 semanas';}
-  else{title=PROF.name;kind=GOALS[G.goal]+' de 4 semanas';}
+  else{title=PROF.name;kind=proProf()?'Seguimiento con tu nutricionista':GOALS[G.goal]+' de 4 semanas';}
   document.title=isSot()?'Plan Sotero':'Plan de '+PROF.name;
   return '<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>'+esc(title)+'</h1></div>'+whoBtn()+'<p class="sub">'+kind+' · '+sub+'</p></header>';
 }
 function tabs(){
   var T=[['hoy','Hoy'],['comidas','Comidas'],['peso','Progreso'],['alim','Alimentos'],['ajustes','Ajustes']];
-  return '<nav class="tabs" role="tablist" aria-label="Secciones">'+T.map(function(t){return '<button role="tab" aria-selected="'+(ui.tab===t[0])+'" data-act="tab" data-t="'+t[0]+'">'+t[1]+'</button>';}).join('')+'</nav>';
+  return '<nav class="tabs" role="tablist" aria-label="Secciones">'+T.map(function(t){return '<button role="tab" aria-selected="'+(ui.tab===t[0])+'" data-act="tab" data-t="'+t[0]+'">'+t[1]+(t[0]==='hoy'?' <span class="bdg" data-badge="all" hidden></span>':'')+'</button>';}).join('')+'</nav>';
 }
 function strip(){
   var mon=mondayOf(ui.date),t=todayS(),h='<div class="stripbar"><button class="arrow" data-act="wk" data-n="-7" aria-label="Semana anterior">‹</button><div class="strip">';
   for(var i=0;i<7;i++){
-    var d=addDays(mon,i),k=dayKind(d),n=dayN(d),tg=S.settings.t[k].kcal,pct=Math.min(1,n.kcal/tg)*100;
+    var d=addDays(mon,i),k=dayKind(d),n=dayN(d),tg=S.settings.t[k].kcal,pct=tgtOn()?Math.min(1,n.kcal/tg)*100:0;
     h+='<button class="dchip'+(d===ui.date?' on':'')+(d===t?' today':'')+'" data-act="date" data-d="'+d+'" aria-label="'+dayLabel(d)+'"><span class="dl">'+DS[i]+'</span><span class="dn">'+(+d.slice(8))+'</span><span class="dk k-'+k+'"></span><i style="--h:'+pct+'%"></i></button>';
   }
   return h+'</div><button class="arrow" data-act="wk" data-n="7" aria-label="Semana siguiente">›</button></div>';
@@ -969,11 +994,12 @@ function dayHead(d){
 function meter(v,t,cls){var p=t>0?Math.min(100,v/t*100):0;return '<div class="meter'+(v>t*1.05?' over':'')+'"><i style="width:'+p+'%"></i></div>';}
 function totalsCard(d){
   var k=dayKind(d),t=S.settings.t[k],n=dayN(d),pl=menuN(k,d),left=t.kcal-n.kcal;
+  if(!tgtOn())return '<section class="card"><div class="hrow"><div class="big">'+f0(n.kcal)+' <small>kcal</small></div><span class="muted">'+(n.kcal===0?'Aún no has registrado comidas':'Lo que llevas hoy')+'</span></div><div class="macros"><div class="mac p"><span class="l">Proteína</span><b>'+f0(n.p)+' <small>g</small></b></div><div class="mac c"><span class="l">Carbohidratos</span><b>'+f0(n.c)+' <small>g</small></b></div><div class="mac g"><span class="l">Grasas</span><b>'+f0(n.g)+' <small>g</small></b></div></div>'+(pl.kcal>0?'<p class="plan-line num">Menú de tu nutricionista para este día: '+f0(pl.kcal)+' kcal · P '+f0(pl.p)+' g · C '+f0(pl.c)+' g · G '+f0(pl.g)+' g</p>':'')+waitMsg()+'</section>';
   var msg=n.kcal===0?'Aún no has registrado comidas':(left>=0?'Te quedan '+f0(left)+' kcal':'Te pasas '+f0(-left)+' kcal');
   function mac(cls,label,v,tg){return '<div class="mac '+cls+'"><span class="l">'+label+'</span><b>'+f0(v)+' <small>/ '+f0(tg)+' g</small></b>'+meter(v,tg)+'</div>';}
   return '<section class="card"><div class="hrow"><div class="big">'+f0(n.kcal)+' <small>/ '+f0(t.kcal)+' kcal</small></div><span class="muted">'+msg+'</span></div>'+meter(n.kcal,t.kcal)+
     '<div class="macros">'+mac('p','Proteína',n.p,t.p)+mac('c','Carbohidratos',n.c,t.c)+mac('g','Grasas',n.g,t.g)+'</div>'+
-    '<p class="plan-line num">Menú del plan para este tipo de día: '+f0(pl.kcal)+' kcal · P '+f0(pl.p)+' g · C '+f0(pl.c)+' g · G '+f0(pl.g)+' g</p></section>';
+    (pl.kcal>0||!proProf()?'<p class="plan-line num">'+(coachMenu()?'Menú de tu nutricionista para este día: ':'Menú del plan para este tipo de día: ')+f0(pl.kcal)+' kcal · P '+f0(pl.p)+' g · C '+f0(pl.c)+' g · G '+f0(pl.g)+' g</p>':'')+'</section>';
 }
 function weightField(d){
   var v=S.weights[d],m=weekMean(d);
@@ -983,7 +1009,7 @@ function schedRow(r,i,on,k,d){
   var kc='';
   if(r.slot){
     if(/libre/i.test(r.t)) kc='<em>hasta 800 kcal</em>';
-    else kc='<em>'+f0(slotN(planSlot(k,r.slot,d)).kcal)+' kcal</em>';
+    else{var pls=planSlot(k,r.slot,d);kc=pls.length?'<em>'+f0(slotN(pls).kcal)+' kcal</em>':'';}
   }
   return '<li class="srow t-'+r.type+'"><label><input type="checkbox" data-act="check" data-d="'+d+'" data-i="'+i+'"'+(on?' checked':'')+'><span class="tm">'+fmtT(r.s)+'</span><span class="tx">'+esc(r.t)+kc+'</span></label></li>';
 }
@@ -991,7 +1017,7 @@ function weekTable(){
   var mon=mondayOf(ui.date),h='<section class="card"><h2>Esta semana</h2><div class="wt">';
   for(var i=0;i<7;i++){
     var d=addDays(mon,i),k=dayKind(d),n=dayN(d),t=S.settings.t[k];
-    h+='<button class="wrow" data-act="date" data-d="'+d+'"><span class="d">'+DS[i]+'</span><span class="bar">'+meter(n.kcal,t.kcal)+'<span class="num">'+f0(n.kcal)+' / '+f0(t.kcal)+' kcal · '+kShort(k)+'</span></span><span class="kg">'+(S.weights[d]!=null?f1(S.weights[d])+' kg':'—')+'</span></button>';
+    h+='<button class="wrow" data-act="date" data-d="'+d+'"><span class="d">'+DS[i]+'</span><span class="bar">'+(tgtOn()?meter(n.kcal,t.kcal):'')+'<span class="num">'+f0(n.kcal)+(tgtOn()?' / '+f0(t.kcal):'')+' kcal · '+kShort(k)+'</span></span><span class="kg">'+(S.weights[d]!=null?f1(S.weights[d])+' kg':'—')+'</span></button>';
   }
   return h+'</div></section>';
 }
@@ -1021,7 +1047,7 @@ function streak(test){
   for(i=0;i<90;i++){if(test(d)){n++;d=addDays(d,-1);}else break;}
   return n;
 }
-function dayOkProt(d){var n=dayN(d);return n.kcal>0&&n.p>=S.settings.t[dayKind(d)].p*0.9;}
+function dayOkProt(d){var n=dayN(d);return tgtOn()&&n.kcal>0&&n.p>=S.settings.t[dayKind(d)].p*0.9;}
 function waterGoal(d){return S.settings.kg*0.0375+(dayKind(d)==='f'?0.5:0);}
 function goalRow(label,v,g){return '<div class="mac"><div class="hrow"><span>'+label+'</span><b class="num">'+v+' / '+g+'</b></div>'+meter(Math.min(v,g),g)+'</div>';}
 function constCard(d){
@@ -1031,9 +1057,9 @@ function constCard(d){
   return '<section class="card"><h2>Constancia</h2><div class="stats">'+
     '<div class="stat"><div class="l">Racha de comidas</div><div class="v">'+sK+' <small>días</small></div></div>'+
     '<div class="stat"><div class="l">Racha de peso</div><div class="v">'+sW+' <small>días</small></div></div>'+
-    '<div class="stat"><div class="l">Racha de proteína</div><div class="v">'+sP+' <small>días</small></div></div></div>'+
+    (tgtOn()?'<div class="stat"><div class="l">Racha de proteína</div><div class="v">'+sP+' <small>días</small></div></div>':'')+'</div>'+
     '<h3>Metas de la semana del '+rangeLabel(mon,addDays(mon,6))+'</h3><div class="macros">'+
-    goalRow('Peso apuntado',dw,7)+goalRow('Días con comidas',dk,6)+goalRow('Proteína en objetivo',dp,5)+goalRow('Agua en objetivo',da,5)+'</div></section>';
+    goalRow('Peso apuntado',dw,7)+goalRow('Días con comidas',dk,6)+(tgtOn()?goalRow('Proteína en objetivo',dp,5):'')+goalRow('Agua en objetivo',da,5)+'</div></section>';
 }
 function trackCard(d){
   var T=S.track[d]||{},kc=dayKind(d),goal=Math.round((S.settings.kg*0.0375+(kc==='f'?0.5:0))*10)/10,w=T.water!=null?T.water:0;
@@ -1100,13 +1126,13 @@ function mealChips(d,slot){
 }
 function slotCard(d,s,k){
   var list=(S.logs[d]||{})[s.id]||[],n=slotN(list),t=slotTime(d,s.id),plan=planSlot(k,s.id,d);
-  var h='<section class="card slot"><div class="hd"><h3>'+s.name+(t?'<span>'+t+'</span>':'')+'</h3><span class="muted num">'+(list.length?f0(n.kcal)+' kcal · P '+f0(n.p)+' g':'Menú: '+f0(slotN(plan).kcal)+' kcal')+'</span></div>';
+  var h='<section class="card slot"><div class="hd"><h3>'+s.name+(t?'<span>'+t+'</span>':'')+'</h3><span class="muted num">'+(list.length?f0(n.kcal)+' kcal · P '+f0(n.p)+' g':(plan.length?'Menú: '+f0(slotN(plan).kcal)+' kcal':''))+'</span></div>';
   if(list.length) h+=list.map(function(e,i){return entryRow(d,s.id,e,i);}).join('');
-  else h+='<p class="ghost">'+plan.map(function(x){var f=findFood(x[0]||x.f);return esc(f.name)+' '+x.g+' g';}).join(' · ')+'</p>';
+  else h+=plan.length?'<p class="ghost">'+plan.map(function(x){var f=findFood(x[0]||x.f);return f?esc(f.name)+' '+x.g+' g':'';}).join(' · ')+'</p>':'<p class="ghost">Tu nutricionista no ha puesto menú en esta comida. Apunta lo que comas.</p>';
   h+='<div class="btns">';
-  if(!list.length) h+='<button class="btn main sm" data-act="useplan" data-d="'+d+'" data-s="'+s.id+'">Usar el menú del plan</button>';
+  if(!list.length&&plan.length) h+='<button class="btn main sm" data-act="useplan" data-d="'+d+'" data-s="'+s.id+'">'+(coachMenu()?'Usar el menú de mi nutricionista':'Usar el menú del plan')+'</button>';
   var prevD=list.length?null:lastSlotDay(d,s.id),isFree=plan.length===1&&plan[0].f==='libre';
-  if(!isFree)h+='<button class="btn sm" data-act="alt" data-d="'+d+'" data-s="'+s.id+'">'+(ui.alt===d+'|'+s.id?'Cerrar opciones':'Cambiar plato')+'</button>';
+  if(!isFree&&!coachMenu()&&!proProf())h+='<button class="btn sm" data-act="alt" data-d="'+d+'" data-s="'+s.id+'">'+(ui.alt===d+'|'+s.id?'Cerrar opciones':'Cambiar plato')+'</button>';
   if(prevD)h+='<button class="btn sm" data-act="repeat" data-d="'+d+'" data-s="'+s.id+'" data-from="'+prevD+'">Repetir del '+dayLabel(prevD).toLowerCase()+'</button>';
   h+='<button class="btn sm" data-act="openpick" data-s="'+s.id+'">'+(ui.picker===s.id?'Cerrar lista':'Añadir alimento')+'</button>';
   if(isSot()&&((k==='f'&&s.id==='snack')||(k==='r'&&s.id==='mid'))) h+='<button class="btn sm" data-act="tortitas" data-d="'+d+'" data-s="'+s.id+'">Cambiar por tortitas</button>';
@@ -1130,7 +1156,7 @@ function copyDay(to,from){
 function vComidas(){
   var d=ui.date,k=dayKind(d);
   return strip()+dayHead(d)+totalsCard(d)+matchCard(d)+
-    '<div class="btns"><button class="btn main" data-act="useplanall" data-d="'+d+'">Cargar el menú del plan en todo el día</button></div>'+
+    ((proProf()&&!coachMenu())?'':'<div class="btns"><button class="btn main" data-act="useplanall" data-d="'+d+'">'+(coachMenu()?'Cargar el menú de mi nutricionista en todo el día':'Cargar el menú del plan en todo el día')+'</button></div>')+
     '<details class="card fold" data-wk="c-act"'+(ui.open['c-act']?' open':'')+'><summary>Copiar o vaciar el día</summary><div class="btns"><button class="btn" data-act="copyday" data-d="'+d+'" data-from="'+addDays(d,-1)+'">Copiar de ayer</button>'+copySelect(d)+'<button class="btn danger" data-act="clearday" data-d="'+d+'">Vaciar el día</button></div></details>'+
     slotsFor(d).map(function(s){return slotCard(d,s,k);}).join('');
 }
@@ -1368,7 +1394,7 @@ function photosCard(){
   return h+'</section>';
 }
 function vPeso(){
-  var ws=weeksData(),rec=recommendation(ws),last=null,i;
+  var ws=weeksData(),rec=proProf()?null:recommendation(ws),last=null,i;
   for(i=27;i>=0;i--){var dd=addDays(START,i);if(S.weights[dd]!=null){last=dd;break;}}
   var recent=[];for(i=0;i<28;i++){var d2=addDays(START,i);if(last&&diffDays(last,d2)>=0&&diffDays(last,d2)<7&&S.weights[d2]!=null)recent.push(S.weights[d2]);}
   var cur=recent.length?recent.reduce(function(a,b){return a+b;},0)/recent.length:null;
@@ -1379,13 +1405,13 @@ function vPeso(){
     '<div class="stat"><div class="l">Media últimos 7 días</div><div class="v">'+(cur!=null?f1(cur):'—')+' <small>kg</small></div></div>'+
     '<div class="stat"><div class="l">Cambio total</div><div class="v">'+(delta!=null?(delta>0?'+':'')+f1(delta):'—')+' <small>kg</small></div></div>'+
     '<div class="stat"><div class="l">Ritmo</div><div class="v">'+(pace!=null?(pace>0?'+':'')+f1(pace):'—')+' <small>kg/sem</small></div></div></div>'+
-    '<div class="chartbox">'+chartSVG(ws)+'</div><div class="legend"><span class="a">Peso diario</span><span class="b">Media semanal</span><span class="c">'+(isSot()?'Ritmo objetivo: −0,3 kg por semana':G.pace===0?'Objetivo: mantener el peso':'Ritmo previsto: '+(G.pace>0?'+':'−')+f2(Math.abs(G.pace))+' kg por semana')+'</span></div></section>';
+    '<div class="chartbox">'+chartSVG(ws)+'</div><div class="legend"><span class="a">Peso diario</span><span class="b">Media semanal</span><span class="c">'+(proProf()?'Tu nutricionista ve esta evolución':isSot()?'Ritmo objetivo: −0,3 kg por semana':G.pace===0?'Objetivo: mantener el peso':'Ritmo previsto: '+(G.pace>0?'+':'−')+f2(Math.abs(G.pace))+' kg por semana')+'</span></div></section>';
   if(rec){
     h+='<section class="rec'+(rec.kind==='ok'?'':' warn')+'"><b>Ajuste de la semana '+(rec.w+1)+'</b><p>'+esc(rec.msg)+(coachOn()&&rec.kind!=='ok'?' Coméntalo con '+esc(S.coach.pro||'tu nutricionista')+' antes de cambiar nada.':'')+'</p>'+
       (rec.kind==='cut'&&!coachOn()?'<div class="btns"><button class="btn main sm" data-act="adj" data-n="-1">Restar 150 kcal a los objetivos</button></div>':'')+
       (rec.kind==='add'&&!coachOn()?'<div class="btns"><button class="btn main sm" data-act="adj" data-n="1">Sumar 200 kcal a los objetivos</button></div>':'')+'</section>';
-  } else h+='<section class="rec"><p>Apunta el peso cada mañana en ayunas. A partir de la semana 2 verás aquí si tienes que ajustar las calorías.</p></section>';
-  h+=summaryCard()+asFold('p-med',measuresCard(),false)+asFold('p-foto',photosCard(),false);
+  } else h+='<section class="rec"><p>'+(proProf()?'Apunta el peso cada mañana en ayunas. Tu nutricionista lo revisa y ajusta tu plan.':'Apunta el peso cada mañana en ayunas. A partir de la semana 2 verás aquí si tienes que ajustar las calorías.')+'</p></section>';
+  h+=(tgtOn()?summaryCard():'')+asFold('p-med',measuresCard(),false)+asFold('p-foto',photosCard(),false);
   var t=todayS(),cw=Math.floor(diffDays(t,START)/7);
   ws.forEach(function(w){
     var openW=ui.open[w.w]!=null?ui.open[w.w]:(w.w===cw||(cw<0&&w.w===0)||(cw>3&&w.w===3));
@@ -1415,11 +1441,11 @@ function vPlan(){
   var t=S.settings.t;
   function row(label,m,unit){return '<tr><th>'+label+'</th>'+['f','r'].map(function(k){return '<td><div class="inp"><input type="text" inputmode="decimal" data-bind="tg" data-k="'+k+'" data-m="'+m+'" value="'+f0(t[k][m])+'"'+(coachOn()?' readonly':'')+' aria-label="'+label+' ('+kLabel(k).toLowerCase()+')"><span>'+unit+'</span></div></td>';}).join('')+'</tr>';}
   function byMacros(k){return t[k].p*4+t[k].c*4+t[k].g*9;}
-  var h=profileCard()+'<section class="card"><h2>Objetivos diarios</h2>'+coachNote()+'<div class="scroll"><table class="tgt"><thead><tr><th></th><th>'+kLabel('f')+'</th><th>'+kLabel('r')+'</th></tr></thead><tbody>'+row('Calorías','kcal','kcal')+row('Proteína','p','g')+row('Carbohidratos','c','g')+row('Grasas','g','g')+
-    '<tr><th>Suma de macros</th><td class="num">'+f0(byMacros('f'))+' kcal</td><td class="num">'+f0(byMacros('r'))+' kcal</td></tr></tbody></table></div><p class="muted">'+(isSot()?'Los días de fútbol son lunes, miércoles, jueves y sábado. Martes, viernes y domingo son días sin fútbol. El menú de la app incluye la verdura y la ensalada, así que puede sumar unas kcal más que el plan.':'Tus días de entreno son: '+(G.nTrain?G.a.days.map(function(on,i){return on?DAYS[i].toLowerCase():null;}).filter(Boolean).join(', '):'ninguno')+'. Los demás son días de descanso. Puedes retocar los objetivos; los menús se recalculan solos.')+'</p></section>'+
+  var h=profileCard()+(!tgtOn()?'<section class="card"><h2>Objetivos diarios</h2>'+waitMsg()+'</section>':'<section class="card"><h2>Objetivos diarios</h2>'+coachNote()+'<div class="scroll"><table class="tgt"><thead><tr><th></th><th>'+kLabel('f')+'</th><th>'+kLabel('r')+'</th></tr></thead><tbody>'+row('Calorías','kcal','kcal')+row('Proteína','p','g')+row('Carbohidratos','c','g')+row('Grasas','g','g')+
+    '<tr><th>Suma de macros</th><td class="num">'+f0(byMacros('f'))+' kcal</td><td class="num">'+f0(byMacros('r'))+' kcal</td></tr></tbody></table></div><p class="muted">'+(isSot()?'Los días de fútbol son lunes, miércoles, jueves y sábado. Martes, viernes y domingo son días sin fútbol. El menú de la app incluye la verdura y la ensalada, así que puede sumar unas kcal más que el plan.':'Tus días de entreno son: '+(G.nTrain?G.a.days.map(function(on,i){return on?DAYS[i].toLowerCase():null;}).filter(Boolean).join(', '):'ninguno')+'. Los demás son días de descanso.'+(proProf()?'':' Puedes retocar los objetivos; los menús se recalculan solos.'))+'</p></section>')+
     (isSot()?'<section class="card"><h2>Partidos de los domingos</h2><p class="muted">El domingo comes siempre como día de fútbol, porque no sabes si juegas hasta la hora del partido. Pon la hora de cada semana y marca si al final juegas: si juegas, el lunes pasa a ser casi sin entreno.</p>'+[addDays(START,-1),addDays(START,6),addDays(START,13),addDays(START,20),addDays(START,27)].map(function(s){return matchRow(s);}).join('')+'</section>':'')+
-    '<section class="card"><h2>Peso de referencia</h2><div class="hrow"><label for="kg0">Peso inicial</label><div class="inp"><input id="kg0" type="text" inputmode="decimal" data-bind="kg" value="'+f1(S.settings.kg)+'"><span>kg</span></div></div><p class="muted">Sirve de punto de partida del gráfico y del ritmo '+(isSot()?'de −0,3 kg por semana':G.pace===0?'(mantener el peso)':'previsto de '+(G.pace>0?'+':'−')+f2(Math.abs(G.pace))+' kg por semana')+'.</p></section>'+
-    foldEach('pl-r',(isSot()?'<section class="card"><h2>Reglas de ajuste</h2><ul class="plain"><li>Si la media semanal baja menos de 0,2 kg, resta 150 kcal (carbohidrato de la cena).</li><li>Si baja más de 0,6 kg, suma 200 kcal (pan o fruta en la merienda).</li><li>Para y sube 200–300 kcal de carbohidratos si hay cansancio que no se va, bajada clara de rendimiento, mal sueño, mareos o una pérdida de más de 0,6 kg por semana.</li><li>Después del mes, una semana a mantenimiento (≈2.450 kcal) antes de decidir si repites.</li></ul></section>'+
+    '<section class="card"><h2>Peso de referencia</h2><div class="hrow"><label for="kg0">Peso inicial</label><div class="inp"><input id="kg0" type="text" inputmode="decimal" data-bind="kg" value="'+f1(S.settings.kg)+'"><span>kg</span></div></div><p class="muted">Sirve de punto de partida del gráfico'+(proProf()?'':' y del ritmo '+(isSot()?'de −0,3 kg por semana':G.pace===0?'(mantener el peso)':'previsto de '+(G.pace>0?'+':'−')+f2(Math.abs(G.pace))+' kg por semana'))+'.</p></section>'+
+    foldEach('pl-r',proProf()?'':(isSot()?'<section class="card"><h2>Reglas de ajuste</h2><ul class="plain"><li>Si la media semanal baja menos de 0,2 kg, resta 150 kcal (carbohidrato de la cena).</li><li>Si baja más de 0,6 kg, suma 200 kcal (pan o fruta en la merienda).</li><li>Para y sube 200–300 kcal de carbohidratos si hay cansancio que no se va, bajada clara de rendimiento, mal sueño, mareos o una pérdida de más de 0,6 kg por semana.</li><li>Después del mes, una semana a mantenimiento (≈2.450 kcal) antes de decidir si repites.</li></ul></section>'+
     '<section class="card"><h2>Hidratación, suplementos y sueño</h2><ul class="plain"><li>Agua: 35–40 ml por kg al día (≈2,7–3,1 L), más 500 ml por sesión de fútbol.</li><li>Opcionales: proteína whey, creatina de 3 a 5 g al día y cafeína antes del fútbol, nunca por la tarde.</li><li>Sueño: de 23:30 a 7:30, sin pantallas la última media hora.</li></ul></section>':genRules()),false)+
     '';
   return h;
@@ -1450,18 +1476,21 @@ function profileCard(){
   else{
     var a=G.a,pl=S.profile.plan,days=a.days.map(function(on,i){return on?DS[i]:null;}).filter(Boolean).join(' ');
     var rows=[['Objetivo',GOALS[G.goal]],['Peso inicial',f1(S.settings.kg)+' kg'],['Gasto estimado (mantenimiento)','≈'+f0(pl.maint)+' kcal'],['Metabolismo basal','≈'+f0(pl.bmr)+' kcal'],['Ritmo previsto',G.pace===0?'mantener':(G.pace>0?'+':'−')+f2(Math.abs(G.pace))+' kg/semana'],['Días de entreno',G.nTrain?days+' · '+a.dur+' min':'ninguno'],['Bloque actual',rangeLabel(START,addDays(START,27))]];
+    if(proProf())rows=[['Objetivo',inLabel(IN_GOAL,S.intake&&S.intake.goal)||'—'],['Peso al empezar',f1(S.settings.kg)+' kg'],['Cuestionario enviado',S.intake&&S.intake.date?dayLabel(S.intake.date):'—']];
     h+='<div class="kv">'+rows.map(function(r){return '<span>'+r[0]+'</span><span>'+esc(r[1])+'</span>';}).join('')+'</div>';
-    if(a.med)h+='<p class="note">Indicaste que tomas medicación o tienes una condición médica: consulta con tu médico antes de seguir este plan y no cambies tu tratamiento por esta app.</p>';
-    h+='<p class="muted">Es una estimación orientativa, no un consejo médico. Se afina con tu peso real: sigue las recomendaciones semanales de Progreso.</p>';
+    if(a.med&&!proProf())h+='<p class="note">Indicaste que tomas medicación o tienes una condición médica: consulta con tu médico antes de seguir este plan y no cambies tu tratamiento por esta app.</p>';
+    h+=proProf()?'<p class="muted">Tu nutricionista fija tus objetivos y tus menús a partir de tu cuestionario. Cualquier duda, escríbele por el chat.</p>':'<p class="muted">Es una estimación orientativa, no un consejo médico. Se afina con tu peso real: sigue las recomendaciones semanales de Progreso.</p>';
   }
   h+='<div class="btns"><button class="btn main sm" data-act="profiles">Cambiar o crear perfil</button>';
-  if(!isSot())h+='<button class="btn sm" data-act="redo">Rehacer el cuestionario</button>';
-  if(!isSot()&&diffDays(todayS(),START)>=21)h+='<button class="btn sm" data-act="nextblock">'+(ui.confirmBlock?'Confirmar: nuevo bloque con mi peso actual':'Empezar nuevo bloque de 4 semanas')+'</button>'+(ui.confirmBlock?'<button class="btn sm" data-act="nextblockno">Cancelar</button>':'');
+  if(!isSot()&&!proProf())h+='<button class="btn sm" data-act="redo">Rehacer el cuestionario</button>';
+  if(!isSot()&&!proProf()&&diffDays(todayS(),START)>=21)h+='<button class="btn sm" data-act="nextblock">'+(ui.confirmBlock?'Confirmar: nuevo bloque con mi peso actual':'Empezar nuevo bloque de 4 semanas')+'</button>'+(ui.confirmBlock?'<button class="btn sm" data-act="nextblockno">Cancelar</button>':'');
   return h+'</div></section>';
 }
 
 /* ---------- pantallas: bienvenida, perfiles y cuestionario ---------- */
 function vWelcome(){
+  var inv=ui.invite&&cloudOn()&&AUTH&&!AUTH.pro;
+  if(inv)return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tu plan</h1></div><p>Tu nutricionista te ha invitado. Responde su cuestionario inicial y él o ella te preparará tus objetivos y tus menús.</p><p class="muted">Has entrado como '+esc(AUTH.email)+'. Tus datos se guardan en tu cuenta.</p></div><div class="btns"><button class="btn main" data-act="pnew">Empezar el cuestionario</button><button class="btn" data-act="logout">Cerrar sesión</button></div>';
   var hasSot=cloudOn()||INDEX.list.some(function(x){return x.type==='sot';});
   return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tu plan</h1></div><p>Responde unas preguntas y la app te prepara un plan de comidas con calorías y macros, un horario de comidas y el seguimiento de tu peso.</p><p class="muted">'+(cloudOn()&&AUTH?'Has entrado como '+esc(AUTH.email)+'. Tus datos se guardan en tu cuenta.':'Tus datos se quedan solo en este dispositivo: no hay cuentas ni contraseñas. Puedes crear varios perfiles, uno para cada persona.')+'</p></div>'+
     '<div class="btns"><button class="btn main" data-act="pnew">Crear mi perfil</button>'+(hasSot?'':'<button class="btn" data-act="psotero">Usar el plan original de Sotero</button>')+(cloudOn()&&AUTH?'<button class="btn" data-act="logout">Cerrar sesión</button>':'')+'</div>';
@@ -1494,7 +1523,7 @@ var OB_STEPS=7;
 function hhmm(m){return pad(Math.floor(m/60))+':'+pad(m%60);}
 function obNew(){
   var wd=wdOf(todayS());
-  return {step:0,edit:false,err:'',name:'',sex:'',age:'',h:'',kg:'',goal:'',pace:'normal',act:'sed',days:[true,false,true,false,true,false,false],ttype:'fuerza',dur:60,int:'media',ttime:1080,wake:450,bed:1410,work:true,ws:540,we:1020,wdays:[true,true,true,true,true,false,false],meals:4,diet:'omni',avoid:[],emb:false,tca:false,med:false,ok:false,startOpt:wd<=1?'this':'next'};
+  return {pro:false,step:0,edit:false,err:'',name:'',sex:'',age:'',h:'',kg:'',goal:'',pace:'normal',act:'sed',days:[true,false,true,false,true,false,false],ttype:'fuerza',dur:60,int:'media',ttime:1080,wake:450,bed:1410,work:true,ws:540,we:1020,wdays:[true,true,true,true,true,false,false],meals:4,diet:'omni',avoid:[],emb:false,tca:false,med:false,ok:false,startOpt:wd<=1?'this':'next'};
 }
 function obFrom(p){
   var a=p.ans,o=obNew();
@@ -1514,9 +1543,118 @@ function readOb(){
   });
 }
 function obAns(){
-  return {name:ob.name,sex:ob.sex,age:num(ob.age),h:num(ob.h),kg:num(ob.kg),goal:ob.goal,pace:ob.pace,act:ob.act,days:ob.days.slice(),ttype:ob.ttype,dur:+ob.dur,int:ob.int,ttime:ob.ttime,wake:ob.wake,bed:ob.bed,work:!!ob.work,ws:ob.ws,we:ob.we,wdays:ob.wdays.slice(),meals:+ob.meals,diet:ob.diet,avoid:ob.avoid.slice(),med:!!ob.med};
+  return {name:ob.name,sex:ob.sex,age:num(ob.age),h:num(ob.h),kg:num(ob.kg),goal:ob.pro?({bajar:'bajar',subir:'subir'}[ob.in_goal]||'mantener'):ob.goal,pace:ob.pace,act:ob.act,days:ob.days.slice(),ttype:ob.ttype,dur:+ob.dur,int:ob.int,ttime:ob.ttime,wake:ob.wake,bed:ob.bed,work:!!ob.work,ws:ob.ws,we:ob.we,wdays:ob.wdays.slice(),meals:+ob.meals,diet:ob.diet,avoid:ob.avoid.slice(),med:ob.pro?false:!!ob.med};
 }
+
+/* ---------- cuestionario clínico para clientes de un nutricionista (no calcula calorías) ---------- */
+var IN_GOAL=[['bajar','Perder grasa'],['subir','Ganar músculo'],['mantener','Mantener mi peso'],['salud','Mejorar mi salud o mis hábitos'],['rend','Rendimiento deportivo']];
+var IN_COND=[['diabetes','Diabetes'],['hta','Tensión alta'],['colest','Colesterol o triglicéridos altos'],['tiroides','Problemas de tiroides'],['sop','Ovario poliquístico'],['digest','Problemas digestivos'],['renal','Enfermedad renal'],['anemia','Anemia o déficits'],['otra','Otra']];
+var IN_AVOID=[['lactosa','Lactosa'],['gluten','Gluten'],['nueces','Frutos secos'],['huevo','Huevo'],['pescado','Pescado'],['roja','Carne roja']];
+var IN_ALC=[['no','Nunca'],['oca','Ocasional'],['fin','Fines de semana'],['dia','A diario']];
+var IN_SMOKE=[['no','No'],['oca','Ocasional'],['si','Fumo']];
+var IN_WATER=[['<1','Menos de 1 L'],['1-2','1 a 2 L'],['>2','Más de 2 L']];
+var IN_COOK=[['yo','Yo'],['otro','Otra persona'],['mix','Mixto']];
+var IN_OUT=[['0','Nunca'],['1-2','1 o 2 veces'],['3-5','3 a 5 veces'],['6+','Casi a diario']];
+var IN_TIME=[['poco','Poco tiempo'],['normal','Normal'],['mucho','Me gusta cocinar']];
+function inLabel(list,v){for(var i=0;i<list.length;i++)if(list[i][0]===v)return list[i][1];return v||'';}
+function inLabels(list,arr){return (arr||[]).map(function(v){return inLabel(list,v);}).join(', ');}
+function waitMsg(){
+  var linked=(S.coach&&S.coach.link)||(ui.links||[]).some(function(x){return PROF&&x.profile_id===PROF.id;});
+  return '<p class="note">'+(linked?esc(S.coach&&S.coach.pro?S.coach.pro:'Tu nutricionista')+' todavía no ha fijado tus objetivos. Mientras tanto, apunta lo que comes y tu peso: lo verá en cuanto prepare tu plan.':'Aún no estás vinculado con tu nutricionista. Vincula tu perfil en Ajustes, Cuenta y datos para recibir tu plan.')+'</p>';
+}
+function obNewPro(info){var o=obNew();o.pro=true;o.in_goal='';o.in_cond=[];o.proName=info&&info.name?info.name:'tu nutricionista';return o;}
+function inTxt(f,label,ph,rows){return '<label class="fld"><span class="lb">'+label+'</span><textarea data-ob="'+f+'" rows="'+(rows||2)+'" maxlength="500" placeholder="'+esc(ph||'')+'">'+esc(ob[f]||'')+'</textarea></label>';}
+function inChips(f,opts){return '<div class="chips">'+opts.map(function(x){return oChip(f,x[0],x[1],ob[f]===x[0]);}).join('')+'</div>';}
+function inMulti(f,opts){return '<div class="chips">'+opts.map(function(x){return oChip(f,x[0],x[1],(ob[f]||[]).indexOf(x[0])>-1,'obc');}).join('')+'</div>';}
+function obStepPro(st){
+  var h='';
+  if(st===0){
+    h='<h2>Tus datos</h2><p class="muted">'+esc(ob.proName)+' usará tus respuestas para preparar tu plan. Aquí no se calculan calorías: te las dará tu nutricionista.</p>'+
+      '<div class="two"><label>Nombre<input type="text" data-ob="name" value="'+esc(ob.name)+'" maxlength="24" autocomplete="off"></label><label>Edad<input type="text" inputmode="numeric" data-ob="age" value="'+esc(ob.age)+'" autocomplete="off"></label><label>Altura (cm)<input type="text" inputmode="numeric" data-ob="h" value="'+esc(ob.h)+'" autocomplete="off"></label><label>Peso (kg)<input type="text" inputmode="decimal" data-ob="kg" value="'+esc(ob.kg)+'" autocomplete="off"></label></div>'+
+      '<div class="fld"><span class="lb">Sexo</span><div class="chips">'+oChip('sex','h','Hombre',ob.sex==='h')+oChip('sex','m','Mujer',ob.sex==='m')+'</div></div>'+
+      '<div class="fld"><span class="lb">¿Qué quieres conseguir?</span><div class="opts">'+IN_GOAL.map(function(x){return oOpt('in_goal',x[0],x[1],'',ob.in_goal===x[0]);}).join('')+'</div></div>'+
+      inTxt('in_why','¿Por qué ahora? ¿Qué te gustaría cambiar?','');
+  } else if(st===1){
+    h='<h2>Tu salud</h2><p class="muted">Solo lo verá tu nutricionista. Deja en blanco lo que no te aplique.</p>'+
+      '<div class="fld"><span class="lb">¿Tienes alguna de estas condiciones?</span>'+inMulti('in_cond',IN_COND)+'</div>'+
+      inTxt('in_condTxt','Otras enfermedades, operaciones o lesiones','')+
+      inTxt('in_meds','Medicación y suplementos que tomas','')+
+      '<div class="fld"><span class="lb">Alergias o intolerancias</span><div class="chips">'+IN_AVOID.map(function(x){return oChip('avoid',x[0],x[1],ob.avoid.indexOf(x[0])>-1,'obm');}).join('')+'</div></div>'+
+      inTxt('in_alerg','Otras alergias o intolerancias','')+
+      inTxt('in_labs','Analíticas recientes (si las tienes a mano)','Por ejemplo: glucosa, colesterol, hierro, vitamina D…')+
+      '<label class="chk" style="cursor:pointer"><input type="checkbox" data-ob="emb"'+(ob.emb?' checked':'')+'><span>Estoy embarazada o en lactancia</span></label>'+
+      '<label class="chk" style="cursor:pointer"><input type="checkbox" data-ob="tca"'+(ob.tca?' checked':'')+'><span>Tengo o he tenido un trastorno de la conducta alimentaria</span></label>';
+  } else if(st===2||st===3){
+    h=obStepBase(st);
+  } else if(st===4){
+    h=obStepBase(4).replace(/<p class="note">[^]*?<\/p>\s*$/,'')+
+      inTxt('in_likes','Alimentos que más te gustan','')+
+      inTxt('in_dislikes','Alimentos que no te gustan o no comes','')+
+      '<div class="fld"><span class="lb">¿Quién cocina en casa?</span>'+inChips('in_cook',IN_COOK)+'</div>'+
+      '<div class="fld"><span class="lb">¿Cuántas comidas a la semana haces fuera de casa?</span>'+inChips('in_out',IN_OUT)+'</div>'+
+      '<div class="fld"><span class="lb">Tiempo que tienes para cocinar</span>'+inChips('in_time',IN_TIME)+'</div>';
+  } else if(st===5){
+    h='<h2>Tus hábitos</h2>'+
+      '<div class="fld"><span class="lb">Alcohol</span>'+inChips('in_alc',IN_ALC)+'</div>'+
+      '<div class="fld"><span class="lb">Tabaco</span>'+inChips('in_smoke',IN_SMOKE)+'</div>'+
+      '<div class="fld"><span class="lb">Nivel de estrés (1 bajo, 5 alto)</span>'+inChips('in_stress',[['1','1'],['2','2'],['3','3'],['4','4'],['5','5']])+'</div>'+
+      '<div class="fld"><span class="lb">Agua que bebes al día</span>'+inChips('in_water',IN_WATER)+'</div>'+
+      inTxt('in_digest','Digestión (estreñimiento, hinchazón, reflujo…)','')+
+      inTxt('in_prev','Dietas anteriores y cómo te fueron','')+
+      '<h3>¿Qué comes un día normal?</h3>'+
+      inTxt('in_r_bk','Desayuno','')+inTxt('in_r_mid','Media mañana','')+inTxt('in_r_lunch','Comida','')+inTxt('in_r_snack','Merienda','')+inTxt('in_r_dinner','Cena','')+inTxt('in_r_pick','Entre horas y bebidas','');
+  } else {
+    h='<h2>Antes de enviarlo</h2><p>Vas a compartir este cuestionario con <b>'+esc(ob.proName)+'</b>. Mientras estés vinculado también verá las comidas, el peso, las medidas, el seguimiento y las notas del diario de este perfil. Tus fotos no se comparten.</p>'+
+      '<p class="muted">No calculo tus calorías ni tus menús: los prepara tu nutricionista y los verás en la app. Puedes dejar de compartir cuando quieras en Ajustes, Cuenta y datos.</p>'+
+      '<label class="chk" style="cursor:pointer"><input type="checkbox" data-ob="ok"'+(ob.ok?' checked':'')+'><span>Doy mi consentimiento para que '+esc(ob.proName)+' trate mis datos de salud de este cuestionario y de mi seguimiento para elaborar mi plan nutricional</span></label>';
+  }
+  return h;
+}
+function obStep(){return ob.pro?obStepPro(ob.step):obStepBase(ob.step);}
 function obValidate(step){
+  if(!ob.pro)return obValidateBase(step);
+  if(step===0){var e=obValidateBase(0);if(e)return e;if(!ob.in_goal)return 'Elige qué quieres conseguir.';return '';}
+  if(step===2||step===3)return obValidateBase(step);
+  if(step===6&&!ob.ok)return 'Marca la casilla para enviárselo a tu nutricionista.';
+  return '';
+}
+function obIntake(){
+  var I={v:1,date:todayS(),goal:ob.in_goal,why:ob.in_why||'',cond:(ob.in_cond||[]).slice(),condTxt:ob.in_condTxt||'',meds:ob.in_meds||'',alerg:ob.in_alerg||'',labs:ob.in_labs||'',emb:!!ob.emb,tca:!!ob.tca,
+    likes:ob.in_likes||'',dislikes:ob.in_dislikes||'',cook:ob.in_cook||'',out:ob.in_out||'',time:ob.in_time||'',alc:ob.in_alc||'',smoke:ob.in_smoke||'',stress:ob.in_stress||'',water:ob.in_water||'',digest:ob.in_digest||'',prev:ob.in_prev||'',
+    r24:{bk:ob.in_r_bk||'',mid:ob.in_r_mid||'',lunch:ob.in_r_lunch||'',snack:ob.in_r_snack||'',dinner:ob.in_r_dinner||'',pick:ob.in_r_pick||''},
+    pro:ob.proName||''};
+  return I;
+}
+function createProProfile(){
+  var a=obAns(),pl=computePlan(a),start=mondayOf(todayS());
+  var id='p'+Date.now().toString(36),entry={id:id,name:a.name,type:'gen',key:'plan-p-'+id,ts:Date.now()};
+  var st=newGenState(a,pl,start);st.profile.pro=true;st.intake=obIntake();
+  try{localStorage.setItem(entry.key,JSON.stringify(st));}catch(e){toast('No se pudo guardar el perfil en este navegador');return false;}
+  INDEX.list.push(entry);saveIndex();markDirty(id);
+  return activate(id);
+}
+function inviteCheck(){
+  var code=(ui.invite||'').toUpperCase();
+  if(!code||!cloudOn()||!AUTH||AUTH.pro)return Promise.resolve(null);
+  if(ui.invInfo&&ui.invInfo.code===code&&ui.invInfo.ok!=null)return Promise.resolve(ui.invInfo);
+  return ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/pro_by_code',{p_code:code},AUTH.access);}).then(function(r){
+    ui.invInfo=r&&r.name?{code:code,ok:true,name:r.name,business:r.business||''}:{code:code,ok:false};return ui.invInfo;
+  },function(e){return {code:code,ok:e&&e.net?null:false,net:!!(e&&e.net)};});
+}
+function startNew(){
+  if(ui.invite&&cloudOn()&&AUTH&&!AUTH.pro){
+    inviteCheck().then(function(info){
+      if(info&&info.net){toast('Sin conexión. Inténtalo de nuevo.');return;}
+      ob=info&&info.ok?obNewPro(info):obNew();
+      if(info&&info.ok===false)toast('No se pudo comprobar el código de tu nutricionista. Haz el cuestionario normal y vincúlalo después.');
+      ui.screen='onb';render();toTop();
+    });
+    return;
+  }
+  ob=obNew();ui.screen='onb';render();toTop();
+}
+function autoLink(){ui.au.code=ui.invite;ui.linkAuto=true;linkGo();}
+function obValidateBase(step){
   var a=obAns(),nT=a.days.filter(Boolean).length;
   if(step===0){
     if(!a.name)return 'Escribe tu nombre.';
@@ -1563,8 +1701,8 @@ function menuCoverage(a,pl){
   S=oS;G=oG;PROF=oP;menuMemo={};
   return res;
 }
-function obStep(){
-  var st=ob.step,h='',a;
+function obStepBase(st){
+  var h='',a;
   if(st===0){
     h='<h2>Sobre ti</h2><p class="muted">Con estos datos calculo cuánta energía gastas cada día.</p>'+
       '<div class="two"><label>Nombre<input type="text" data-ob="name" value="'+esc(ob.name)+'" maxlength="24" autocomplete="off"></label><label>Edad<input type="text" inputmode="numeric" data-ob="age" value="'+esc(ob.age)+'" autocomplete="off"></label><label>Altura (cm)<input type="text" inputmode="numeric" data-ob="h" value="'+esc(ob.h)+'" autocomplete="off"></label><label>Peso (kg)<input type="text" inputmode="decimal" data-ob="kg" value="'+esc(ob.kg)+'" autocomplete="off"></label></div>'+
@@ -1618,13 +1756,13 @@ function obStep(){
   return h;
 }
 function vOnb(){
-  var st=ob.step,last=st===OB_STEPS-1,h='<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>'+(ob.edit?'Rehacer plan':'Nuevo perfil')+'</h1></div></header>';
+  var st=ob.step,last=st===OB_STEPS-1,h='<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>'+(ob.edit?'Rehacer plan':ob.pro?'Cuestionario':'Nuevo perfil')+'</h1></div></header>';
   h+='<section class="card"><div class="prog" role="img" aria-label="Paso '+(st+1)+' de '+OB_STEPS+'">';
   for(var i=0;i<OB_STEPS;i++)h+='<i'+(i<=st?' class="on"':'')+'></i>';
   h+='</div>'+obStep();
   if(ob.err)h+='<p class="err" role="alert">'+esc(ob.err)+'</p>';
   h+='<div class="btns">'+(st>0?'<button class="btn" data-act="obback">Atrás</button>':'<button class="btn" data-act="obcancel">'+((INDEX.list.length||ob.edit)?'Cancelar':'Inicio')+'</button>')+
-    (last?'<button class="btn main" data-act="obcreate">'+(ob.edit?'Guardar cambios':'Crear mi plan')+'</button>':'<button class="btn main" data-act="obgo">Siguiente</button>')+'</div></section>';
+    (last?'<button class="btn main" data-act="obcreate">'+(ob.edit?'Guardar cambios':ob.pro?'Enviar a mi nutricionista':'Crear mi plan')+'</button>':'<button class="btn main" data-act="obgo">Siguiente</button>')+'</div></section>';
   return h;
 }
 
@@ -1643,6 +1781,7 @@ function loadIndex(){
 function saveIndex(){if(!INDEX)return;try{localStorage.setItem(idxKey(),JSON.stringify(INDEX));}catch(e){}}
 function setupPlan(){
   menuMemo={};
+  if(proProf()&&S.profile.start){var dd0=diffDays(todayS(),S.profile.start);if(dd0>=28)S.profile.start=addDays(S.profile.start,Math.floor(dd0/28)*28);}
   if(isSot()){G=null;START=SOT_START;MAINT=2450;SLOTS=SLOTS_SOT;TYPES=TYPES_SOT;TPL=TPL_SOT;}
   else{G=makeG(S.profile);START=G.start;MAINT=G.maint;SLOTS=G.slots;TYPES=TYPES_GEN;TPL=G.tpl;}
   ui.pwk=Math.max(0,Math.min(3,Math.floor(diffDays(todayS(),START)/7)));
@@ -1745,7 +1884,7 @@ function ensureToken(){
   });
 }
 function forceLogout(msg){
-  AUTH=null;authStore();PROF=null;INDEX=null;PRO=null;PC={list:null,err:null,loading:false,at:0};ui.links=null;ui.psel=null;S=DEF();
+  AUTH=null;authStore();PROF=null;INDEX=null;PRO=null;PC={list:null,err:null,loading:false,at:0};CH.msgs=[];CH.unread={};CH.link=null;CH.draft='';ui.links=null;ui.psel=null;S=DEF();
   ui.screen='auth';ui.authMsg=msg?{k:'info',t:msg}:null;ui.busy=false;render();
 }
 
@@ -1879,7 +2018,7 @@ function newPwSubmit(){
   },function(e){fail(authErr(e));});
 }
 function doLogout(){
-  var go=function(){AUTH=null;authStore();PROF=null;INDEX=null;PRO=null;PC={list:null,err:null,loading:false,at:0};ui.links=null;ui.psel=null;ui.perr='';S=DEF();ui.au={email:'',pw:'',pw2:''};ui.authMode='login';ui.authMsg={k:'info',t:'Has cerrado la sesión.'};ui.screen='auth';ui.busy=false;ui.acct=false;render();toTop();};
+  var go=function(){AUTH=null;authStore();PROF=null;INDEX=null;PRO=null;PC={list:null,err:null,loading:false,at:0};CH.msgs=[];CH.unread={};CH.link=null;CH.draft='';ui.links=null;ui.psel=null;ui.perr='';S=DEF();ui.au={email:'',pw:'',pw2:''};ui.authMode='login';ui.authMsg={k:'info',t:'Has cerrado la sesión.'};ui.screen='auth';ui.busy=false;ui.acct=false;render();toTop();};
   syncPush().then(go,go);
 }
 function syncLabel(){
@@ -1927,7 +2066,7 @@ function vPrivacy(){
     '<h3>Para qué</h3><p>Solo para calcular y mostrarte tu plan y sincronizarlo entre tus dispositivos. No se venden ni se usan para publicidad.</p>'+
     '<h3>Dónde y quién puede verlos</h3><p>Se guardan en tu cuenta, en los servidores de Supabase, con la contraseña cifrada y protegidos para que cada persona solo acceda a lo suyo. La persona que administra la app puede ver técnicamente los datos guardados en el servidor, y se compromete a usarlos solo para resolver fallos.</p>'+
     '<h3>Fotos</h3><p>Las fotos de progreso se quedan solo en tu dispositivo: no se suben a la cuenta.</p>'+
-    '<h3>Si te vinculas con un nutricionista</h3><p>Solo si tú lo decides, escribiendo su código. Entonces esa persona podrá ver las comidas, el peso, las medidas, el seguimiento y las notas del diario del perfil que elijas, ajustar tus objetivos y dejarte notas. Tú decides cuándo dejar de compartir, desde Ajustes, Cuenta y datos, y deja de verlo al instante. Tus fotos no se comparten. Esa persona es la responsable de usar tus datos solo para tu seguimiento nutricional.</p>'+
+    '<h3>Si te vinculas con un nutricionista</h3><p>Solo si tú lo decides, escribiendo su código. Entonces esa persona podrá ver las comidas, el peso, las medidas, el seguimiento y las notas del diario del perfil que elijas, ajustar tus objetivos y dejarte notas. Tú decides cuándo dejar de compartir, desde Ajustes, Cuenta y datos, y deja de verlo al instante. Tus fotos no se comparten. Esa persona es la responsable de usar tus datos solo para tu seguimiento nutricional. Si el nutricionista te envió una invitación, el cuestionario inicial (salud, hábitos y alimentación) también lo verá solo esa persona. El chat guarda los mensajes que os escribís, que solo veis vosotros dos mientras estéis vinculados; no lo uses para urgencias médicas.</p>'+
     '<h3>Tus derechos</h3><p>Puedes descargar todos tus datos y borrar tu cuenta y todo lo que contiene cuando quieras, desde la pestaña Cuenta. El borrado es inmediato y definitivo.</p>'+
     '<h3>Aviso</h3><p>El plan es orientativo y no sustituye el consejo de un médico o dietista. La app es solo para mayores de 18 años.</p>'+
     '<div class="btns"><button class="btn main" data-act="privback">Volver</button></div></section>';
@@ -1959,7 +2098,7 @@ function wipeLocal(){
 function deleteAccount(){
   ui.busy=true;render();
   ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/delete_my_account',{},AUTH.access);}).then(function(){
-    wipeLocal();AUTH=null;PROF=null;INDEX=null;PRO=null;PC={list:null,err:null,loading:false,at:0};ui.links=null;ui.psel=null;S=DEF();ui.busy=false;ui.delAcct=0;ui.au={email:'',pw:'',pw2:''};ui.authMode='login';ui.authMsg={k:'info',t:'Tu cuenta y todos tus datos se han borrado.'};ui.screen='auth';render();toTop();
+    wipeLocal();AUTH=null;PROF=null;INDEX=null;PRO=null;PC={list:null,err:null,loading:false,at:0};CH.msgs=[];CH.unread={};CH.link=null;CH.draft='';ui.links=null;ui.psel=null;S=DEF();ui.busy=false;ui.delAcct=0;ui.au={email:'',pw:'',pw2:''};ui.authMode='login';ui.authMsg={k:'info',t:'Tu cuenta y todos tus datos se han borrado.'};ui.screen='auth';render();toTop();
   },function(e){
     ui.busy=false;
     toast(e&&e.net?'Sin conexión: no se pudo borrar la cuenta':(e&&(e.status===404||e.code==='PGRST202')?'El borrado de cuentas aún no está activado en el servidor':'No se pudo borrar la cuenta'));
@@ -2000,6 +2139,12 @@ function withClient(c,fn){
     PROF={id:c.profile_id,name:c.name,type:c.type,key:'plan-p-'+c.profile_id};
     S=mergeState(c.data);
     if(!isSot()&&!(S.profile&&S.profile.ans&&S.profile.plan))throw new Error('perfil incompleto');
+    if(c.plan&&(c.plan.targets||c.plan.menu)){
+      var cc=Object.assign({},S.coach||{});
+      if(c.plan.targets&&c.plan.targets.f){cc.t=clone(c.plan.targets);S.settings.t=clone(c.plan.targets);}
+      if(c.plan.menu)cc.menu=clone(c.plan.menu);
+      S.coach=cc;
+    }
     var keep=ui.pwk;setupPlan();
     if(ui.pcur===c.link)ui.pwk=keep;else ui.pcur=c.link;
     return fn();
@@ -2020,18 +2165,19 @@ function proStats(c){
       else if(since!=null&&since>=3)al.push('Sin registrar comidas desde hace '+since+' días');
     }
     if(fatigueAlert())al.push('Tres registros seguidos con poca energía o mucho cansancio');
-    if(rec&&rec.kind!=='ok')al.push('El peso no va al ritmo previsto');
+    if(rec&&rec.kind!=='ok'&&!proProf())al.push('El peso no va al ritmo previsto');
+    if(!tgtOn())al.push('Pendiente: fijar sus objetivos'+(coachMenu()?'':' y preparar su menú'));
     var okK=0;for(i=0;i<7;i++){d=addDays(t,-i);var y=dayN(d),tk=S.settings.t[dayKind(d)].kcal;if(y.kcal>=tk*0.9&&y.kcal<=tk*1.05)okK++;}
-    if(n>=4&&okK<n*0.5)al.push('Pocos días dentro de las calorías objetivo');
+    if(tgtOn()&&n>=4&&okK<n*0.5)al.push('Pocos días dentro de las calorías objetivo');
     var lvl=(started&&(last==null&&diffDays(t,START)>=2||since>=3||al.length>=2))?'bad':(al.length?'warn':'ok');
-    return {goal:isSot()?'Definición':GOALS[G.goal],kg:S.settings.kg,lw:lw,lwd:lwd,last:last,since:since,n:n,avgK:n?sk/n:null,avgT:n?st/n:null,avgP:n?sp/n:null,alerts:al,level:lvl,started:started,start:START};
+    return {goal:isSot()?'Definición':GOALS[G.goal],kg:S.settings.kg,lw:lw,lwd:lwd,last:last,since:since,n:n,avgK:n?sk/n:null,avgT:n&&tgtOn()?st/n:null,wait:!tgtOn(),avgP:n?sp/n:null,alerts:al,level:lvl,started:started,start:START};
   });}catch(e){return null;}
 }
 function proLoad(){
   if(!AUTH||!AUTH.pro||!PRO||PRO.pending)return Promise.resolve();
   PC.loading=true;PC.err=null;if(ui.screen==='pro')render();
   return ensureToken().then(function(){
-    return sbReq('GET','/rest/v1/client_links?select=id,profile_id,client_id,client_name,client_email,consented_at,pro_plans(targets,note,updated_at),pro_notes(body,updated_at)&pro_id=eq.'+AUTH.uid+'&status=eq.active&order=created_at.asc',null,AUTH.access);
+    return sbReq('GET','/rest/v1/client_links?select=id,profile_id,client_id,client_name,client_email,consented_at,pro_plans(targets,note,menu,updated_at),pro_notes(body,updated_at)&pro_id=eq.'+AUTH.uid+'&status=eq.active&order=created_at.asc',null,AUTH.access);
   }).then(function(links){
     links=links||[];if(!links.length)return {links:links,rows:[]};
     var ids=links.map(function(l){return l.client_id;}).filter(function(x,i,a){return a.indexOf(x)===i;});
@@ -2043,7 +2189,7 @@ function proLoad(){
       var c={link:l.id,client:l.client_id,profile_id:l.profile_id,name:(row&&row.name)||l.client_name||'Cliente',email:l.client_email||'',type:row?row.type:'gen',data:row?row.data:null,updated:row?row.updated_at:null,plan:pp||null,pnote:pn||null,since:l.consented_at};
       c.stats=c.data?proStats(c):null;return c;
     });
-    PC.loading=false;PC.at=Date.now();
+    PC.loading=false;PC.at=Date.now();chatUnread();
   },function(e){PC.loading=false;PC.err=e&&e.net?'Sin conexión. Inténtalo de nuevo.':'No se pudieron cargar los clientes.';}).then(function(){if(ui.screen==='pro')render();});
 }
 function proFind(id){return (PC.list||[]).filter(function(c){return c.link===id;})[0]||null;}
@@ -2061,9 +2207,9 @@ function vProClients(){
   h+='<p class="muted">'+L.length+' '+(L.length===1?'cliente':'clientes')+(bad?' · '+bad+' con avisos':' · todo en orden')+'</p><div class="cls">';
   L.forEach(function(c){
     var s=c.stats;
-    h+='<button class="cli" data-act="proopen" data-id="'+c.link+'"><div class="cl-h"><span class="dot lv-'+(s?s.level:'none')+'" aria-hidden="true"></span><b>'+esc(c.name)+'</b><span class="pill">'+esc(s?s.goal:'Sin datos')+'</span></div>';
+    h+='<button class="cli" data-act="proopen" data-id="'+c.link+'"><div class="cl-h"><span class="dot lv-'+(s?s.level:'none')+'" aria-hidden="true"></span><b>'+esc(c.name)+'</b><span class="pill">'+esc(s?s.goal:'Sin datos')+'</span><span class="bdg" data-badge="'+c.link+'" hidden></span></div>';
     if(s){
-      h+='<div class="cl-m"><span>Última comida: '+agoTxt(s.last)+'</span><span>'+s.n+' de 7 días</span>'+(s.avgK!=null?'<span>'+f0(s.avgK)+' / '+f0(s.avgT)+' kcal</span>':'')+(s.lw!=null?'<span>'+f1(s.lw)+' kg'+(s.kg?' ('+(s.lw-s.kg>0?'+':s.lw-s.kg<0?'−':'')+f1(Math.abs(s.lw-s.kg))+')':'')+'</span>':'')+'</div>';
+      h+='<div class="cl-m"><span>Última comida: '+agoTxt(s.last)+'</span><span>'+s.n+' de 7 días</span>'+(s.avgK!=null?'<span>'+f0(s.avgK)+(s.avgT!=null?' / '+f0(s.avgT):'')+' kcal</span>':'')+(s.lw!=null?'<span>'+f1(s.lw)+' kg'+(s.kg?' ('+(s.lw-s.kg>0?'+':s.lw-s.kg<0?'−':'')+f1(Math.abs(s.lw-s.kg))+')':'')+'</span>':'')+'</div>';
       if(s.alerts.length)h+='<ul class="cl-a">'+s.alerts.map(function(a){return '<li>'+esc(a)+'</li>';}).join('')+'</ul>';
       else if(!s.started)h+='<p class="muted">El plan empieza el '+dayLabel(s.start).toLowerCase()+'.</p>';
     } else h+='<p class="muted">Aún no hay datos de este perfil.</p>';
@@ -2090,14 +2236,28 @@ function vPro(){
   h+='<nav class="tabs" role="tablist" aria-label="Panel">'+T.map(function(t){return '<button role="tab" aria-selected="'+(ui.ptab===t[0])+'" data-act="ptab" data-v="'+t[0]+'">'+t[1]+'</button>';}).join('')+'</nav>';
   return h+(ui.ptab==='invitar'?vProInvite():ui.ptab==='cuenta'?vProAccount():vProClients());
 }
-function ptInput(dr,key,cur,lab){var v=dr&&dr[key]!=null?dr[key]:String(Math.round(cur));return '<input type="text" inputmode="decimal" data-pt="'+key+'" value="'+esc(v)+'" aria-label="'+esc(lab)+'">';}
+function ptInput(dr,key,cur,lab){var v=dr&&dr[key]!=null?dr[key]:(cur==null?'':String(Math.round(cur)));return '<input type="text" inputmode="decimal" data-pt="'+key+'" value="'+esc(v)+'" aria-label="'+esc(lab)+'">';}
 function proClientBody(c){
-  var s=c.stats,w=ui.pwk,D=reportData(w),ws=weeksData(),dr=ui.pdraft[c.link]||{},h='';
+  var s=c.stats,w=ui.pwk,D=reportData(w),ws=weeksData(),dr=ui.pdraft[c.link]||{},h='',wt=!tgtOn();
   h+='<section class="card"><div class="hrow"><h2>'+esc(c.name)+'</h2><span class="pill">'+esc(s?s.goal:'')+'</span></div><p class="muted">'+esc(c.email)+' · plan desde el '+dayLabel(START).toLowerCase()+' · vinculado el '+esc((c.since||'').slice(0,10))+'</p>'+
-    (s?'<div class="stats"><div class="stat"><div class="l">Última comida</div><div class="v">'+agoTxt(s.last)+'</div></div><div class="stat"><div class="l">Días con comidas (7)</div><div class="v">'+s.n+' <small>de 7</small></div></div><div class="stat"><div class="l">Peso inicial</div><div class="v">'+f1(s.kg)+' <small>kg</small></div></div><div class="stat"><div class="l">Último peso</div><div class="v">'+(s.lw!=null?f1(s.lw):'—')+' <small>kg</small></div></div></div>':'')+'</section>';
+    (s?'<div class="stats"><div class="stat"><div class="l">Última comida</div><div class="v">'+agoTxt(s.last)+'</div></div><div class="stat"><div class="l">Días con comidas (7)</div><div class="v">'+s.n+' <small>de 7</small></div></div><div class="stat"><div class="l">Peso inicial</div><div class="v">'+f1(s.kg)+' <small>kg</small></div></div><div class="stat"><div class="l">Último peso</div><div class="v">'+(s.lw!=null?f1(s.lw):'—')+' <small>kg</small></div></div></div>':'')+'<div class="btns"><button class="btn main sm" data-act="chatopen">Chat con '+esc(c.name)+' <span class="bdg" data-badge="'+c.link+'" hidden></span></button></div></section>';
   if(s&&s.alerts.length)h+='<section class="rec warn"><b>Avisos</b><ul class="plain">'+s.alerts.map(function(a){return '<li>'+esc(a)+'</li>';}).join('')+'</ul></section>';
+  h+=intakeCard(wt);
+  var hh=h;h='';
+  /* objetivos y nota */
+  var cur=wt?null:S.settings.t;
+  function trow(label,m,unit){return '<tr><th>'+label+'</th>'+['f','r'].map(function(k){return '<td><div class="inp">'+ptInput(dr,k+'.'+m,cur?cur[k][m]:null,label+' ('+kLabel(k).toLowerCase()+')')+'<span>'+unit+'</span></div></td>';}).join('')+'</tr>';}
+  h+='<section class="card"><h2>Objetivos y nota para el cliente</h2><div class="scroll"><table class="tgt"><thead><tr><th></th><th>'+kLabel('f')+'</th><th>'+kLabel('r')+'</th></tr></thead><tbody>'+trow('Calorías','kcal','kcal')+trow('Proteína','p','g')+trow('Carbohidratos','c','g')+trow('Grasas','g','g')+'</tbody></table></div>'+
+    '<p class="muted">'+(wt?'Este cliente todavía no tiene objetivos. Rellena las cifras y pulsa Guardar para fijárselas.':c.plan&&c.plan.targets?'Estos objetivos ya están fijados para el cliente: los verá en su app y no podrá editarlos.':'Si cambias alguna cifra y guardas, se fijan para el cliente y no podrá editarlos. Si solo dejas una nota, no se tocan sus objetivos.')+'</p>'+
+    '<label class="fld"><span class="lb">Nota para el cliente (la verá en Hoy)</span><textarea data-pt="note" rows="3" maxlength="600" placeholder="Por ejemplo: esta semana sube un poco los carbohidratos de la cena.">'+esc(dr.note!=null?dr.note:((c.plan&&c.plan.note)||''))+'</textarea></label>'+
+    '<div class="btns"><button class="btn main" data-act="prosave" data-id="'+c.link+'">Guardar</button></div></section>';
+  var tgHtml=h;h=hh;
+  h+=asFold('p-tg',tgHtml,true)+asFold('p-menu',proMenuCard(c),wt);
+  if(wt)h+='<section class="card"><h2>Informe semanal</h2><p class="muted">Se activa cuando fijes los objetivos del cliente.</p></section>';
+  else{
   h+='<div class="chips" role="group" aria-label="Semana">'+[0,1,2,3].map(function(i){return '<button class="chip" aria-pressed="'+(i===w)+'" data-act="pwk" data-w="'+i+'">Semana '+(i+1)+'</button>';}).join('')+'</div>'+reportBody(D)+
     '<div class="btns"><button class="btn sm" data-act="prorepcopy" data-id="'+c.link+'">Copiar informe de la semana '+(w+1)+'</button></div>';
+  }
   h+='<section class="card"><h2>Peso</h2><div class="chartbox">'+chartSVG(ws)+'</div></section>';
   var wp=Object.keys(S.waist).sort().map(function(d){return {d:d,y:S.waist[d]};}),sp=S.skin.filter(function(x){return x.pct!=null;}).map(function(x){return {d:x.d,y:x.pct};});
   if(wp.length||sp.length)h+='<section class="card"><h2>Medidas</h2>'+(sp.length?'<h3>% de grasa</h3><div class="chartbox fit">'+miniLine(sp,' %','Evolución del porcentaje de grasa')+'</div>':'')+(wp.length?'<h3>Cintura</h3><div class="chartbox fit">'+miniLine(wp,' cm','Evolución de la cintura')+'</div>':'')+'</section>';
@@ -2105,7 +2265,7 @@ function proClientBody(c){
   var t=todayS(),sel=ui.pday&&diffDays(t,ui.pday)<=6&&diffDays(t,ui.pday)>=0?ui.pday:t;
   h+='<section class="card"><h2>Diario de comidas</h2><div class="chips" role="group" aria-label="Día">'+[6,5,4,3,2,1,0].map(function(i){var d=addDays(t,-i);return '<button class="chip" aria-pressed="'+(d===sel)+'" data-act="pday" data-d="'+d+'">'+DS[wdOf(d)]+' '+(+d.slice(8))+'</button>';}).join('')+'</div>';
   var dn=dayN(sel),dk=dayKind(sel),tg=S.settings.t[dk],any=false;
-  h+='<p class="muted">'+dayLabel(sel)+' · '+f0(dn.kcal)+' / '+f0(tg.kcal)+' kcal · P '+f0(dn.p)+' / '+f0(tg.p)+' g · C '+f0(dn.c)+' g · G '+f0(dn.g)+' g</p>';
+  h+='<p class="muted">'+dayLabel(sel)+' · '+f0(dn.kcal)+(wt?'':' / '+f0(tg.kcal))+' kcal · P '+f0(dn.p)+(wt?'':' / '+f0(tg.p))+' g · C '+f0(dn.c)+' g · G '+f0(dn.g)+' g</p>';
   slotsFor(sel).forEach(function(sl){
     var L=(S.logs[sel]||{})[sl.id]||[];if(!L.length)return;any=true;var n=slotN(L);
     h+='<div class="dslot"><div class="hrow"><b>'+esc(sl.name)+'</b><span class="muted num">'+f0(n.kcal)+' kcal · P '+f0(n.p)+' g</span></div><p class="muted">'+L.map(function(e){var f=findFood(e.f);return esc(f?f.name:'Alimento')+' '+f0(e.g)+' g';}).join(' · ')+'</p></div>';
@@ -2113,13 +2273,6 @@ function proClientBody(c){
   if(!any)h+='<p class="ghost">Sin comidas registradas este día.</p>';
   if(S.notes[sel])h+='<p class="note"><b>Nota del cliente:</b> '+esc(S.notes[sel])+'</p>';
   h+='</section>';
-  /* objetivos y nota */
-  var cur=S.settings.t;
-  function trow(label,m,unit){return '<tr><th>'+label+'</th>'+['f','r'].map(function(k){return '<td><div class="inp">'+ptInput(dr,k+'.'+m,cur[k][m],label+' ('+kLabel(k).toLowerCase()+')')+'<span>'+unit+'</span></div></td>';}).join('')+'</tr>';}
-  h+='<section class="card"><h2>Objetivos y nota para el cliente</h2><div class="scroll"><table class="tgt"><thead><tr><th></th><th>'+kLabel('f')+'</th><th>'+kLabel('r')+'</th></tr></thead><tbody>'+trow('Calorías','kcal','kcal')+trow('Proteína','p','g')+trow('Carbohidratos','c','g')+trow('Grasas','g','g')+'</tbody></table></div>'+
-    '<p class="muted">'+(c.plan&&c.plan.targets?'Estos objetivos ya están fijados para el cliente: los verá en su app y no podrá editarlos.':'Si cambias alguna cifra y guardas, se fijan para el cliente y no podrá editarlos. Si solo dejas una nota, no se tocan sus objetivos.')+'</p>'+
-    '<label class="fld"><span class="lb">Nota para el cliente (la verá en Hoy)</span><textarea data-pt="note" rows="3" maxlength="600" placeholder="Por ejemplo: esta semana sube un poco los carbohidratos de la cena.">'+esc(dr.note!=null?dr.note:((c.plan&&c.plan.note)||''))+'</textarea></label>'+
-    '<div class="btns"><button class="btn main" data-act="prosave" data-id="'+c.link+'">Guardar</button></div></section>';
   h+='<section class="card"><h2>Notas privadas</h2><p class="muted">Solo las ves tú. El cliente no puede verlas.</p><textarea data-pt="pnote" rows="4" maxlength="2000" placeholder="Tus anotaciones sobre este cliente">'+esc(dr.pnote!=null?dr.pnote:((c.pnote&&c.pnote.body)||''))+'</textarea><div class="btns"><button class="btn sm" data-act="pronote" data-id="'+c.link+'">Guardar nota privada</button></div></section>';
   return h;
 }
@@ -2136,18 +2289,18 @@ function proReadDraft(){
 }
 function proSaveTargets(c){
   var d=proReadDraft(),t={f:{},r:{}},changed=false,ok=true,lim={kcal:[800,6000],p:[20,400],c:[0,900],g:[15,300]};
-  var base=withClient(c,function(){return clone(S.settings.t);});
+  var base=withClient(c,function(){return tgtOn()?clone(S.settings.t):null;});
   ['f','r'].forEach(function(k){['kcal','p','c','g'].forEach(function(m){
     var v=num(d[k+'.'+m]);
     if(v==null||v<lim[m][0]||v>lim[m][1]){ok=false;return;}
-    v=Math.round(v);t[k][m]=v;if(v!==Math.round(base[k][m]))changed=true;
+    v=Math.round(v);t[k][m]=v;if(base==null||v!==Math.round(base[k][m]))changed=true;
   });});
   if(!ok){toast('Revisa las cifras de los objetivos (kcal 800–6.000, proteína 20–400 g, carbohidratos 0–900 g, grasas 15–300 g)');return;}
   var note=(d.note||'').trim().slice(0,600),had=c.plan&&c.plan.targets;
   var body={link_id:c.link,note:note,updated_at:new Date().toISOString()};
   if(changed||had)body.targets=t;
   ensureToken().then(function(){return sbReq('POST','/rest/v1/pro_plans?on_conflict=link_id',[body],AUTH.access,{'Prefer':'resolution=merge-duplicates,return=minimal'});}).then(function(){
-    c.plan={targets:body.targets||null,note:note,updated_at:body.updated_at};delete ui.pdraft[c.link];render();
+    c.plan=Object.assign({},c.plan||{},{targets:body.targets||(c.plan&&c.plan.targets)||null,note:note,updated_at:body.updated_at});delete ui.pdraft[c.link];render();
     toast(body.targets?'Guardado. El cliente verá los nuevos objetivos al abrir la app.':'Nota guardada. El cliente la verá al abrir la app.');
   },function(e){toast(e&&e.net?'Sin conexión: no se pudo guardar':'No se pudo guardar. Inténtalo de nuevo.');});
 }
@@ -2176,25 +2329,28 @@ function coachNote(){return coachOn()?'<p class="note">'+esc(S.coach.pro||'Tu nu
 function coachPull(){
   if(!cloudOn()||!AUTH||AUTH.pro)return Promise.resolve(false);
   return ensureToken().then(function(){
-    return sbReq('GET','/rest/v1/client_links?select=id,profile_id,status,consented_at,professionals(name,business),pro_plans(targets,note,updated_at)&client_id=eq.'+AUTH.uid+'&status=eq.active',null,AUTH.access);
+    return sbReq('GET','/rest/v1/client_links?select=id,profile_id,status,consented_at,professionals(name,business),pro_plans(targets,note,menu,updated_at)&client_id=eq.'+AUTH.uid+'&status=eq.active',null,AUTH.access);
   }).then(function(rows){ui.links=Array.isArray(rows)?rows:[];ui.noPro=false;return coachApply();},function(e){if(e&&!e.net&&(e.status===404||e.status===400))ui.noPro=true;return false;});
 }
 function coachApply(){
   if(!PROF||!ui.links)return false;
   var l=ui.links.filter(function(x){return x.profile_id===PROF.id;})[0];
   if(!l){if(S.coach){S.coach=null;save();return true;}return false;}
+  if(!S.coach||S.coach.link!==l.id){S.coach={link:l.id,at:'',pro:(Array.isArray(l.professionals)?(l.professionals[0]||{}):(l.professionals||{})).name||'',biz:'',note:'',t:null,menu:null};}
   var pp=Array.isArray(l.pro_plans)?l.pro_plans[0]:l.pro_plans,pr=l.professionals||{};
   if(Array.isArray(pr))pr=pr[0]||{};
   if(pp&&(!S.coach||S.coach.link!==l.id||(Date.parse(pp.updated_at)||0)>(Date.parse(S.coach.at)||0))){
-    S.coach={link:l.id,at:pp.updated_at,pro:pr.name||'',biz:pr.business||'',note:pp.note||'',t:pp.targets&&pp.targets.f&&pp.targets.r?clone(pp.targets):null};
+    S.coach={link:l.id,at:pp.updated_at,pro:pr.name||'',biz:pr.business||'',note:pp.note||'',t:pp.targets&&pp.targets.f&&pp.targets.r?clone(pp.targets):null,menu:pp.menu&&typeof pp.menu==='object'&&Object.keys(pp.menu).length?clone(pp.menu):null};
     if(S.coach.t)S.settings.t=clone(S.coach.t);
     save();toast('Tu nutricionista ha actualizado tu plan');return true;
   }
   return false;
 }
-function cloudRefresh(){return syncPull().then(function(ch){return coachPull().then(function(c2){return ch||c2;});});}
+function cloudRefresh(){return syncPull().then(function(ch){return coachPull().then(function(c2){chatUnread();return ch||c2;});});}
 function coachBanner(){
-  var h='';
+  var h='',cl=(ui.links||[]).filter(function(x){return PROF&&x.profile_id===PROF.id;})[0];
+  if(cl&&cloudOn()&&AUTH&&!AUTH.pro){var cpr=cl.professionals||{};if(Array.isArray(cpr))cpr=cpr[0]||{};
+    h+='<section class="rec"><div class="hrow"><b>Chat con '+esc(cpr.name||'tu nutricionista')+'</b><span class="bdg" data-badge="'+cl.id+'" hidden></span></div><div class="btns"><button class="btn main sm" data-act="chatopen">Abrir chat</button></div></section>';}
   if(S.coach&&S.coach.note)h+='<section class="rec"><b>Nota de '+esc(S.coach.pro||'tu nutricionista')+'</b><p>'+esc(S.coach.note)+'</p></section>';
   if(ui.invite&&cloudOn()&&AUTH&&!AUTH.pro&&!ui.noPro&&PROF&&!(ui.links||[]).some(function(x){return x.profile_id===PROF.id;}))
     h+='<section class="rec"><b>Tienes una invitación de tu nutricionista</b><p>Vincula tu perfil para que pueda seguir tu progreso y ajustar tu plan.</p><div class="btns"><button class="btn main sm" data-act="goinvite">Ver invitación</button></div></section>';
@@ -2237,12 +2393,140 @@ function linkGo(){
   }).then(function(){
     try{localStorage.removeItem('plan-invite');}catch(x){}ui.invite='';ui.au.code=null;
     return coachPull();
-  }).then(function(){ui.busy=false;ui.linkMsg=null;render();toast('Vinculado con tu nutricionista');},function(e){ui.busy=false;ui.linkMsg={k:'err',t:linkErr(e)};render();});
+  }).then(function(){ui.busy=false;ui.linkMsg=null;var au=ui.linkAuto;ui.linkAuto=false;render();toast(au?'Cuestionario enviado a tu nutricionista':'Vinculado con tu nutricionista');},function(e){ui.busy=false;ui.linkMsg={k:'err',t:linkErr(e)};if(ui.linkAuto){toast('Perfil creado, pero no se pudo vincular: '+linkErr(e));ui.linkAuto=false;}render();});
 }
 function unlinkOk(id){
   ui.busy=true;render();
   ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/revoke_link',{p_link:id},AUTH.access);}).then(function(){ui.unlink=null;return coachPull();}).then(function(){ui.busy=false;render();toast('Has dejado de compartir tu perfil');},function(){ui.busy=false;toast('No se pudo completar. Inténtalo de nuevo.');render();});
 }
+
+/* ---------- nutricionista: cuestionario del cliente y editor de menús ---------- */
+function intakeCard(wt){
+  var I=S.intake;if(!I||!S.profile||!S.profile.ans)return '';
+  var a=S.profile.ans,bmi=a.kg/Math.pow(a.h/100,2);
+  function r(l,v){return v?'<div class="irow"><b>'+l+'</b><span>'+esc(v)+'</span></div>':'';}
+  var act={sed:'Sentado casi todo el día',lig:'De pie o caminando a ratos',act:'Trabajo físico'}[a.act]||'';
+  var days=a.days.map(function(on,i){return on?DS[i]:null;}).filter(Boolean).join(' ');
+  var diet={omni:'Come de todo',vege:'Vegetariana',vegan:'Vegana'}[a.diet]||'';
+  var R=I.r24||{};
+  var h='<section class="card"><h2>Cuestionario inicial</h2><p class="muted">Enviado el '+dayLabel(I.date).toLowerCase()+'</p>'+
+    '<h3>Datos y objetivo</h3>'+r('Datos',a.name+' · '+(a.sex==='h'?'hombre':'mujer')+' · '+a.age+' años · '+f0(a.h)+' cm · '+f1(a.kg)+' kg · IMC '+f1(bmi))+r('Objetivo',inLabel(IN_GOAL,I.goal))+r('Motivo',I.why)+
+    '<h3>Salud</h3>'+r('Condiciones',inLabels(IN_COND,I.cond))+r('Otras',I.condTxt)+r('Medicación y suplementos',I.meds)+r('Analíticas',I.labs)+r('Alergias e intolerancias',[inLabels(IN_AVOID,a.avoid),I.alerg].filter(Boolean).join(' · '))+(I.emb?r('Atención','Embarazo o lactancia'):'')+(I.tca?r('Atención','Antecedente de trastorno de la conducta alimentaria'):'')+
+    '<h3>Actividad y horario</h3>'+r('Día a día',act)+r('Entrenamiento',days?days+' · '+a.dur+' min · '+a.ttype+' · intensidad '+a.int:'No entrena')+r('Horario','Se levanta a las '+fmtT(a.wake)+' y se acuesta a las '+(a.bed===1440?'0:00':fmtT(a.bed))+(a.work?'. Trabaja de '+fmtT(a.ws)+' a '+fmtT(a.we):''))+r('Comidas al día',String(a.meals))+
+    '<h3>Alimentación</h3>'+r('Tipo de dieta',diet)+r('Le gusta',I.likes)+r('No come',I.dislikes)+r('Cocina',inLabel(IN_COOK,I.cook))+r('Comidas fuera a la semana',inLabel(IN_OUT,I.out))+r('Tiempo para cocinar',inLabel(IN_TIME,I.time))+
+    '<h3>Hábitos</h3>'+r('Alcohol',inLabel(IN_ALC,I.alc))+r('Tabaco',inLabel(IN_SMOKE,I.smoke))+r('Estrés (1 a 5)',I.stress)+r('Agua',inLabel(IN_WATER,I.water))+r('Digestión',I.digest)+r('Dietas anteriores',I.prev)+
+    '<h3>Un día normal</h3>'+r('Desayuno',R.bk)+r('Media mañana',R.mid)+r('Comida',R.lunch)+r('Merienda',R.snack)+r('Cena',R.dinner)+r('Entre horas y bebidas',R.pick)+'</section>';
+  return asFold('p-intake',h,wt);
+}
+function pmDraft(c){return ui.pmenu[c.link]||(ui.pmenu[c.link]=clone((c.plan&&c.plan.menu)||{}));}
+function pmPickList(slotId){
+  var q=(ui.pmq||'').toLowerCase().trim(),l=foods().filter(function(f){return !q||f.name.toLowerCase().indexOf(q)>-1;}).slice(0,14);
+  if(!l.length)return '<p class="muted" style="padding:8px 4px">Ningún alimento con ese nombre. El cliente puede crearlo en su pestaña Alimentos.</p>';
+  return l.map(function(f){return '<div class="pr"><button data-act="pmpick" data-s="'+slotId+'" data-f="'+esc(f.id)+'"><span>'+esc(f.name)+'</span><small>'+f0(f.kcal)+' kcal/100 g</small></button></div>';}).join('');
+}
+function proMenuCard(c){
+  var m=pmDraft(c),wd=ui.pmd||0,day=m[String(wd)]||{},tot=Z;
+  var h='<section class="card"><h2>Menú semanal</h2><p class="muted">Monta el menú de cada día con alimentos y gramos. El cliente lo verá en Hoy y Comidas y podrá cargarlo de un toque. Las kcal y los macros se calculan solos. Pulsa Guardar menú al terminar.</p><div class="chips" role="group" aria-label="Día del menú">'+
+    DAYS.map(function(n,i){var d0=m[String(i)];var has=d0&&Object.keys(d0).some(function(k){return (d0[k]||[]).length;});return '<button class="chip" aria-pressed="'+(i===wd)+'" data-act="pmday" data-i="'+i+'">'+n.slice(0,3)+(has?' ●':'')+'</button>';}).join('')+'</div>';
+  SLOTS.forEach(function(sl){
+    var items=day[sl.id]||[],n=slotN(items.map(function(x){return {f:x.f,g:x.g};}));tot=addN(tot,n);
+    h+='<div class="dslot"><div class="hrow"><b>'+esc(sl.name)+'</b><span class="muted num">'+f0(n.kcal)+' kcal · P '+f0(n.p)+' g</span></div>';
+    items.forEach(function(x,i){
+      var f=findFood(x.f),nm=f?f.name:'Alimento borrado';
+      h+='<div class="pmrow"><span class="pmn">'+esc(nm)+'</span><div class="inp"><input type="text" inputmode="decimal" data-pm="g" data-s="'+sl.id+'" data-i="'+i+'" value="'+String(Math.round(x.g*10)/10).replace('.',',')+'" aria-label="Gramos de '+esc(nm)+'"><span>g</span></div><button class="x" data-act="pmrm" data-s="'+sl.id+'" data-i="'+i+'" aria-label="Quitar '+esc(nm)+'">×</button></div>';
+    });
+    h+='<div class="btns"><button class="btn sm" data-act="pmadd" data-s="'+sl.id+'">'+(ui.pms===sl.id?'Cerrar lista':'Añadir alimento')+'</button></div>';
+    if(ui.pms===sl.id)h+='<div class="pick"><input type="text" id="pmq" data-pmq="1" placeholder="Buscar alimento" value="'+esc(ui.pmq||'')+'" autocomplete="off"><div class="picklist" id="pmlist">'+pmPickList(sl.id)+'</div></div>';
+    h+='</div>';
+  });
+  h+='<p class="muted num">Total del día: <b>'+f0(tot.kcal)+' kcal</b> · P '+f0(tot.p)+' g · C '+f0(tot.c)+' g · G '+f0(tot.g)+' g</p>'+
+    '<div class="btns"><button class="btn sm" data-act="pmcopywk">Copiar a lunes–viernes</button><button class="btn sm" data-act="pmcopyall">Copiar a toda la semana</button><button class="btn sm" data-act="pmclear">Vaciar este día</button></div>'+
+    '<div class="btns"><button class="btn main" data-act="pmsave" data-id="'+c.link+'">Guardar menú</button></div></section>';
+  return h;
+}
+function proSaveMenu(c){
+  var m=pmDraft(c),out={};
+  Object.keys(m).forEach(function(d){var day={},any=false;Object.keys(m[d]||{}).forEach(function(sl){var arr=(m[d][sl]||[]).filter(function(x){return x&&x.f&&x.g>0;}).map(function(x){return {f:x.f,g:Math.round(x.g*10)/10};});if(arr.length){day[sl]=arr;any=true;}});if(any)out[d]=day;});
+  var body={link_id:c.link,menu:out,updated_at:new Date().toISOString()};
+  ensureToken().then(function(){return sbReq('POST','/rest/v1/pro_plans?on_conflict=link_id',[body],AUTH.access,{'Prefer':'resolution=merge-duplicates,return=minimal'});}).then(function(){
+    c.plan=Object.assign({},c.plan||{},{menu:clone(out),updated_at:body.updated_at});ui.pmenu[c.link]=clone(out);render();toast('Menú guardado. El cliente lo verá al abrir la app.');
+  },function(e){toast(e&&e.net?'Sin conexión: no se pudo guardar':'No se pudo guardar el menú');});
+}
+
+/* ---------- chat entre cliente y nutricionista ---------- */
+var CH={link:null,msgs:[],unread:{},draft:'',loading:false,sending:false,err:'',at:0,sig:''};
+function chatCtx(){
+  if(!AUTH)return null;
+  if(AUTH.pro){var c=proFind(ui.psel);return c?{link:c.link,name:c.name}:null;}
+  var l=(ui.links||[]).filter(function(x){return PROF&&x.profile_id===PROF.id;})[0];if(!l)return null;
+  var pr=l.professionals||{};if(Array.isArray(pr))pr=pr[0]||{};
+  return {link:l.id,name:pr.name||'Tu nutricionista'};
+}
+function chatTime(iso){
+  var d=new Date(iso);if(isNaN(d))return '';
+  return pad(d.getDate())+'/'+pad(d.getMonth()+1)+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+function chatItems(){
+  if(CH.err&&!CH.msgs.length)return '<p class="muted">'+esc(CH.err)+'</p>';
+  if(!CH.msgs.length)return '<p class="muted">'+(CH.loading?'Cargando…':'Todavía no hay mensajes. Escribe el primero.')+'</p>';
+  return CH.msgs.map(function(m){
+    var me=AUTH&&m.sender_id===AUTH.uid;
+    return '<div class="msg'+(me?' me':'')+'">'+esc(m.body)+'<small>'+chatTime(m.created_at)+(me&&m.read_at?' · visto':'')+'</small></div>';
+  }).join('');
+}
+function vChat(){
+  var cx=chatCtx();if(!cx)return '<section class="card"><p class="muted">Este chat ya no está disponible.</p><div class="btns"><button class="btn" data-act="chatback">Volver</button></div></section>';
+  return '<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>'+esc(cx.name)+'</h1></div><p class="sub">Chat</p></header><div class="btns"><button class="btn sm" data-act="chatback">‹ Volver</button></div>'+
+    '<section class="card"><div id="chatlist" class="chatlist" aria-live="polite">'+chatItems()+'</div>'+
+    '<div class="chatbox"><textarea id="chatin" rows="2" maxlength="1000" placeholder="Escribe un mensaje" aria-label="Mensaje">'+esc(CH.draft)+'</textarea><button class="btn main" data-act="chatsend">Enviar</button></div>'+
+    '<p class="muted">No uses el chat para urgencias médicas. Solo veis los mensajes tú y '+esc(cx.name)+', mientras estéis vinculados.</p></section>';
+}
+function chatPaint(force){
+  if(ui.screen!=='chat')return;
+  var sig=CH.msgs.length+':'+(CH.msgs.length?CH.msgs[CH.msgs.length-1].id:'')+':'+CH.msgs.filter(function(m){return m.read_at;}).length+':'+CH.err;
+  if(!force&&sig===CH.sig)return;
+  CH.sig=sig;
+  var el=document.getElementById('chatlist');
+  if(!el){render();return;}
+  el.innerHTML=chatItems();el.scrollTop=el.scrollHeight;
+}
+function chatLoad(){
+  var cx=chatCtx();if(!cx||!cloudOn()||!AUTH)return Promise.resolve();
+  CH.loading=!CH.msgs.length;
+  return ensureToken().then(function(){return sbReq('GET','/rest/v1/chat_messages?select=id,sender_id,body,created_at,read_at&link_id=eq.'+cx.link+'&order=created_at.asc&limit=300',null,AUTH.access);}).then(function(rows){
+    CH.loading=false;CH.err='';CH.link=cx.link;CH.msgs=rows||[];CH.unread[cx.link]=0;chatBadges();
+    if(CH.msgs.some(function(m){return m.sender_id!==AUTH.uid&&!m.read_at;}))sbReq('POST','/rest/v1/rpc/chat_mark_read',{p_link:cx.link},AUTH.access).catch(function(){});
+    chatPaint();
+  },function(e){CH.loading=false;CH.err=e&&e.net?'Sin conexión.':(e&&(e.status===404||e.status===400)?'El chat aún no está activado en el servidor.':'No se pudieron cargar los mensajes.');chatPaint();});
+}
+function chatSend(){
+  var ta=document.getElementById('chatin'),txt=((ta?ta.value:CH.draft)||'').trim().slice(0,1000),cx=chatCtx();
+  if(!txt||CH.sending||!cx)return;
+  CH.sending=true;
+  ensureToken().then(function(){return sbReq('POST','/rest/v1/chat_messages',{link_id:cx.link,sender_id:AUTH.uid,body:txt},AUTH.access,{'Prefer':'return=representation'});}).then(function(r){
+    CH.sending=false;var m=Array.isArray(r)?r[0]:r;if(m)CH.msgs.push(m);CH.draft='';if(ta)ta.value='';chatPaint(true);
+  },function(e){CH.sending=false;toast(e&&e.net?'Sin conexión: no se envió':'No se pudo enviar. Inténtalo de nuevo.');});
+}
+function chatUnread(){
+  if(!cloudOn()||!AUTH)return Promise.resolve();
+  CH.at=Date.now();
+  return ensureToken().then(function(){return sbReq('GET','/rest/v1/chat_messages?select=link_id&read_at=is.null&sender_id=neq.'+AUTH.uid+'&limit=500',null,AUTH.access);}).then(function(rows){
+    var u={};(rows||[]).forEach(function(r){u[r.link_id]=(u[r.link_id]||0)+1;});
+    CH.unread=u;chatBadges();
+  },function(){});
+}
+function chatBadges(){
+  var tot=0,k;for(k in CH.unread)tot+=CH.unread[k];
+  Array.prototype.forEach.call(document.querySelectorAll('[data-badge]'),function(el){
+    var n=el.dataset.badge==='all'?tot:(CH.unread[el.dataset.badge]||0);
+    el.textContent=n>0?String(n):'';el.hidden=!(n>0);
+  });
+}
+setInterval(function(){
+  if(!cloudOn()||!AUTH||document.hidden)return;
+  if(ui.screen==='chat')chatLoad();
+  else if(Date.now()-CH.at>40000)chatUnread();
+},8000);
 function vProTerms(){
   return '<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Condiciones para profesionales</h1></div></header><section class="card">'+
     '<p class="note"><b>Borrador pendiente de revisión legal.</b> Este texto es una base de trabajo y debe ser revisado por un abogado antes de usar la app con clientes reales.</p>'+
@@ -2254,10 +2538,11 @@ function vProTerms(){
     '<div class="btns"><button class="btn main" data-act="privback">Volver</button></div></section>';
 }
 
-function render(){
+function render(){renderMain();chatBadges();}
+function renderMain(){
   var y=window.scrollY;
   if(ui.screen){
-    app.innerHTML=ui.screen==='welcome'?vWelcome():ui.screen==='profiles'?vProfiles():ui.screen==='auth'?vAuth():ui.screen==='newpw'?vNewPw():ui.screen==='claim'?vClaim():ui.screen==='privacy'?vPrivacy():ui.screen==='report'?vReport():ui.screen==='pro'?(PRO?vPro():'<p class="muted" style="padding:24px 16px">Cargando…</p>'):ui.screen==='proterms'?vProTerms():vOnb();
+    app.innerHTML=ui.screen==='welcome'?vWelcome():ui.screen==='profiles'?vProfiles():ui.screen==='auth'?vAuth():ui.screen==='newpw'?vNewPw():ui.screen==='claim'?vClaim():ui.screen==='privacy'?vPrivacy():ui.screen==='report'?vReport():ui.screen==='pro'?(PRO?vPro():'<p class="muted" style="padding:24px 16px">Cargando…</p>'):ui.screen==='proterms'?vProTerms():ui.screen==='chat'?vChat():vOnb();
     document.title='Plan';
     return;
   }
@@ -2278,6 +2563,18 @@ function profileAct(a,b){
   case 'privacy':if(ui.screen==='auth')readAu();ui.prev=ui.screen;ui.screen='privacy';render();toTop();return true;
   case 'privback':ui.screen=ui.prev||null;ui.prev=null;render();toTop();return true;
   case 'acctexport':exportAll();return true;
+  case 'pmday':ui.pmd=+b.dataset.i;ui.pms=null;ui.pmq='';render();return true;
+  case 'pmadd':ui.pms=ui.pms===b.dataset.s?null:b.dataset.s;ui.pmq='';render();if(ui.pms){var pq=document.getElementById('pmq');if(pq)pq.focus();}return true;
+  case 'pmpick':{var c1=proFind(ui.psel);if(!c1)return true;var fd=withClient(c1,function(){return findFood(b.dataset.f);});if(!fd)return true;
+    var dm=pmDraft(c1),dk=String(ui.pmd||0),sid=b.dataset.s;dm[dk]=dm[dk]||{};(dm[dk][sid]=dm[dk][sid]||[]).push({f:fd.id,g:fd.def||100});ui.pms=null;ui.pmq='';render();return true;}
+  case 'pmrm':{var c2=proFind(ui.psel);if(!c2)return true;var dm2=pmDraft(c2),dd2=dm2[String(ui.pmd||0)];if(dd2&&dd2[b.dataset.s])dd2[b.dataset.s].splice(+b.dataset.i,1);render();return true;}
+  case 'pmcopyall':case 'pmcopywk':{var c3=proFind(ui.psel);if(!c3)return true;var dm3=pmDraft(c3),src=dm3[String(ui.pmd||0)]||{},n3=a==='pmcopyall'?7:5,j;
+    for(j=0;j<n3;j++)if(j!==(ui.pmd||0))dm3[String(j)]=clone(src);render();toast('Copiado. Recuerda guardar el menú.');return true;}
+  case 'pmclear':{var c4=proFind(ui.psel);if(!c4)return true;delete pmDraft(c4)[String(ui.pmd||0)];render();return true;}
+  case 'pmsave':{var c5=proFind(ui.psel);if(c5)proSaveMenu(c5);return true;}
+  case 'chatopen':{var cx=chatCtx();if(!cx)return true;ui.chatBack=ui.screen;ui.screen='chat';if(CH.link!==cx.link){CH.msgs=[];CH.sig='';CH.err='';}CH.link=cx.link;render();toTop();chatLoad();return true;}
+  case 'chatback':ui.screen=ui.chatBack||null;ui.chatBack=null;render();chatUnread();return true;
+  case 'chatsend':chatSend();return true;
   case 'aukind':readAu();ui.au.kind=v;ui.authMsg=null;render();return true;
   case 'proterms':if(ui.screen==='auth')readAu();ui.prev=ui.screen;ui.screen='proterms';render();toTop();return true;
   case 'ptab':ui.ptab=v;ui.psel=null;render();toTop();return true;
@@ -2314,7 +2611,7 @@ function profileAct(a,b){
   case 'psotero':
     if(!INDEX.list.some(function(x){return x.type==='sot';}))INDEX.list.push({id:'sotero',name:'Sotero',type:'sot',key:'plan-sotero-v1'});
     activate('sotero');ui.screen=null;render();toTop();return true;
-  case 'pnew':ob=obNew();ui.screen='onb';render();toTop();return true;
+  case 'pnew':startNew();return true;
   case 'pdel':ui.delp=b.dataset.id;render();return true;
   case 'pdelno':ui.delp=null;render();return true;
   case 'pdelok':
@@ -2330,6 +2627,7 @@ function profileAct(a,b){
     readOb();ob.err='';ob[f]=(f==='meals')?+v:v;
     if(f==='goal')ob.pace='normal';
     render();return true;
+  case 'obc':readOb();ob.err='';i=(ob[f]||(ob[f]=[])).indexOf(v);if(i>-1)ob[f].splice(i,1);else ob[f].push(v);render();return true;
   case 'obm':readOb();i=ob.avoid.indexOf(v);if(i>-1)ob.avoid.splice(i,1);else ob.avoid.push(v);render();return true;
   case 'obday':readOb();ob[f][+b.dataset.i]=!ob[f][+b.dataset.i];ob.err='';render();return true;
   case 'obwork':readOb();render();return true;
@@ -2340,6 +2638,11 @@ function profileAct(a,b){
     render();toTop();return true;
   case 'obcreate':
     readOb();
+    if(ob.pro){
+      for(i=0;i<=6;i++){var er0=obValidate(i);if(er0){ob.step=i;ob.err=er0;render();toTop();return true;}}
+      if(createProProfile()){ob=null;ui.screen=null;render();toTop();autoLink();}
+      return true;
+    }
     for(i=0;i<=5;i++){var er=obValidate(i);if(er){ob.step=i;ob.err=er;render();toTop();return true;}}
     if(ob.edit){saveEdit();ob=null;ui.screen=null;ui.tab='ajustes';ui.set='plan';render();toTop();toast('Plan actualizado');}
     else if(createProfile()){ob=null;ui.screen=null;render();toTop();toast('Perfil creado');}
@@ -2416,6 +2719,7 @@ app.addEventListener('change',function(e){
   if(t.dataset&&t.dataset.ob!=null){if(t.dataset.ob!=='work')readOb();return;}
   if(t.id==='ph-file'){addPhoto(t);return;}
   if(t.id==='ph-a')PH.angle=t.value;
+  if(t.dataset&&t.dataset.pm==='g'){var c6=proFind(ui.psel);if(c6){var dd6=pmDraft(c6)[String(ui.pmd||0)],ar6=dd6&&dd6[t.dataset.s],it6=ar6&&ar6[+t.dataset.i],v6=num(t.value);if(it6&&v6!=null&&v6>0&&v6<=5000)it6.g=Math.round(v6*10)/10;render();}return;}
   if(!bd)return;
   if(bd==='w'||bd==='waist'){var v=num(t.value),map=bd==='w'?S.weights:S.waist;if(t.value.trim()===''||v==null||v<=0){delete map[t.dataset.d];}else map[t.dataset.d]=Math.round(v*10)/10;save();render();return;}
   if(bd==='g'){var v2=num(t.value),arr=logArr(t.dataset.d,t.dataset.s),ix=+t.dataset.i;if(arr[ix]&&v2!=null&&v2>=0)arr[ix].g=Math.round(v2);save();render();return;}
@@ -2439,6 +2743,8 @@ app.addEventListener('change',function(e){
   if(bd==='match'){if(t.value)S.match[t.dataset.d]=t.value;save();render();return;}
 });
 app.addEventListener('input',function(e){
+  if(e.target.id==='chatin'){CH.draft=e.target.value;return;}
+  if(e.target.dataset&&e.target.dataset.pmq){ui.pmq=e.target.value;var pl6=document.getElementById('pmlist');if(pl6&&ui.pms){var c7=proFind(ui.psel);if(c7)pl6.innerHTML=withClient(c7,function(){return pmPickList(ui.pms);});}return;}
   if(e.target.dataset&&e.target.dataset.pt&&ui.psel){var dd=ui.pdraft[ui.psel]||(ui.pdraft[ui.psel]={});dd[e.target.dataset.pt]=e.target.value;return;}
   if(e.target.id==='q'){ui.q=e.target.value;var l=document.getElementById('picklist');if(l)l.innerHTML=pickList(ui.date,ui.picker);}
 });

@@ -173,6 +173,65 @@ grant execute on function public.become_professional(text, text) to authenticate
 grant execute on function public.link_with_code(text, text)      to authenticated;
 grant execute on function public.revoke_link(uuid)               to authenticated;
 
+-- 4) Menús del nutricionista --------------------------------------------------
+-- El profesional guarda aquí el menú semanal que ve el cliente (alimentos y gramos).
+alter table public.pro_plans add column if not exists menu jsonb;
+
+-- 5) Comprobar un código antes de empezar el cuestionario -----------------------
+-- Devuelve el nombre del profesional (no su email) o null si el código no existe.
+create or replace function public.pro_by_code(p_code text)
+returns json
+language sql stable security definer set search_path = public, auth as $$
+  select json_build_object('name', name, 'business', business, 'status', status)
+    from public.professionals
+   where code = upper(trim(p_code)) and status <> 'suspended' and auth.uid() is not null
+$$;
+revoke all on function public.pro_by_code(text) from public, anon;
+grant execute on function public.pro_by_code(text) to authenticated;
+
+-- 6) Chat entre cliente y nutricionista ---------------------------------------
+create table if not exists public.chat_messages (
+  id         bigint generated always as identity primary key,
+  link_id    uuid not null references public.client_links(id) on delete cascade,
+  sender_id  uuid not null references auth.users(id) on delete cascade,
+  body       text not null check (char_length(body) between 1 and 1000),
+  created_at timestamptz not null default now(),
+  read_at    timestamptz
+);
+create index if not exists chat_messages_link_idx on public.chat_messages(link_id, created_at);
+create index if not exists chat_messages_unread_idx on public.chat_messages(link_id) where read_at is null;
+alter table public.chat_messages enable row level security;
+
+-- Solo las dos personas del vínculo, y solo mientras el vínculo esté activo
+drop policy if exists chat_select on public.chat_messages;
+create policy chat_select on public.chat_messages for select
+  using (exists (select 1 from public.client_links l
+                 where l.id = chat_messages.link_id and l.status = 'active'
+                   and (l.pro_id = auth.uid() or l.client_id = auth.uid())));
+drop policy if exists chat_insert on public.chat_messages;
+create policy chat_insert on public.chat_messages for insert
+  with check (sender_id = auth.uid()
+              and exists (select 1 from public.client_links l
+                          where l.id = chat_messages.link_id and l.status = 'active'
+                            and (l.pro_id = auth.uid() or l.client_id = auth.uid())));
+-- No se pueden editar ni borrar mensajes desde la app (solo se marcan como leídos con la función de abajo)
+revoke update, delete on public.chat_messages from anon, authenticated;
+
+create or replace function public.chat_mark_read(p_link uuid)
+returns void
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if auth.uid() is null then raise exception 'not_authenticated'; end if;
+  update public.chat_messages m
+     set read_at = now()
+   where m.link_id = p_link and m.read_at is null and m.sender_id <> auth.uid()
+     and exists (select 1 from public.client_links l
+                 where l.id = p_link and l.status = 'active'
+                   and (l.pro_id = auth.uid() or l.client_id = auth.uid()));
+end; $$;
+revoke all on function public.chat_mark_read(uuid) from public, anon;
+grant execute on function public.chat_mark_read(uuid) to authenticated;
+
 -- Para activar a un profesional de pago sin límite de clientes:
 --   update public.professionals set status = 'active' where user_id = '<id>';
 -- Para suspenderlo:
