@@ -1730,7 +1730,7 @@ function genRules(){
 function profileCard(){
   var h='<section class="card"><h2>Perfil</h2>';
   var lk0=cloudOn()&&AUTH&&!AUTH.pro&&typeof phLink==='function'?phLink():null;
-  h+='<div class="avrow">'+avSpan(S.avatar,PROF?PROF.name:'')+'<div style="min-width:0"><div class="btns"><label class="btn sm filebtn">'+(S.avatar?'Cambiar foto':'Añadir foto')+'<input type="file" id="av-file" accept="image/*" hidden></label>'+(S.avatar?'<button class="btn sm" data-act="avdel">Quitar</button>':'')+'</div></div></div><p class="muted">'+(lk0?'Tu nutricionista la ve para identificarte.':'Foto de perfil. Si te vinculas con un nutricionista, la verá para identificarte.')+'</p>';
+  h+='<div class="avrow">'+avSpan(S.avatar,PROF?PROF.name:'')+'<div style="min-width:0"><div class="btns"><label class="btn main sm filebtn">'+(S.avatar?'Cambiar foto de perfil':'Añadir foto de perfil')+'<input type="file" id="av-file" accept="image/*" hidden></label>'+(S.avatar?'<button class="btn sm" data-act="avdel">Quitar</button>':'')+'</div></div></div><p class="muted">'+(lk0?'Tu nutricionista la ve para identificarte.':'Foto de perfil. Si te vinculas con un nutricionista, la verá para identificarte.')+'</p>';
   if(cloudOn()&&AUTH)h+='<p class="muted">Cuenta: '+esc(AUTH.email)+'</p>';
   if(isSot()) h+='<p class="muted">Estás usando el plan original de Sotero.</p>';
   else{
