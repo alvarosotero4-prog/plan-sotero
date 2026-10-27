@@ -232,6 +232,70 @@ end; $$;
 revoke all on function public.chat_mark_read(uuid) from public, anon;
 grant execute on function public.chat_mark_read(uuid) to authenticated;
 
+-- 7) Fotos de progreso compartidas con el nutricionista ------------------------
+-- Las fotos se guardan en el móvil del cliente. Solo si el cliente activa "compartir mis fotos"
+-- se sube una copia aquí, y el nutricionista vinculado puede verla mientras dure el vínculo.
+alter table public.client_links add column if not exists share_photos boolean not null default false;
+
+-- El cliente activa o desactiva compartir fotos en su vínculo
+create or replace function public.set_share_photos(p_link uuid, p_on boolean)
+returns void
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if auth.uid() is null then raise exception 'not_authenticated'; end if;
+  update public.client_links set share_photos = p_on
+   where id = p_link and client_id = auth.uid() and status = 'active';
+  if not found then raise exception 'link_not_found'; end if;
+end; $$;
+revoke all on function public.set_share_photos(uuid, boolean) from public, anon;
+grant execute on function public.set_share_photos(uuid, boolean) to authenticated;
+
+-- Ficha de cada foto (fecha y ángulo); el archivo va al almacenamiento privado
+create table if not exists public.progress_photos (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  profile_id text not null,
+  id         text not null,
+  date       text not null,
+  angle      text not null,
+  path       text not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, profile_id, id)
+);
+alter table public.progress_photos enable row level security;
+
+drop policy if exists photos_owner on public.progress_photos;
+create policy photos_owner on public.progress_photos for all
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- El nutricionista solo las ve si el vínculo está activo y el cliente ha activado compartir fotos
+drop policy if exists photos_pro_select on public.progress_photos;
+create policy photos_pro_select on public.progress_photos for select
+  using (exists (select 1 from public.client_links l
+                 where l.pro_id = auth.uid() and l.client_id = progress_photos.user_id
+                   and l.profile_id = progress_photos.profile_id
+                   and l.status = 'active' and l.share_photos));
+
+-- Almacenamiento privado (sin enlaces públicos), solo JPEG y máximo 3 MB por foto
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('progress-photos', 'progress-photos', false, 3145728, array['image/jpeg'])
+on conflict (id) do update
+  set public = false, file_size_limit = 3145728, allowed_mime_types = array['image/jpeg'];
+
+-- Ruta de cada archivo: <id del cliente>/<id del perfil>/<id de la foto>.jpg
+drop policy if exists photos_obj_owner on storage.objects;
+create policy photos_obj_owner on storage.objects for all
+  using (bucket_id = 'progress-photos' and (storage.foldername(name))[1] = auth.uid()::text)
+  with check (bucket_id = 'progress-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists photos_obj_pro on storage.objects;
+create policy photos_obj_pro on storage.objects for select
+  using (bucket_id = 'progress-photos'
+         and exists (select 1 from public.client_links l
+                     where l.pro_id = auth.uid()
+                       and l.client_id::text = (storage.foldername(name))[1]
+                       and l.profile_id = (storage.foldername(name))[2]
+                       and l.status = 'active' and l.share_photos));
+
 -- Para activar a un profesional de pago sin límite de clientes:
 --   update public.professionals set status = 'active' where user_id = '<id>';
 -- Para suspenderlo:

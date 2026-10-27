@@ -27,3 +27,4 @@ Los datos de entreno que se registraron antes (fuerza) se conservan en el dispos
 - Prueba gratuita: 3 clientes por profesional (se aplica en el servidor). Para activar un profesional de pago: `update professionals set status='active' where user_id = '…';`
 - Backend: ejecutar `supabase/profesionales.sql` en el SQL Editor de Supabase (tablas, políticas RLS y funciones).
 - Pendiente: cobro (Stripe) y revisión legal de las condiciones para profesionales (ahora son un borrador).
+- Fotos de progreso: se guardan en el móvil del cliente. Si el cliente lo activa (casilla opcional al vincularse o botón en Ajustes, Cuenta y datos), se sube una copia a un almacenamiento privado de Supabase y el nutricionista la ve en la ficha del cliente (galería y comparador). Si el cliente deja de compartir, borra la foto o se desvincula, se elimina la copia. Requiere la sección 7 de `supabase/profesionales.sql`.

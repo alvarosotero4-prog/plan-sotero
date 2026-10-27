@@ -1516,8 +1516,9 @@ function addPhoto(input){
   var d=(document.getElementById('ph-d')||{}).value||todayS(),ang=(document.getElementById('ph-a')||{}).value||'Frente';
   toast('Guardando la foto…');
   shrink(f).then(function(blob){
-    return idbDo('readwrite',function(st){return st.put({id:'p'+Date.now().toString(36),date:d,angle:ang,blob:blob,pid:PROF?PROF.id:'sotero'});});
-  }).then(function(){PH.state='idle';PH.cmpA=null;PH.cmpB=null;loadPhotos();toast('Foto guardada');},function(){toast('No se pudo guardar la foto en este navegador');});
+    var rec={id:'p'+Date.now().toString(36),date:d,angle:ang,blob:blob,pid:PROF?PROF.id:'sotero'};
+    return idbDo('readwrite',function(st){return st.put(rec);}).then(function(){if(phShareOn())phUpload(rec.pid,rec).catch(function(){});});
+  }).then(function(){PH.state='idle';PH.cmpA=null;PH.cmpB=null;loadPhotos();toast(phShareOn()?'Foto guardada y compartida':'Foto guardada');},function(){toast('No se pudo guardar la foto en este navegador');});
   input.value='';
 }
 function photosCard(){
@@ -1526,7 +1527,7 @@ function photosCard(){
   if(PH.state==='error')return h+'<p class="muted">Este navegador no permite guardar fotos en el dispositivo.</p></section>';
   h+='<div class="form"><label>Fecha<input type="date" id="ph-d" value="'+todayS()+'"></label><label>Ángulo<select id="ph-a">'+ANGLES.map(function(a){return '<option'+(a===PH.angle?' selected':'')+'>'+a+'</option>';}).join('')+'</select></label>'+
     '<label class="btn main filebtn">Hacer o elegir foto<input type="file" id="ph-file" accept="image/*" hidden></label></div>'+
-    '<p class="muted">Misma luz, misma postura y misma hora cada semana. Las fotos se guardan solo en este móvil y no entran en la copia de seguridad.</p>';
+    '<p class="muted">Misma luz, misma postura y misma hora cada semana. '+(phShareOn()?'Tu nutricionista ve una copia de estas fotos mientras las compartas. Puedes dejar de compartirlas en Ajustes, Cuenta y datos.':'Las fotos se guardan en este móvil y no entran en la copia de seguridad.'+(phLink()?' Tu nutricionista no las ve: puedes compartirlas en Ajustes, Cuenta y datos.':''))+'</p>';
   var L=PH.list||[];
   if(!L.length)return h+(PH.state==='loading'?'<p class="muted">Cargando…</p>':'<p class="ghost">Aún no hay fotos.</p>')+'</section>';
   if(L.length>=2){
@@ -1536,6 +1537,73 @@ function photosCard(){
   }
   h+='<h3>Galería</h3><div class="gal">'+L.slice().reverse().map(function(x){return '<figure><img src="'+x.url+'" alt="Foto '+esc(x.angle)+' del '+esc(x.date)+'" loading="lazy"><figcaption class="muted">'+esc(dayLabel(x.date).split(' ').slice(1).join(' '))+' · '+esc(x.angle)+'</figcaption><button class="btn sm" data-act="delphoto" data-id="'+x.id+'">Quitar</button></figure>';}).join('')+'</div>';
   return h+'</section>';
+}
+/* ---------- fotos compartidas con el nutricionista (copia en la nube solo si el cliente lo activa) ---------- */
+var PHS={busy:false,seen:{}};
+function phLink(){return (ui.links||[]).filter(function(x){return PROF&&x.profile_id===PROF.id;})[0]||null;}
+function phShareOn(){var l=phLink();return !!(l&&l.share_photos);}
+function phPath(pid,id){return AUTH.uid+'/'+pid+'/'+id+'.jpg';}
+function phFlags(){try{return JSON.parse(localStorage.getItem('plan-phr:'+(AUTH?AUTH.uid:''))||'[]');}catch(e){return [];}}
+function phFlag(pid,on){
+  try{var a=phFlags(),i=a.indexOf(pid);if(on&&i<0)a.push(pid);if(!on&&i>-1)a.splice(i,1);localStorage.setItem('plan-phr:'+AUTH.uid,JSON.stringify(a));}catch(e){}
+}
+function phFetch(method,path,body,ctype){
+  var ctl=typeof AbortController!=='undefined'?new AbortController():null,tm=setTimeout(function(){if(ctl)ctl.abort();},45000);
+  var h={'apikey':SB_KEY,'Authorization':'Bearer '+AUTH.access};if(ctype)h['Content-Type']=ctype;if(method==='POST')h['x-upsert']='true';
+  return fetch(SB_URL+path,{method:method,headers:h,body:body,signal:ctl?ctl.signal:undefined}).then(function(r){clearTimeout(tm);if(!r.ok){var er=new Error('http '+r.status);er.status=r.status;throw er;}return r;},function(){clearTimeout(tm);var er=new Error('net');er.net=true;throw er;});
+}
+function phUpload(pid,x){
+  return ensureToken().then(function(){
+    return phFetch('POST','/storage/v1/object/progress-photos/'+phPath(pid,x.id),x.blob,'image/jpeg');
+  }).then(function(){
+    return sbReq('POST','/rest/v1/progress_photos',{user_id:AUTH.uid,profile_id:pid,id:x.id,date:x.date,angle:x.angle,path:phPath(pid,x.id)},AUTH.access,{'Prefer':'resolution=merge-duplicates,return=minimal'});
+  }).then(function(){phFlag(pid,true);});
+}
+function phRemoteDel(pid,id){
+  return ensureToken().then(function(){
+    return phFetch('DELETE','/storage/v1/object/progress-photos/'+phPath(pid,id)).catch(function(e){if(e&&e.status===404)return;throw e;});
+  }).then(function(){
+    return sbReq('DELETE','/rest/v1/progress_photos?user_id=eq.'+AUTH.uid+'&profile_id=eq.'+encodeURIComponent(pid)+'&id=eq.'+encodeURIComponent(id),null,AUTH.access);
+  });
+}
+/* borra de la nube todas las fotos de un perfil (las del móvil se quedan) */
+function phPurge(pid){
+  if(!cloudOn()||!AUTH||AUTH.pro)return Promise.resolve();
+  return ensureToken().then(function(){
+    return sbReq('GET','/rest/v1/progress_photos?select=id&user_id=eq.'+AUTH.uid+'&profile_id=eq.'+encodeURIComponent(pid),null,AUTH.access);
+  }).then(function(rows){
+    var seq=Promise.resolve();(rows||[]).forEach(function(r){seq=seq.then(function(){return phRemoteDel(pid,r.id);});});
+    return seq;
+  }).then(function(){phFlag(pid,false);},function(){});
+}
+/* sube las fotos del móvil que aún no están en la nube (solo si comparte) */
+function phSync(){
+  if(PHS.busy||!cloudOn()||!AUTH||AUTH.pro||!PROF||!phShareOn())return Promise.resolve();
+  var pid=PROF.id;PHS.busy=true;
+  return ensureToken().then(function(){
+    return Promise.all([idbDo('readonly',function(st){return st.getAll();}),sbReq('GET','/rest/v1/progress_photos?select=id&user_id=eq.'+AUTH.uid+'&profile_id=eq.'+encodeURIComponent(pid),null,AUTH.access)]);
+  }).then(function(r){
+    var have={};(r[1]||[]).forEach(function(x){have[x.id]=1;});
+    var todo=(r[0]||[]).filter(function(x){return (x.pid||'sotero')===pid&&!have[x.id];});
+    var seq=Promise.resolve();todo.forEach(function(x){seq=seq.then(function(){return phUpload(pid,x);});});
+    return seq;
+  }).then(function(){PHS.busy=false;},function(){PHS.busy=false;});
+}
+function phAfterPull(){
+  if(!cloudOn()||!AUTH||AUTH.pro||!PROF)return;
+  if(phShareOn())phSync();
+  else if(phFlags().indexOf(PROF.id)>-1)phPurge(PROF.id);
+}
+function setSharePhotos(on){
+  var l=phLink();if(!l)return;
+  ui.busy=true;render();
+  ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/set_share_photos',{p_link:l.id,p_on:!!on},AUTH.access);}).then(function(){
+    return coachPull();
+  }).then(function(){
+    ui.busy=false;render();
+    if(on){phSync();toast('Compartiendo tus fotos');}
+    else{phPurge(PROF.id);toast('Has dejado de compartir tus fotos');}
+  },function(){ui.busy=false;toast('No se pudo cambiar. Inténtalo de nuevo.');render();});
 }
 function vPeso(){
   var ws=weeksData(),rec=proProf()?null:recommendation(ws),last=null,i;
@@ -1748,9 +1816,10 @@ function obStepPro(st){
       '<h3>¿Qué comes un día normal?</h3>'+
       inTxt('in_r_bk','Desayuno','')+inTxt('in_r_mid','Media mañana','')+inTxt('in_r_lunch','Comida','')+inTxt('in_r_snack','Merienda','')+inTxt('in_r_dinner','Cena','')+inTxt('in_r_pick','Entre horas y bebidas','');
   } else {
-    h='<h2>Antes de enviarlo</h2><p>Vas a compartir este cuestionario con <b>'+esc(ob.proName)+'</b>. Mientras estés vinculado también verá las comidas, el peso, las medidas, el seguimiento y las notas del diario de este perfil. Tus fotos no se comparten.</p>'+
+    h='<h2>Antes de enviarlo</h2><p>Vas a compartir este cuestionario con <b>'+esc(ob.proName)+'</b>. Mientras estés vinculado también verá las comidas, el peso, las medidas, el seguimiento y las notas del diario de este perfil. Tus fotos de progreso solo las verá si tú lo activas aquí abajo (es opcional).</p>'+
       '<p class="muted">No calculo tus calorías ni tus menús: los prepara tu nutricionista y los verás en la app. Puedes dejar de compartir cuando quieras en Ajustes, Cuenta y datos.</p>'+
-      '<label class="chk" style="cursor:pointer"><input type="checkbox" data-ob="ok"'+(ob.ok?' checked':'')+'><span>Doy mi consentimiento para que '+esc(ob.proName)+' trate mis datos de salud de este cuestionario y de mi seguimiento para elaborar mi plan nutricional</span></label>';
+      '<label class="chk" style="cursor:pointer"><input type="checkbox" data-ob="ok"'+(ob.ok?' checked':'')+'><span>Doy mi consentimiento para que '+esc(ob.proName)+' trate mis datos de salud de este cuestionario y de mi seguimiento para elaborar mi plan nutricional</span></label>'+
+      '<label class="chk" style="cursor:pointer"><input type="checkbox" data-ob="ph"'+(ob.ph?' checked':'')+'><span>Opcional: quiero que '+esc(ob.proName)+' vea también mis fotos de progreso. Puedo dejar de compartirlas cuando quiera y se borra la copia compartida.</span></label>';
   }
   return h;
 }
@@ -1971,6 +2040,7 @@ function newBlock(){
 }
 function deleteProfile(id){
   var e=INDEX.list.filter(function(x){return x.id===id;})[0];if(!e)return;
+  try{phPurge(id);}catch(x){}
   try{localStorage.removeItem(e.key);}catch(x){}
   idbDo('readwrite',function(st){var rq=st.openCursor();rq.onsuccess=function(){var c=rq.result;if(c){if((c.value.pid||'sotero')===id)c.delete();c.continue();}};return rq;}).catch(function(){});
   INDEX.list=INDEX.list.filter(function(x){return x.id!==id;});
@@ -2209,8 +2279,8 @@ function vPrivacy(){
     '<h3>Qué datos se guardan</h3><p>Tu correo electrónico y, por cada perfil, los datos que escribes: edad, altura, peso, medidas, dieta, alergias, horarios, comidas, registros de peso y de sueño, y notas. Son datos de salud, así que se tratan con cuidado.</p>'+
     '<h3>Para qué</h3><p>Solo para calcular y mostrarte tu plan y sincronizarlo entre tus dispositivos. No se venden ni se usan para publicidad.</p>'+
     '<h3>Dónde y quién puede verlos</h3><p>Se guardan en tu cuenta, en los servidores de Supabase, con la contraseña cifrada y protegidos para que cada persona solo acceda a lo suyo. La persona que administra la app puede ver técnicamente los datos guardados en el servidor, y se compromete a usarlos solo para resolver fallos.</p>'+
-    '<h3>Fotos</h3><p>Las fotos de progreso se quedan solo en tu dispositivo: no se suben a la cuenta.</p>'+
-    '<h3>Si te vinculas con un nutricionista</h3><p>Solo si tú lo decides, escribiendo su código. Entonces esa persona podrá ver las comidas, el peso, las medidas, el seguimiento y las notas del diario del perfil que elijas, ajustar tus objetivos y dejarte notas. Tú decides cuándo dejar de compartir, desde Ajustes, Cuenta y datos, y deja de verlo al instante. Tus fotos no se comparten. Esa persona es la responsable de usar tus datos solo para tu seguimiento nutricional. Si el nutricionista te envió una invitación, el cuestionario inicial (salud, hábitos y alimentación) también lo verá solo esa persona. El chat guarda los mensajes que os escribís, que solo veis vosotros dos mientras estéis vinculados; no lo uses para urgencias médicas.</p>'+
+    '<h3>Fotos</h3><p>Las fotos de progreso se guardan en tu dispositivo y no se suben a la cuenta. Solo si estás vinculado con un nutricionista y activas compartirlas, se sube una copia a un almacenamiento privado que ve esa persona. Si dejas de compartir, de vincularte o borras la foto, se elimina la copia.</p>'+
+    '<h3>Si te vinculas con un nutricionista</h3><p>Solo si tú lo decides, escribiendo su código. Entonces esa persona podrá ver las comidas, el peso, las medidas, el seguimiento y las notas del diario del perfil que elijas, ajustar tus objetivos y dejarte notas. Tú decides cuándo dejar de compartir, desde Ajustes, Cuenta y datos, y deja de verlo al instante. Tus fotos de progreso solo las verá si lo activas tú aparte. Esa persona es la responsable de usar tus datos solo para tu seguimiento nutricional. Si el nutricionista te envió una invitación, el cuestionario inicial (salud, hábitos y alimentación) también lo verá solo esa persona. El chat guarda los mensajes que os escribís, que solo veis vosotros dos mientras estéis vinculados; no lo uses para urgencias médicas.</p>'+
     '<h3>Tus derechos</h3><p>Puedes descargar todos tus datos y borrar tu cuenta y todo lo que contiene cuando quieras, desde la pestaña Cuenta. El borrado es inmediato y definitivo.</p>'+
     '<h3>Aviso</h3><p>El plan es orientativo y no sustituye el consejo de un médico o dietista. La app es solo para mayores de 18 años.</p>'+
     '<div class="btns"><button class="btn main" data-act="privback">Volver</button></div></section>';
@@ -2241,7 +2311,7 @@ function wipeLocal(){
 }
 function deleteAccount(){
   ui.busy=true;render();
-  ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/delete_my_account',{},AUTH.access);}).then(function(){
+  Promise.all(phFlags().map(function(pid){return phPurge(pid);})).then(function(){return ensureToken();}).then(function(){return sbReq('POST','/rest/v1/rpc/delete_my_account',{},AUTH.access);}).then(function(){
     wipeLocal();AUTH=null;PROF=null;INDEX=null;PRO=null;PC={list:null,err:null,loading:false,at:0};CH.msgs=[];CH.unread={};CH.link=null;CH.draft='';ui.links=null;ui.psel=null;S=DEF();ui.busy=false;ui.delAcct=0;ui.au={email:'',pw:'',pw2:''};ui.authMode='login';ui.authMsg={k:'info',t:'Tu cuenta y todos tus datos se han borrado.'};ui.screen='auth';render();toTop();
   },function(e){
     ui.busy=false;
@@ -2321,7 +2391,7 @@ function proLoad(){
   if(!AUTH||!AUTH.pro||!PRO||PRO.pending)return Promise.resolve();
   PC.loading=true;PC.err=null;if(ui.screen==='pro')render();
   return ensureToken().then(function(){
-    return sbReq('GET','/rest/v1/client_links?select=id,profile_id,client_id,client_name,client_email,consented_at,pro_plans(targets,note,menu,updated_at),pro_notes(body,updated_at)&pro_id=eq.'+AUTH.uid+'&status=eq.active&order=created_at.asc',null,AUTH.access);
+    return sbReq('GET','/rest/v1/client_links?select=id,profile_id,client_id,client_name,client_email,consented_at,share_photos,pro_plans(targets,note,menu,updated_at),pro_notes(body,updated_at)&pro_id=eq.'+AUTH.uid+'&status=eq.active&order=created_at.asc',null,AUTH.access);
   }).then(function(links){
     links=links||[];if(!links.length)return {links:links,rows:[]};
     var ids=links.map(function(l){return l.client_id;}).filter(function(x,i,a){return a.indexOf(x)===i;});
@@ -2330,7 +2400,7 @@ function proLoad(){
     PC.list=r.links.map(function(l){
       var row=r.rows.filter(function(x){return x.user_id===l.client_id&&x.id===l.profile_id;})[0]||null;
       var pp=Array.isArray(l.pro_plans)?l.pro_plans[0]:l.pro_plans,pn=Array.isArray(l.pro_notes)?l.pro_notes[0]:l.pro_notes;
-      var c={link:l.id,client:l.client_id,profile_id:l.profile_id,name:(row&&row.name)||l.client_name||'Cliente',email:l.client_email||'',type:row?row.type:'gen',data:row?row.data:null,updated:row?row.updated_at:null,plan:pp||null,pnote:pn||null,since:l.consented_at};
+      var c={link:l.id,client:l.client_id,profile_id:l.profile_id,name:(row&&row.name)||l.client_name||'Cliente',email:l.client_email||'',type:row?row.type:'gen',data:row?row.data:null,updated:row?row.updated_at:null,plan:pp||null,pnote:pn||null,since:l.consented_at,share:!!l.share_photos};
       c.stats=c.data?proStats(c):null;return c;
     });
     PC.loading=false;PC.at=Date.now();chatUnread();
@@ -2405,6 +2475,7 @@ function proClientBody(c){
   h+='<section class="card"><h2>Peso</h2><div class="chartbox">'+chartSVG(ws)+'</div></section>';
   var wp=Object.keys(S.waist).sort().map(function(d){return {d:d,y:S.waist[d]};}),sp=S.skin.filter(function(x){return x.pct!=null;}).map(function(x){return {d:x.d,y:x.pct};});
   if(wp.length||sp.length)h+='<section class="card"><h2>Medidas</h2>'+(sp.length?'<h3>% de grasa</h3><div class="chartbox fit">'+miniLine(sp,' %','Evolución del porcentaje de grasa')+'</div>':'')+(wp.length?'<h3>Cintura</h3><div class="chartbox fit">'+miniLine(wp,' cm','Evolución de la cintura')+'</div>':'')+'</section>';
+  h+=proPhotosCard(c);
   /* diario de comidas */
   var t=todayS(),sel=ui.pday&&diffDays(t,ui.pday)<=6&&diffDays(t,ui.pday)>=0?ui.pday:t;
   h+='<section class="card"><h2>Diario de comidas</h2><div class="chips" role="group" aria-label="Día">'+[6,5,4,3,2,1,0].map(function(i){var d=addDays(t,-i);return '<button class="chip" aria-pressed="'+(d===sel)+'" data-act="pday" data-d="'+d+'">'+DS[wdOf(d)]+' '+(+d.slice(8))+'</button>';}).join('')+'</div>';
@@ -2419,6 +2490,40 @@ function proClientBody(c){
   h+='</section>';
   h+='<section class="card"><h2>Notas privadas</h2><p class="muted">Solo las ves tú. El cliente no puede verlas.</p><textarea data-pt="pnote" rows="4" maxlength="2000" placeholder="Tus anotaciones sobre este cliente">'+esc(dr.pnote!=null?dr.pnote:((c.pnote&&c.pnote.body)||''))+'</textarea><div class="btns"><button class="btn sm" data-act="pronote" data-id="'+c.link+'">Guardar nota privada</button></div></section>';
   return h;
+}
+/* fotos del cliente, vistas por el nutricionista (solo si el cliente las comparte) */
+var PP={};
+function proPhotosLoad(c){
+  if(!c||!c.share)return;
+  var st=PP[c.link]=PP[c.link]||{state:'idle',list:[],a:null,b:null};
+  if(st.state==='loading')return;st.state='loading';
+  ensureToken().then(function(){
+    return sbReq('GET','/rest/v1/progress_photos?select=id,date,angle,path&user_id=eq.'+c.client+'&profile_id=eq.'+encodeURIComponent(c.profile_id)+'&order=date.asc',null,AUTH.access);
+  }).then(function(rows){
+    return Promise.all((rows||[]).map(function(r){
+      return phFetch('GET','/storage/v1/object/authenticated/progress-photos/'+r.path).then(function(x){return x.blob();}).then(function(b){return {id:r.id,date:r.date,angle:r.angle,url:URL.createObjectURL(b)};},function(){return null;});
+    }));
+  }).then(function(L){
+    st.list.forEach(function(x){try{URL.revokeObjectURL(x.url);}catch(e){}});
+    st.list=L.filter(Boolean).sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:(a.id<b.id?-1:1);});
+    st.state='ready';if(ui.screen==='pro'&&ui.psel===c.link)render();
+  },function(){st.state='error';if(ui.screen==='pro'&&ui.psel===c.link)render();});
+}
+function proPhotosCard(c){
+  var h='<section class="card"><h2>Fotos de progreso</h2>';
+  if(!c.share)return h+'<p class="muted">Este cliente no comparte sus fotos de progreso. Solo las verás si decide compartirlas.</p></section>';
+  var st=PP[c.link];if(!st||st.state==='idle'){proPhotosLoad(c);st=PP[c.link];}
+  if(st.state==='error')return h+'<p class="err" role="alert">No se pudieron cargar las fotos.</p><div class="btns"><button class="btn sm" data-act="prophreload" data-id="'+c.link+'">Reintentar</button></div></section>';
+  var L=st.list;
+  if(!L.length)return h+(st.state==='loading'?'<p class="muted">Cargando…</p>':'<p class="ghost">Aún no hay fotos compartidas.</p>')+'</section>';
+  function nm(x){return esc(dayLabel(x.date).split(' ').slice(1).join(' '))+' · '+esc(x.angle);}
+  if(L.length>=2){
+    var a=L.filter(function(x){return x.id===st.a;})[0]||L[0],b=L.filter(function(x){return x.id===st.b;})[0]||L[L.length-1];
+    function opt(sel){return L.map(function(x){return '<option value="'+x.id+'"'+(x.id===sel.id?' selected':'')+'>'+nm(x)+'</option>';}).join('');}
+    h+='<h3>Comparar</h3><div class="cmp"><div><select data-bind="pcmpA" aria-label="Foto de antes">'+opt(a)+'</select><img src="'+a.url+'" alt="Foto de antes, '+esc(a.angle)+'"></div><div><select data-bind="pcmpB" aria-label="Foto de después">'+opt(b)+'</select><img src="'+b.url+'" alt="Foto de después, '+esc(b.angle)+'"></div></div>';
+  }
+  h+='<h3>Galería</h3><div class="gal">'+L.slice().reverse().map(function(x){return '<figure><img src="'+x.url+'" alt="Foto '+esc(x.angle)+' del '+esc(x.date)+'" loading="lazy"><figcaption class="muted">'+nm(x)+'</figcaption></figure>';}).join('')+'</div>';
+  return h+'</section>';
 }
 function vProClient(){
   var c=proFind(ui.psel);if(!c){ui.psel=null;return '';}
@@ -2473,8 +2578,8 @@ function coachNote(){return coachOn()?'<p class="note">'+esc(S.coach.pro||'Tu nu
 function coachPull(){
   if(!cloudOn()||!AUTH||AUTH.pro)return Promise.resolve(false);
   return ensureToken().then(function(){
-    return sbReq('GET','/rest/v1/client_links?select=id,profile_id,status,consented_at,professionals(name,business),pro_plans(targets,note,menu,updated_at)&client_id=eq.'+AUTH.uid+'&status=eq.active',null,AUTH.access);
-  }).then(function(rows){ui.links=Array.isArray(rows)?rows:[];ui.noPro=false;return coachApply();},function(e){if(e&&!e.net&&(e.status===404||e.status===400))ui.noPro=true;return false;});
+    return sbReq('GET','/rest/v1/client_links?select=id,profile_id,status,consented_at,share_photos,professionals(name,business),pro_plans(targets,note,menu,updated_at)&client_id=eq.'+AUTH.uid+'&status=eq.active',null,AUTH.access);
+  }).then(function(rows){ui.links=Array.isArray(rows)?rows:[];ui.noPro=false;var ap=coachApply();setTimeout(phAfterPull,0);return ap;},function(e){if(e&&!e.net&&(e.status===404||e.status===400))ui.noPro=true;return false;});
 }
 function coachApply(){
   if(!PROF||!ui.links)return false;
@@ -2508,15 +2613,16 @@ function coachCard(){
   var l=(ui.links||[]).filter(function(x){return x.profile_id===PROF.id;})[0];
   if(l){
     var pr=l.professionals||{};if(Array.isArray(pr))pr=pr[0]||{};
-    var h='<section class="card"><h2>Mi nutricionista</h2><p><b>'+esc(pr.name||'Tu nutricionista')+'</b>'+(pr.business?' · '+esc(pr.business):'')+'</p><p class="muted">Ve las comidas, el peso, las medidas, el seguimiento y las notas del diario del perfil '+esc(PROF.name)+'. Puede ajustar tus objetivos de calorías y macros y dejarte notas. Tus fotos no se comparten.</p>';
+    var h='<section class="card"><h2>Mi nutricionista</h2><p><b>'+esc(pr.name||'Tu nutricionista')+'</b>'+(pr.business?' · '+esc(pr.business):'')+'</p><p class="muted">Ve las comidas, el peso, las medidas, el seguimiento y las notas del diario del perfil '+esc(PROF.name)+'. Puede ajustar tus objetivos de calorías y macros y dejarte notas.</p>'+(l.share_photos?'<p class="note">Estás compartiendo tus fotos de progreso con '+esc(pr.name||'tu nutricionista')+'. Se sube una copia privada; si dejas de compartir, se borra.</p><div class="btns"><button class="btn sm" data-act="phshare" data-on="0"'+(ui.busy?' disabled':'')+'>Dejar de compartir mis fotos</button></div>':'<p class="muted">Tus fotos de progreso no se comparten.</p><div class="btns"><button class="btn sm" data-act="phshare" data-on="1"'+(ui.busy?' disabled':'')+'>Compartir mis fotos con '+esc(pr.name||'mi nutricionista')+'</button></div>');
     if(S.coach&&S.coach.note)h+='<p class="note"><b>Su última nota:</b> '+esc(S.coach.note)+'</p>';
     if(ui.unlink===l.id)h+='<p class="note">Dejarás de compartir este perfil con '+esc(pr.name||'tu nutricionista')+'. Dejará de verlo al instante y tus objetivos volverán a ser editables.</p><div class="btns"><button class="btn danger sm" data-act="unlinkok" data-id="'+l.id+'">Sí, dejar de compartir</button><button class="btn sm" data-act="unlinkno">Cancelar</button></div>';
     else h+='<div class="btns"><button class="btn sm" data-act="unlink" data-id="'+l.id+'">Dejar de compartir</button></div>';
     return h+'</section>';
   }
   var code=ui.au.code!=null?ui.au.code:(ui.invite||'');
-  return '<section class="card"><h2>Vincular con mi nutricionista</h2><p class="muted">Si tienes un nutricionista o dietista que usa esta app, escribe el código que te ha dado. Al vincular, podrá ver las comidas, el peso, las medidas, el seguimiento y las notas del diario del perfil <b>'+esc(PROF.name)+'</b>, ajustar tus objetivos y dejarte notas. Puedes dejar de compartir cuando quieras. Tus fotos no se comparten.</p>'+
+  return '<section class="card"><h2>Vincular con mi nutricionista</h2><p class="muted">Si tienes un nutricionista o dietista que usa esta app, escribe el código que te ha dado. Al vincular, podrá ver las comidas, el peso, las medidas, el seguimiento y las notas del diario del perfil <b>'+esc(PROF.name)+'</b>, ajustar tus objetivos y dejarte notas. Puedes dejar de compartir cuando quieras. Tus fotos no se comparten salvo que marques la casilla de abajo.</p>'+
     '<label class="fld"><span class="lb">Código del nutricionista</span><input type="text" data-au="code" value="'+esc(code)+'" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="Por ejemplo K7M2QX"></label>'+
+    '<label class="chk" style="cursor:pointer"><input type="checkbox" data-au="ph"'+(ui.au.ph?' checked':'')+'><span>Opcional: compartir también mis fotos de progreso</span></label>'+
     (ui.linkMsg?'<p class="'+(ui.linkMsg.k==='err'?'err':'note')+'" role="alert">'+esc(ui.linkMsg.t)+'</p>':'')+
     '<div class="btns"><button class="btn main sm" data-act="linkgo"'+(ui.busy?' disabled':'')+'>Vincular y compartir</button></div></section>';
 }
@@ -2531,20 +2637,21 @@ function linkErr(e){
   return 'No se pudo vincular. Inténtalo de nuevo.';
 }
 function linkGo(){
-  readAu();var code=(ui.au.code||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  readAu();var code=(ui.au.code||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,''),wantPh=!!(ui.au.ph||ui.linkPh);
   if(code.length<4){ui.linkMsg={k:'err',t:'Escribe el código completo.'};render();return;}
   ui.busy=true;ui.linkMsg=null;render();
   markDirty(PROF.id);
   syncPush().then(function(){return ensureToken();}).then(function(){
     return sbReq('POST','/rest/v1/rpc/link_with_code',{p_code:code,p_profile:PROF.id},AUTH.access);
-  }).then(function(){
+  }).then(function(lk){
     try{localStorage.removeItem('plan-invite');}catch(x){}ui.invite='';ui.au.code=null;
+    if(wantPh&&lk&&lk.id)return sbReq('POST','/rest/v1/rpc/set_share_photos',{p_link:lk.id,p_on:true},AUTH.access).then(function(){return coachPull();},function(){return coachPull();});
     return coachPull();
-  }).then(function(){ui.busy=false;ui.linkMsg=null;var au=ui.linkAuto;ui.linkAuto=false;render();toast(au?'Cuestionario enviado a tu nutricionista':'Vinculado con tu nutricionista');},function(e){ui.busy=false;ui.linkMsg={k:'err',t:linkErr(e)};if(ui.linkAuto){toast('Perfil creado, pero no se pudo vincular: '+linkErr(e));ui.linkAuto=false;}render();});
+  }).then(function(){ui.busy=false;ui.linkMsg=null;ui.linkPh=false;ui.au.ph=false;var au=ui.linkAuto;ui.linkAuto=false;render();toast(au?'Cuestionario enviado a tu nutricionista':'Vinculado con tu nutricionista');},function(e){ui.busy=false;ui.linkMsg={k:'err',t:linkErr(e)};if(ui.linkAuto){toast('Perfil creado, pero no se pudo vincular: '+linkErr(e));ui.linkAuto=false;}render();});
 }
 function unlinkOk(id){
   ui.busy=true;render();
-  ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/revoke_link',{p_link:id},AUTH.access);}).then(function(){ui.unlink=null;return coachPull();}).then(function(){ui.busy=false;render();toast('Has dejado de compartir tu perfil');},function(){ui.busy=false;toast('No se pudo completar. Inténtalo de nuevo.');render();});
+  ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/revoke_link',{p_link:id},AUTH.access);}).then(function(){ui.unlink=null;return phPurge(PROF.id);}).then(function(){return coachPull();}).then(function(){ui.busy=false;render();toast('Has dejado de compartir tu perfil');},function(){ui.busy=false;toast('No se pudo completar. Inténtalo de nuevo.');render();});
 }
 
 /* ---------- nutricionista: cuestionario del cliente y editor de menús ---------- */
@@ -2687,7 +2794,7 @@ function vProTerms(){
     '<h3>Qué es esta herramienta</h3><p>Una aplicación para que tus clientes registren su alimentación y su peso, y para que tú puedas verlo, ajustar sus objetivos y dejarles notas. Es una ayuda orientativa; no es un producto sanitario ni sustituye tu criterio profesional.</p>'+
     '<h3>Quién es responsable de los datos</h3><p>Tú eres responsable del tratamiento de los datos de salud de tus clientes que consultas con esta herramienta. El titular de la app actúa como encargado del tratamiento: los aloja y los pone a tu disposición, solo para prestar el servicio, y no los usa para otros fines.</p>'+
     '<h3>Tus obligaciones</h3><ul class="plain"><li>Informar a tus clientes de que usas esta herramienta y de para qué usas sus datos.</li><li>Tener una base legal para tratar sus datos de salud (normalmente su consentimiento explícito, que la app recoge al vincular).</li><li>Usar los datos solo para el seguimiento nutricional del propio cliente y guardar la confidencialidad.</li><li>Dejar de acceder cuando el cliente revoque el vínculo o termine la relación profesional.</li><li>No compartir las cuentas ni el código de invitación con terceros.</li></ul>'+
-    '<h3>Qué ve cada parte</h3><p>Al vincularse, el cliente comparte contigo las comidas, el peso, las medidas, el seguimiento y las notas del diario del perfil que elija. Las fotos de progreso no se comparten. El cliente puede dejar de compartir en cualquier momento y entonces dejas de ver sus datos al instante. Tus notas privadas no las ve el cliente.</p>'+
+    '<h3>Qué ve cada parte</h3><p>Al vincularse, el cliente comparte contigo las comidas, el peso, las medidas, el seguimiento y las notas del diario del perfil que elija. Las fotos de progreso solo las ves si el cliente decide compartirlas, y las pierdes de vista si deja de hacerlo. El cliente puede dejar de compartir en cualquier momento y entonces dejas de ver sus datos al instante. Tus notas privadas no las ve el cliente.</p>'+
     '<h3>Prueba gratuita y precio</h3><p>La cuenta empieza en prueba gratuita con un máximo de clientes. Las condiciones económicas de la versión de pago se comunicarán antes de cobrar nada.</p>'+
     '<div class="btns"><button class="btn main" data-act="privback">Volver</button></div></section>';
 }
@@ -2736,7 +2843,8 @@ function profileAct(a,b){
   case 'ptab':ui.ptab=v;ui.psel=null;render();toTop();return true;
   case 'proopen':ui.psel=b.dataset.id;ui.pcur=null;ui.pday=null;ui.prc=null;render();toTop();return true;
   case 'proback':ui.psel=null;ui.prc=null;render();toTop();return true;
-  case 'proreload':proLoad();return true;
+  case 'proreload':(function(){var c=proFind(ui.psel);if(c&&PP[c.link])PP[c.link].state='idle';})();proLoad();return true;
+  case 'prophreload':(function(){var c=proFind(b.dataset.id);if(c){PP[c.link]={state:'idle',list:(PP[c.link]||{}).list||[]};render();}})();return true;
   case 'pday':ui.pday=b.dataset.d;ui.pdraft[ui.psel]=Object.assign(ui.pdraft[ui.psel]||{},proReadDraft());render();return true;
   case 'prosave':{var c1=proFind(b.dataset.id);if(c1)proSaveTargets(c1);return true;}
   case 'pronote':{var c2=proFind(b.dataset.id);if(c2)proSaveNote(c2);return true;}
@@ -2751,6 +2859,7 @@ function profileAct(a,b){
   case 'unlink':ui.unlink=b.dataset.id;render();return true;
   case 'unlinkno':ui.unlink=null;render();return true;
   case 'unlinkok':unlinkOk(b.dataset.id);return true;
+  case 'phshare':setSharePhotos(b.dataset.on==='1');return true;
   case 'acctdel':
     if(!ui.delAcct){ui.delAcct=1;render();return true;}
     readAu();if((ui.au.delconfirm||'').trim().toUpperCase()!=='BORRAR'){toast('Escribe BORRAR para confirmar');return true;}
@@ -2796,7 +2905,7 @@ function profileAct(a,b){
     readOb();
     if(ob.pro){
       for(i=0;i<=6;i++){var er0=obValidate(i);if(er0){ob.step=i;ob.err=er0;render();toTop();return true;}}
-      if(createProProfile()){ob=null;ui.screen=null;render();toTop();autoLink();}
+      if(createProProfile()){ui.linkPh=!!ob.ph;ob=null;ui.screen=null;render();toTop();autoLink();}
       return true;
     }
     for(i=0;i<=5;i++){var er=obValidate(i);if(er){ob.step=i;ob.err=er;render();toTop();return true;}}
@@ -2846,7 +2955,7 @@ app.addEventListener('click',function(e){
   if(a==='addmeasure'){addMeasure();return;}
   if(a==='delskin'){S.skin.splice(i,1);save();render();return;}
   if(a==='delwaist'){delete S.waist[d];save();render();return;}
-  if(a==='delphoto'){idbDo('readwrite',function(st){return st.delete(b.dataset.id);}).then(function(){PH.state='idle';PH.cmpA=null;PH.cmpB=null;loadPhotos();},function(){toast('No se pudo quitar la foto');});return;}
+  if(a==='delphoto'){var dpid=PROF?PROF.id:'sotero',did=b.dataset.id;if(cloudOn()&&AUTH&&!AUTH.pro&&phFlags().indexOf(dpid)>-1)phRemoteDel(dpid,did).catch(function(){});idbDo('readwrite',function(st){return st.delete(did);}).then(function(){PH.state='idle';PH.cmpA=null;PH.cmpB=null;loadPhotos();},function(){toast('No se pudo quitar la foto');});return;}
   if(a==='tag'){var tgs=S.tags[d]||(S.tags[d]=[]),ix=tgs.indexOf(b.dataset.t);if(ix>-1)tgs.splice(ix,1);else tgs.push(b.dataset.t);if(!tgs.length)delete S.tags[d];save();render();return;}
   if(a==='feel'){var F=S.feel[d]||(S.feel[d]={}),kk=b.dataset.k,vv=+b.dataset.v;if(F[kk]===vv)delete F[kk];else F[kk]=vv;if(!Object.keys(F).length)delete S.feel[d];save();render();return;}
   if(a==='addex'){var en=(document.getElementById('exn').value||'').trim();if(!en){toast('Escribe o elige un ejercicio');return;}(S.lifts[d]||(S.lifts[d]=[])).push({ex:en,sets:[{kg:null,reps:null}]});save();render();return;}
@@ -2878,6 +2987,7 @@ app.addEventListener('change',function(e){
   if(t.dataset&&(t.dataset.pm==='rt'||t.dataset.pm==='rv')){var c8=proFind(ui.psel);if(c8){var dm8=pmDraft(c8),dk8=String(ui.pmd||0);dm8[dk8]=dm8[dk8]||{};var rr8=(dm8[dk8]._r=dm8[dk8]._r||{});(rr8[t.dataset.s]=rr8[t.dataset.s]||{})[t.dataset.pm==='rt'?'t':'v']=t.value;}return;}
   if(t.dataset&&t.dataset.pm==='g'){var c6=proFind(ui.psel);if(c6){var dd6=pmDraft(c6)[String(ui.pmd||0)],ar6=dd6&&dd6[t.dataset.s],it6=ar6&&ar6[+t.dataset.i],v6=num(t.value);if(it6&&v6!=null&&v6>0&&v6<=5000)it6.g=Math.round(v6*10)/10;render();}return;}
   if(!bd)return;
+  if(bd==='pcmpA'||bd==='pcmpB'){var cp=proFind(ui.psel);if(cp&&PP[cp.link]){PP[cp.link][bd==='pcmpA'?'a':'b']=t.value;render();}return;}
   if(bd==='w'||bd==='waist'){var v=num(t.value),map=bd==='w'?S.weights:S.waist;if(t.value.trim()===''||v==null||v<=0){delete map[t.dataset.d];}else map[t.dataset.d]=Math.round(v*10)/10;save();render();return;}
   if(bd==='g'){var v2=num(t.value),arr=logArr(t.dataset.d,t.dataset.s),ix=+t.dataset.i;if(arr[ix]&&v2!=null&&v2>=0)arr[ix].g=Math.round(v2);save();render();return;}
   if(bd==='tg'){var v3=num(t.value);if(v3!=null&&v3>=0)S.settings.t[t.dataset.k][t.dataset.m]=Math.round(v3);save();render();return;}
