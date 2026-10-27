@@ -1137,6 +1137,7 @@ function slotCard(d,s,k){
   var list=(S.logs[d]||{})[s.id]||[],n=slotN(list),t=slotTime(d,s.id),plan=planSlot(k,s.id,d);
   var h='<section class="card slot"><div class="hd"><h3>'+s.name+(t?'<span>'+t+'</span>':'')+'</h3><span class="muted num">'+(list.length?f0(n.kcal)+' kcal · P '+f0(n.p)+' g':(plan.length?'Menú: '+f0(slotN(plan).kcal)+' kcal':''))+'</span></div>';
   if(list.length) h+=list.map(function(e,i){return entryRow(d,s.id,e,i);}).join('');
+  else if(plan.length&&coachMenu())h+=plan.map(function(x){var f=findFood(x.f);if(!f)return '';var nn=nut(x);return '<div class="ent"><div class="n"><b>'+esc(f.name)+'</b><small>'+f0(nn.kcal)+' kcal · P '+f1(nn.p)+' · C '+f1(nn.c)+' · G '+f1(nn.g)+'</small></div><span class="muted num">'+f0(x.g)+' g</span></div>';}).join('');
   else h+=plan.length?'<p class="ghost">'+plan.map(function(x){var f=findFood(x[0]||x.f);return f?esc(f.name)+' '+x.g+' g':'';}).join(' · ')+'</p>':'<p class="ghost">Tu nutricionista no ha puesto menú en esta comida. Apunta lo que comas.</p>';
   h+='<div class="btns">';
   if(!list.length&&plan.length&&!coachMenu()) h+='<button class="btn main sm" data-act="useplan" data-d="'+d+'" data-s="'+s.id+'">Usar el menú del plan</button>';
@@ -2278,7 +2279,7 @@ function proClientBody(c){
   h+='<p class="muted">'+dayLabel(sel)+' · '+f0(dn.kcal)+(wt?'':' / '+f0(tg.kcal))+' kcal · P '+f0(dn.p)+(wt?'':' / '+f0(tg.p))+' g · C '+f0(dn.c)+' g · G '+f0(dn.g)+' g</p>';
   slotsFor(sel).forEach(function(sl){
     var L=(S.logs[sel]||{})[sl.id]||[];if(!L.length)return;any=true;var n=slotN(L);
-    h+='<div class="dslot"><div class="hrow"><b>'+esc(sl.name)+'</b><span class="muted num">'+f0(n.kcal)+' kcal · P '+f0(n.p)+' g</span></div><p class="muted">'+L.map(function(e){var f=findFood(e.f);return esc(f?f.name:'Alimento')+' '+f0(e.g)+' g';}).join(' · ')+'</p></div>';
+    h+='<div class="dslot"><div class="hrow"><b>'+esc(sl.name)+'</b><span class="muted num">'+f0(n.kcal)+' kcal · P '+f0(n.p)+' g</span></div>'+L.map(function(e){var f=findFood(e.f);return '<p class="muted">'+esc(f?f.name:'Alimento')+' · '+f0(e.g)+' g</p>';}).join('')+'</div>';
   });
   if(!any)h+='<p class="ghost">Sin comidas registradas este día.</p>';
   if(S.notes[sel])h+='<p class="note"><b>Nota del cliente:</b> '+esc(S.notes[sel])+'</p>';
