@@ -330,6 +330,13 @@ textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-rad
 .kv span:nth-child(even){font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
 .note{border-left:4px solid var(--warn);background:color-mix(in srgb,var(--warn) 12%,var(--surface));border-radius:6px;padding:8px 12px;font-size:13px}
 
+/* foto de perfil */
+.av.has{background:var(--surface2);overflow:hidden;padding:0}
+.av img{width:100%;height:100%;object-fit:cover;display:block}
+.av.sm{width:38px;height:38px;font-size:19px}
+.av.lg{width:56px;height:56px;font-size:28px}
+.avrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.avrow .av{width:72px;height:72px;font-size:34px}
 /* ===== Tema moderno ===== */
 body{padding-block:0 120px;font-size:15.5px}
 h1,h2,h3{letter-spacing:-.015em;font-weight:700}
@@ -555,6 +562,10 @@ function DEF(){
   var w={};w[SOT_START]=78;
   return {v:1,settings:{match:'12:00',kg:78,t:{f:{kcal:2300,p:165,c:290,g:55},r:{kcal:1950,p:150,c:185,g:70}}},weights:w,waist:{},logs:{},checks:{},foods:[],plays:{},match:{},meals:[],fav:[],coach:null,track:{},lifts:{},feel:{},notes:{},tags:{},skin:[{d:'2026-08-10',sum:62.5,pct:11.78},{d:'2026-08-26',sum:51,pct:10.49},{d:'2026-09-09',sum:56,pct:10.95},{d:'2026-10-07',sum:61,pct:11.46}]};
 }
+function avOk(v){return typeof v==='string'&&v.length<90000&&/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(v);}
+function avSpan(v,name,cls){
+  return avOk(v)?'<span class="av has'+(cls?' '+cls:'')+'" aria-hidden="true"><img src="'+v+'" alt=""></span>':'<span class="av'+(cls?' '+cls:'')+'" aria-hidden="true">'+esc((name||'').charAt(0)||'?')+'</span>';
+}
 function mergeState(o){
   var b=DEF();
   if(!o||typeof o!=='object') return b;
@@ -570,7 +581,8 @@ function mergeState(o){
     skin:Array.isArray(o.skin)?JSON.parse(JSON.stringify(o.skin)):b.skin,
     ml:o.ml&&typeof o.ml==='object'?JSON.parse(JSON.stringify(o.ml)):{},
     intake:o.intake&&typeof o.intake==='object'?JSON.parse(JSON.stringify(o.intake)):null,
-    profile:o.profile&&typeof o.profile==='object'?JSON.parse(JSON.stringify(o.profile)):null};
+    profile:o.profile&&typeof o.profile==='object'?JSON.parse(JSON.stringify(o.profile)):null,
+    avatar:avOk(o.avatar)?o.avatar:null};
 }
 var PROF=null, INDEX=null, G=null;
 var S=DEF();
@@ -1100,7 +1112,7 @@ function recommendation(ws){
 /* ---------- views ---------- */
 function whoBtn(){
   var nm=PROF?PROF.name:'';
-  return '<button class="who" data-act="profiles" aria-label="Perfil de '+esc(nm)+'. Cambiar o crear perfil"><span class="av" aria-hidden="true">'+esc(nm.charAt(0)||'?')+'</span><span class="nm">'+esc(nm)+'</span></button>';
+  return '<button class="who" data-act="profiles" aria-label="Perfil de '+esc(nm)+'. Cambiar o crear perfil">'+avSpan(S.avatar,nm)+'<span class="nm">'+esc(nm)+'</span></button>';
 }
 function header(){
   var t=todayS(),dd=diffDays(t,START),sub,title,kind;
@@ -1523,6 +1535,22 @@ function addPhoto(input){
   }).then(function(){PH.state='idle';PH.cmpA=null;PH.cmpB=null;PH.wk=phWk(d);loadPhotos();toast(phShareOn()?'Foto guardada y compartida':'Foto guardada');},function(){toast('No se pudo guardar la foto en este navegador');});
   input.value='';
 }
+function avatarFrom(file){
+  return new Promise(function(res,rej){
+    function draw(src,w,h){
+      var m=Math.min(w,h),c=document.createElement('canvas');c.width=c.height=256;
+      c.getContext('2d').drawImage(src,(w-m)/2,(h-m)/2,m,m,0,0,256,256);
+      try{res(c.toDataURL('image/jpeg',0.8));}catch(e){rej(e);}
+    }
+    function viaImg(){var u=URL.createObjectURL(file),im=new Image();im.onload=function(){draw(im,im.naturalWidth,im.naturalHeight);URL.revokeObjectURL(u);};im.onerror=function(){URL.revokeObjectURL(u);rej(new Error('img'));};im.src=u;}
+    if(window.createImageBitmap){createImageBitmap(file,{imageOrientation:'from-image'}).then(function(bm){draw(bm,bm.width,bm.height);},function(){viaImg();});}else viaImg();
+  });
+}
+function setAvatar(input){
+  var f=input.files&&input.files[0];if(!f)return;
+  avatarFrom(f).then(function(d){if(!avOk(d))throw new Error('bad');S.avatar=d;save();render();toast('Foto de perfil guardada');},function(){toast('No se pudo usar esa foto');});
+  input.value='';
+}
 /* galería por semanas: botones Semana 1, 2… y, dentro, las fotos de frente, lado y espalda */
 function phWk(d){var n=Math.floor(diffDays(d,START)/7);return n<0?-1:n;}
 function phWkLabel(k){return k<0?'Antes del plan':'Semana '+(k+1);}
@@ -1701,6 +1729,8 @@ function genRules(){
 }
 function profileCard(){
   var h='<section class="card"><h2>Perfil</h2>';
+  var lk0=cloudOn()&&AUTH&&!AUTH.pro&&typeof phLink==='function'?phLink():null;
+  h+='<div class="avrow">'+avSpan(S.avatar,PROF?PROF.name:'')+'<div style="min-width:0"><div class="btns"><label class="btn sm filebtn">'+(S.avatar?'Cambiar foto':'Añadir foto')+'<input type="file" id="av-file" accept="image/*" hidden></label>'+(S.avatar?'<button class="btn sm" data-act="avdel">Quitar</button>':'')+'</div></div></div><p class="muted">'+(lk0?'Tu nutricionista la ve para identificarte.':'Foto de perfil. Si te vinculas con un nutricionista, la verá para identificarte.')+'</p>';
   if(cloudOn()&&AUTH)h+='<p class="muted">Cuenta: '+esc(AUTH.email)+'</p>';
   if(isSot()) h+='<p class="muted">Estás usando el plan original de Sotero.</p>';
   else{
@@ -1735,7 +1765,7 @@ function vProfiles(){
   var h='<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Perfiles</h1></div></header><section class="card"><p class="muted">'+(cloudOn()&&AUTH?'Cuenta: '+esc(AUTH.email)+'. Cada perfil tiene su plan, sus comidas y su peso, y se sincroniza con tu cuenta. Las fotos se quedan solo en este dispositivo.':'Cada perfil tiene su plan, sus comidas, su peso y sus fotos. Se guardan solo en este dispositivo.')+'</p>';
   INDEX.list.forEach(function(e){
     var act=INDEX.active===e.id;
-    h+='<div class="prof"><span class="av" aria-hidden="true">'+esc(e.name.charAt(0)||'?')+'</span><div style="min-width:0"><b>'+esc(e.name)+'</b><span class="muted">'+esc(profSub(e))+(act?' · activo':'')+'</span></div><div class="btns">'+
+    h+='<div class="prof">'+avSpan(PROF&&PROF.id===e.id?S.avatar:null,e.name)+'<div style="min-width:0"><b>'+esc(e.name)+'</b><span class="muted">'+esc(profSub(e))+(act?' · activo':'')+'</span></div><div class="btns">'+
       (act?'':'<button class="btn main sm" data-act="pswitch" data-id="'+e.id+'">Abrir</button>')+
       (ui.delp===e.id?'<button class="btn danger sm" data-act="pdelok" data-id="'+e.id+'">Confirmar</button><button class="btn sm" data-act="pdelno">Cancelar</button>':'<button class="btn sm" data-act="pdel" data-id="'+e.id+'" aria-label="Borrar el perfil de '+esc(e.name)+'">Borrar</button>')+'</div></div>'+
       (ui.delp===e.id?'<p class="note">Se borrarán para siempre el plan, los registros y las fotos de este perfil.</p>':'');
@@ -1834,7 +1864,7 @@ function obStepPro(st){
       '<h3>¿Qué comes un día normal?</h3>'+
       inTxt('in_r_bk','Desayuno','')+inTxt('in_r_mid','Media mañana','')+inTxt('in_r_lunch','Comida','')+inTxt('in_r_snack','Merienda','')+inTxt('in_r_dinner','Cena','')+inTxt('in_r_pick','Entre horas y bebidas','');
   } else {
-    h='<h2>Antes de enviarlo</h2><p>Vas a compartir este cuestionario con <b>'+esc(ob.proName)+'</b>. Mientras estés vinculado también verá las comidas, el peso, las medidas, el seguimiento y las notas del diario de este perfil. Tus fotos de progreso solo las verá si tú lo activas aquí abajo (es opcional).</p>'+
+    h='<h2>Antes de enviarlo</h2><p>Vas a compartir este cuestionario con <b>'+esc(ob.proName)+'</b>. Mientras estés vinculado también verá las comidas, el peso, las medidas, el seguimiento, tu foto de perfil si la pones y las notas del diario de este perfil. Tus fotos de progreso solo las verá si tú lo activas aquí abajo (es opcional).</p>'+
       '<p class="muted">No calculo tus calorías ni tus menús: los prepara tu nutricionista y los verás en la app. Puedes dejar de compartir cuando quieras en Ajustes, Cuenta y datos.</p>'+
       '<label class="chk" style="cursor:pointer"><input type="checkbox" data-ob="ok"'+(ob.ok?' checked':'')+'><span>Doy mi consentimiento para que '+esc(ob.proName)+' trate mis datos de salud de este cuestionario y de mi seguimiento para elaborar mi plan nutricional</span></label>'+
       '<label class="chk" style="cursor:pointer"><input type="checkbox" data-ob="ph"'+(ob.ph?' checked':'')+'><span>Opcional: quiero que '+esc(ob.proName)+' vea también mis fotos de progreso. Puedo dejar de compartirlas cuando quiera y se borra la copia compartida.</span></label>';
@@ -2298,7 +2328,7 @@ function vPrivacy(){
     '<h3>Para qué</h3><p>Solo para calcular y mostrarte tu plan y sincronizarlo entre tus dispositivos. No se venden ni se usan para publicidad.</p>'+
     '<h3>Dónde y quién puede verlos</h3><p>Se guardan en tu cuenta, en los servidores de Supabase, con la contraseña cifrada y protegidos para que cada persona solo acceda a lo suyo. La persona que administra la app puede ver técnicamente los datos guardados en el servidor, y se compromete a usarlos solo para resolver fallos.</p>'+
     '<h3>Fotos</h3><p>Las fotos de progreso se guardan en tu dispositivo y no se suben a la cuenta. Solo si estás vinculado con un nutricionista y activas compartirlas, se sube una copia a un almacenamiento privado que ve esa persona. Si dejas de compartir, de vincularte o borras la foto, se elimina la copia.</p>'+
-    '<h3>Si te vinculas con un nutricionista</h3><p>Solo si tú lo decides, escribiendo su código. Entonces esa persona podrá ver las comidas, el peso, las medidas, el seguimiento y las notas del diario del perfil que elijas, ajustar tus objetivos y dejarte notas. Tú decides cuándo dejar de compartir, desde Ajustes, Cuenta y datos, y deja de verlo al instante. Tus fotos de progreso solo las verá si lo activas tú aparte. Esa persona es la responsable de usar tus datos solo para tu seguimiento nutricional. Si el nutricionista te envió una invitación, el cuestionario inicial (salud, hábitos y alimentación) también lo verá solo esa persona. El chat guarda los mensajes que os escribís, que solo veis vosotros dos mientras estéis vinculados; no lo uses para urgencias médicas.</p>'+
+    '<h3>Si te vinculas con un nutricionista</h3><p>Solo si tú lo decides, escribiendo su código. Entonces esa persona podrá ver las comidas, el peso, las medidas, el seguimiento, tu foto de perfil si la pones y las notas del diario del perfil que elijas, ajustar tus objetivos y dejarte notas. Tú decides cuándo dejar de compartir, desde Ajustes, Cuenta y datos, y deja de verlo al instante. Tus fotos de progreso solo las verá si lo activas tú aparte. Esa persona es la responsable de usar tus datos solo para tu seguimiento nutricional. Si el nutricionista te envió una invitación, el cuestionario inicial (salud, hábitos y alimentación) también lo verá solo esa persona. El chat guarda los mensajes que os escribís, que solo veis vosotros dos mientras estéis vinculados; no lo uses para urgencias médicas.</p>'+
     '<h3>Tus derechos</h3><p>Puedes descargar todos tus datos y borrar tu cuenta y todo lo que contiene cuando quieras, desde la pestaña Cuenta. El borrado es inmediato y definitivo.</p>'+
     '<h3>Aviso</h3><p>El plan es orientativo y no sustituye el consejo de un médico o dietista. La app es solo para mayores de 18 años.</p>'+
     '<div class="btns"><button class="btn main" data-act="privback">Volver</button></div></section>';
@@ -2439,7 +2469,7 @@ function vProClients(){
   h+='<p class="muted">'+L.length+' '+(L.length===1?'cliente':'clientes')+(bad?' · '+bad+' con avisos':' · todo en orden')+'</p><div class="cls">';
   L.forEach(function(c){
     var s=c.stats;
-    h+='<button class="cli" data-act="proopen" data-id="'+c.link+'"><div class="cl-h"><span class="dot lv-'+(s?s.level:'none')+'" aria-hidden="true"></span><b>'+esc(c.name)+'</b><span class="pill">'+esc(s?s.goal:'Sin datos')+'</span><span class="bdg" data-badge="'+c.link+'" hidden></span></div>';
+    h+='<button class="cli" data-act="proopen" data-id="'+c.link+'"><div class="cl-h">'+avSpan(c.data&&c.data.avatar,c.name,'sm')+'<span class="dot lv-'+(s?s.level:'none')+'" aria-hidden="true"></span><b>'+esc(c.name)+'</b><span class="pill">'+esc(s?s.goal:'Sin datos')+'</span><span class="bdg" data-badge="'+c.link+'" hidden></span></div>';
     if(s){
       h+='<div class="cl-m"><span>Última comida: '+agoTxt(s.last)+'</span><span>'+s.n+' de 7 días</span>'+(s.avgK!=null?'<span>'+f0(s.avgK)+(s.avgT!=null?' / '+f0(s.avgT):'')+' kcal</span>':'')+(s.lw!=null?'<span>'+f1(s.lw)+' kg'+(s.kg?' ('+(s.lw-s.kg>0?'+':s.lw-s.kg<0?'−':'')+f1(Math.abs(s.lw-s.kg))+')':'')+'</span>':'')+'</div>';
       if(s.alerts.length)h+='<ul class="cl-a">'+s.alerts.map(function(a){return '<li>'+esc(a)+'</li>';}).join('')+'</ul>';
@@ -2471,7 +2501,7 @@ function vPro(){
 function ptInput(dr,key,cur,lab){var v=dr&&dr[key]!=null?dr[key]:(cur==null?'':String(Math.round(cur)));return '<input type="text" inputmode="decimal" data-pt="'+key+'" value="'+esc(v)+'" aria-label="'+esc(lab)+'">';}
 function proClientBody(c){
   var s=c.stats,w=ui.pwk,D=reportData(w),ws=weeksData(),dr=ui.pdraft[c.link]||{},h='',wt=!tgtOn();
-  h+='<section class="card"><div class="hrow"><h2>'+esc(c.name)+'</h2><span class="pill">'+esc(s?s.goal:'')+'</span></div><p class="muted">'+esc(c.email)+' · plan desde el '+dayLabel(START).toLowerCase()+' · vinculado el '+esc((c.since||'').slice(0,10))+'</p>'+
+  h+='<section class="card"><div class="hrow"><div class="cl-h">'+avSpan(c.data&&c.data.avatar,c.name,'lg')+'<h2>'+esc(c.name)+'</h2></div><span class="pill">'+esc(s?s.goal:'')+'</span></div><p class="muted">'+esc(c.email)+' · plan desde el '+dayLabel(START).toLowerCase()+' · vinculado el '+esc((c.since||'').slice(0,10))+'</p>'+
     (s?'<div class="stats"><div class="stat"><div class="l">Última comida</div><div class="v">'+agoTxt(s.last)+'</div></div><div class="stat"><div class="l">Días con comidas (7)</div><div class="v">'+s.n+' <small>de 7</small></div></div><div class="stat"><div class="l">Peso inicial</div><div class="v">'+f1(s.kg)+' <small>kg</small></div></div><div class="stat"><div class="l">Último peso</div><div class="v">'+(s.lw!=null?f1(s.lw):'—')+' <small>kg</small></div></div></div>':'')+'<div class="btns"><button class="btn main sm" data-act="chatopen">Chat con '+esc(c.name)+' <span class="bdg" data-badge="'+c.link+'" hidden></span></button></div></section>';
   if(s&&s.alerts.length)h+='<section class="rec warn"><b>Avisos</b><ul class="plain">'+s.alerts.map(function(a){return '<li>'+esc(a)+'</li>';}).join('')+'</ul></section>';
   h+=intakeCard(wt);
@@ -2632,14 +2662,14 @@ function coachCard(){
   var l=(ui.links||[]).filter(function(x){return x.profile_id===PROF.id;})[0];
   if(l){
     var pr=l.professionals||{};if(Array.isArray(pr))pr=pr[0]||{};
-    var h='<section class="card"><h2>Mi nutricionista</h2><p><b>'+esc(pr.name||'Tu nutricionista')+'</b>'+(pr.business?' · '+esc(pr.business):'')+'</p><p class="muted">Ve las comidas, el peso, las medidas, el seguimiento y las notas del diario del perfil '+esc(PROF.name)+'. Puede ajustar tus objetivos de calorías y macros y dejarte notas.</p>'+(l.share_photos?'<p class="note">Estás compartiendo tus fotos de progreso con '+esc(pr.name||'tu nutricionista')+'. Se sube una copia privada; si dejas de compartir, se borra.</p><div class="btns"><button class="btn sm" data-act="phshare" data-on="0"'+(ui.busy?' disabled':'')+'>Dejar de compartir mis fotos</button></div>':'<p class="muted">Tus fotos de progreso no se comparten.</p><div class="btns"><button class="btn sm" data-act="phshare" data-on="1"'+(ui.busy?' disabled':'')+'>Compartir mis fotos con '+esc(pr.name||'mi nutricionista')+'</button></div>');
+    var h='<section class="card"><h2>Mi nutricionista</h2><p><b>'+esc(pr.name||'Tu nutricionista')+'</b>'+(pr.business?' · '+esc(pr.business):'')+'</p><p class="muted">Ve las comidas, el peso, las medidas, el seguimiento, tu foto de perfil si la pones y las notas del diario del perfil '+esc(PROF.name)+'. Puede ajustar tus objetivos de calorías y macros y dejarte notas.</p>'+(l.share_photos?'<p class="note">Estás compartiendo tus fotos de progreso con '+esc(pr.name||'tu nutricionista')+'. Se sube una copia privada; si dejas de compartir, se borra.</p><div class="btns"><button class="btn sm" data-act="phshare" data-on="0"'+(ui.busy?' disabled':'')+'>Dejar de compartir mis fotos</button></div>':'<p class="muted">Tus fotos de progreso no se comparten.</p><div class="btns"><button class="btn sm" data-act="phshare" data-on="1"'+(ui.busy?' disabled':'')+'>Compartir mis fotos con '+esc(pr.name||'mi nutricionista')+'</button></div>');
     if(S.coach&&S.coach.note)h+='<p class="note"><b>Su última nota:</b> '+esc(S.coach.note)+'</p>';
     if(ui.unlink===l.id)h+='<p class="note">Dejarás de compartir este perfil con '+esc(pr.name||'tu nutricionista')+'. Dejará de verlo al instante y tus objetivos volverán a ser editables.</p><div class="btns"><button class="btn danger sm" data-act="unlinkok" data-id="'+l.id+'">Sí, dejar de compartir</button><button class="btn sm" data-act="unlinkno">Cancelar</button></div>';
     else h+='<div class="btns"><button class="btn sm" data-act="unlink" data-id="'+l.id+'">Dejar de compartir</button></div>';
     return h+'</section>';
   }
   var code=ui.au.code!=null?ui.au.code:(ui.invite||'');
-  return '<section class="card"><h2>Vincular con mi nutricionista</h2><p class="muted">Si tienes un nutricionista o dietista que usa esta app, escribe el código que te ha dado. Al vincular, podrá ver las comidas, el peso, las medidas, el seguimiento y las notas del diario del perfil <b>'+esc(PROF.name)+'</b>, ajustar tus objetivos y dejarte notas. Puedes dejar de compartir cuando quieras. Tus fotos no se comparten salvo que marques la casilla de abajo.</p>'+
+  return '<section class="card"><h2>Vincular con mi nutricionista</h2><p class="muted">Si tienes un nutricionista o dietista que usa esta app, escribe el código que te ha dado. Al vincular, podrá ver las comidas, el peso, las medidas, el seguimiento, tu foto de perfil si la pones y las notas del diario del perfil <b>'+esc(PROF.name)+'</b>, ajustar tus objetivos y dejarte notas. Puedes dejar de compartir cuando quieras. Tus fotos no se comparten salvo que marques la casilla de abajo.</p>'+
     '<label class="fld"><span class="lb">Código del nutricionista</span><input type="text" data-au="code" value="'+esc(code)+'" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="Por ejemplo K7M2QX"></label>'+
     '<label class="chk" style="cursor:pointer"><input type="checkbox" data-au="ph"'+(ui.au.ph?' checked':'')+'><span>Opcional: compartir también mis fotos de progreso</span></label>'+
     (ui.linkMsg?'<p class="'+(ui.linkMsg.k==='err'?'err':'note')+'" role="alert">'+esc(ui.linkMsg.t)+'</p>':'')+
@@ -2813,7 +2843,7 @@ function vProTerms(){
     '<h3>Qué es esta herramienta</h3><p>Una aplicación para que tus clientes registren su alimentación y su peso, y para que tú puedas verlo, ajustar sus objetivos y dejarles notas. Es una ayuda orientativa; no es un producto sanitario ni sustituye tu criterio profesional.</p>'+
     '<h3>Quién es responsable de los datos</h3><p>Tú eres responsable del tratamiento de los datos de salud de tus clientes que consultas con esta herramienta. El titular de la app actúa como encargado del tratamiento: los aloja y los pone a tu disposición, solo para prestar el servicio, y no los usa para otros fines.</p>'+
     '<h3>Tus obligaciones</h3><ul class="plain"><li>Informar a tus clientes de que usas esta herramienta y de para qué usas sus datos.</li><li>Tener una base legal para tratar sus datos de salud (normalmente su consentimiento explícito, que la app recoge al vincular).</li><li>Usar los datos solo para el seguimiento nutricional del propio cliente y guardar la confidencialidad.</li><li>Dejar de acceder cuando el cliente revoque el vínculo o termine la relación profesional.</li><li>No compartir las cuentas ni el código de invitación con terceros.</li></ul>'+
-    '<h3>Qué ve cada parte</h3><p>Al vincularse, el cliente comparte contigo las comidas, el peso, las medidas, el seguimiento y las notas del diario del perfil que elija. Las fotos de progreso solo las ves si el cliente decide compartirlas, y las pierdes de vista si deja de hacerlo. El cliente puede dejar de compartir en cualquier momento y entonces dejas de ver sus datos al instante. Tus notas privadas no las ve el cliente.</p>'+
+    '<h3>Qué ve cada parte</h3><p>Al vincularse, el cliente comparte contigo las comidas, el peso, las medidas, el seguimiento, su foto de perfil si la pone y las notas del diario del perfil que elija. Las fotos de progreso solo las ves si el cliente decide compartirlas, y las pierdes de vista si deja de hacerlo. El cliente puede dejar de compartir en cualquier momento y entonces dejas de ver sus datos al instante. Tus notas privadas no las ve el cliente.</p>'+
     '<h3>Prueba gratuita y precio</h3><p>La cuenta empieza en prueba gratuita con un máximo de clientes. Las condiciones económicas de la versión de pago se comunicarán antes de cobrar nada.</p>'+
     '<div class="btns"><button class="btn main" data-act="privback">Volver</button></div></section>';
 }
@@ -2975,6 +3005,7 @@ app.addEventListener('click',function(e){
   if(a==='addmeasure'){addMeasure();return;}
   if(a==='delskin'){S.skin.splice(i,1);save();render();return;}
   if(a==='delwaist'){delete S.waist[d];save();render();return;}
+  if(a==='avdel'){S.avatar=null;save();render();toast('Foto de perfil quitada');return;}
   if(a==='phwk'){var wv=b.dataset.w==='c'?'c':+b.dataset.w;PH.wk=(PH.wk===wv)?null:wv;render();return;}
   if(a==='delphoto'){var dpid=PROF?PROF.id:'sotero',did=b.dataset.id;if(cloudOn()&&AUTH&&!AUTH.pro&&phFlags().indexOf(dpid)>-1)phRemoteDel(dpid,did).catch(function(){});idbDo('readwrite',function(st){return st.delete(did);}).then(function(){PH.state='idle';PH.cmpA=null;PH.cmpB=null;loadPhotos();},function(){toast('No se pudo quitar la foto');});return;}
   if(a==='tag'){var tgs=S.tags[d]||(S.tags[d]=[]),ix=tgs.indexOf(b.dataset.t);if(ix>-1)tgs.splice(ix,1);else tgs.push(b.dataset.t);if(!tgs.length)delete S.tags[d];save();render();return;}
@@ -2997,13 +3028,14 @@ app.addEventListener('click',function(e){
     if(!nm||kc==null){toast('Escribe el nombre y las kcal por 100 g');return;}
     S.foods.push({id:'x'+Date.now().toString(36),name:nm,kcal:kc,p:p||0,c:c||0,g:g||0,def:100});save();render();toast('Alimento guardado');return;}
   if(a==='delfood'){S.foods.splice(i,1);save();render();return;}
-  if(a==='reset'){if(!ui.confirm){ui.confirm=true;render();return;}var pf=S.profile;S=DEF();if(!isSot()&&pf){S.profile=pf;S.settings.kg=pf.ans.kg;S.settings.t=JSON.parse(JSON.stringify(computePlan(pf.ans).t));}ui.confirm=false;save();render();toast('Datos borrados');return;}
+  if(a==='reset'){if(!ui.confirm){ui.confirm=true;render();return;}var pf=S.profile,av0=S.avatar;S=DEF();S.avatar=av0||null;if(!isSot()&&pf){S.profile=pf;S.settings.kg=pf.ans.kg;S.settings.t=JSON.parse(JSON.stringify(computePlan(pf.ans).t));}ui.confirm=false;save();render();toast('Datos borrados');return;}
   if(a==='resetno'){ui.confirm=false;render();return;}
 });
 app.addEventListener('change',function(e){
   var t=e.target,bd=t.dataset.bind;
   if(t.dataset&&t.dataset.ob!=null){if(t.dataset.ob!=='work')readOb();return;}
   if(t.id==='ph-file'){addPhoto(t);return;}
+  if(t.id==='av-file'){setAvatar(t);return;}
   if(t.id==='ph-a')PH.angle=t.value;
   if(t.dataset&&(t.dataset.pm==='rt'||t.dataset.pm==='rv')){var c8=proFind(ui.psel);if(c8){var dm8=pmDraft(c8),dk8=String(ui.pmd||0);dm8[dk8]=dm8[dk8]||{};var rr8=(dm8[dk8]._r=dm8[dk8]._r||{});(rr8[t.dataset.s]=rr8[t.dataset.s]||{})[t.dataset.pm==='rt'?'t':'v']=t.value;}return;}
   if(t.dataset&&t.dataset.pm==='g'){var c6=proFind(ui.psel);if(c6){var dd6=pmDraft(c6)[String(ui.pmd||0)],ar6=dd6&&dd6[t.dataset.s],it6=ar6&&ar6[+t.dataset.i],v6=num(t.value);if(it6&&v6!=null&&v6>0&&v6<=5000)it6.g=Math.round(v6*10)/10;render();}return;}
