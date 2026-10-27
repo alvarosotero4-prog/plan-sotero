@@ -1520,17 +1520,20 @@ function addPhoto(input){
   shrink(f).then(function(blob){
     var rec={id:'p'+Date.now().toString(36),date:d,angle:ang,blob:blob,pid:PROF?PROF.id:'sotero'};
     return idbDo('readwrite',function(st){return st.put(rec);}).then(function(){if(phShareOn())phUpload(rec.pid,rec).catch(function(){});});
-  }).then(function(){PH.state='idle';PH.cmpA=null;PH.cmpB=null;loadPhotos();toast(phShareOn()?'Foto guardada y compartida':'Foto guardada');},function(){toast('No se pudo guardar la foto en este navegador');});
+  }).then(function(){PH.state='idle';PH.cmpA=null;PH.cmpB=null;PH.wk=phWk(d);loadPhotos();toast(phShareOn()?'Foto guardada y compartida':'Foto guardada');},function(){toast('No se pudo guardar la foto en este navegador');});
   input.value='';
 }
 /* galería por semanas: botones Semana 1, 2… y, dentro, las fotos de frente, lado y espalda */
 function phWk(d){var n=Math.floor(diffDays(d,START)/7);return n<0?-1:n;}
 function phWkLabel(k){return k<0?'Antes del plan':'Semana '+(k+1);}
-function phWeekView(L,sel,act,del){
+function phWeekView(L,sel,act,del,cmp){
   var keys=[];L.forEach(function(x){var k=phWk(x.date);if(keys.indexOf(k)<0)keys.push(k);});
   keys.sort(function(a,b){return a-b;});
-  var cur=(sel!=null&&keys.indexOf(sel)>-1)?sel:keys[keys.length-1];
-  var h='<h3>Por semanas</h3><div class="chips" role="group" aria-label="Semana">'+keys.map(function(k){return '<button class="chip" aria-pressed="'+(k===cur)+'" data-act="'+act+'" data-w="'+k+'">'+phWkLabel(k)+'</button>';}).join('')+'</div>';
+  var cur=sel;
+  function chip(k,label){return '<button class="chip" aria-pressed="'+(k===cur)+'" aria-expanded="'+(k===cur)+'" data-act="'+act+'" data-w="'+k+'">'+label+'</button>';}
+  var h='<h3>Fotos por semana</h3><div class="chips" role="group" aria-label="Semana">'+keys.map(function(k){return chip(k,phWkLabel(k));}).join('')+(cmp?chip('c','Comparar'):'')+'</div>';
+  if(cur==='c'&&cmp)return h+cmp;
+  if(cur==null||keys.indexOf(cur)<0)return h+'<p class="muted">Pulsa una semana para ver sus fotos.</p>';
   var items=L.filter(function(x){return phWk(x.date)===cur;}).sort(function(a,b){var ia=ANGLES.indexOf(a.angle),ib=ANGLES.indexOf(b.angle);return ia!==ib?ia-ib:(a.date<b.date?-1:a.date>b.date?1:0);});
   h+='<div class="gal wk">'+items.map(function(x){return '<figure><img src="'+x.url+'" alt="Foto '+esc(x.angle)+' del '+esc(x.date)+'" loading="lazy"><figcaption><b>'+esc(x.angle)+'</b> <span class="muted">'+esc(dayLabel(x.date).split(' ').slice(1).join(' '))+'</span></figcaption>'+(del?'<button class="btn sm" data-act="delphoto" data-id="'+x.id+'">Quitar</button>':'')+'</figure>';}).join('')+'</div>';
   return h;
@@ -1544,12 +1547,13 @@ function photosCard(){
     '<p class="muted">Misma luz, misma postura y misma hora cada semana. '+(phShareOn()?'Tu nutricionista ve una copia de estas fotos mientras las compartas. Puedes dejar de compartirlas en Ajustes, Cuenta y datos.':'Las fotos se guardan en este móvil y no entran en la copia de seguridad.'+(phLink()?' Tu nutricionista no las ve: puedes compartirlas en Ajustes, Cuenta y datos.':''))+'</p>';
   var L=PH.list||[];
   if(!L.length)return h+(PH.state==='loading'?'<p class="muted">Cargando…</p>':'<p class="ghost">Aún no hay fotos.</p>')+'</section>';
+  var cmp='';
   if(L.length>=2){
     var a=L.filter(function(x){return x.id===PH.cmpA;})[0]||L[0],b=L.filter(function(x){return x.id===PH.cmpB;})[0]||L[L.length-1];
     function opt(sel){return L.map(function(x){return '<option value="'+x.id+'"'+(x.id===sel.id?' selected':'')+'>'+esc(dayLabel(x.date).split(' ').slice(1).join(' '))+' · '+esc(x.angle)+'</option>';}).join('');}
-    h+='<h3>Comparar</h3><div class="cmp"><div><select data-bind="cmpA" aria-label="Foto de antes">'+opt(a)+'</select><img src="'+a.url+'" alt="Foto de antes, '+esc(a.angle)+'"></div><div><select data-bind="cmpB" aria-label="Foto de después">'+opt(b)+'</select><img src="'+b.url+'" alt="Foto de después, '+esc(b.angle)+'"></div></div>';
+    cmp='<h3>Comparar</h3><div class="cmp"><div><select data-bind="cmpA" aria-label="Foto de antes">'+opt(a)+'</select><img src="'+a.url+'" alt="Foto de antes, '+esc(a.angle)+'"></div><div><select data-bind="cmpB" aria-label="Foto de después">'+opt(b)+'</select><img src="'+b.url+'" alt="Foto de después, '+esc(b.angle)+'"></div></div>';
   }
-  h+=phWeekView(L,PH.wk,'phwk',true);
+  h+=phWeekView(L,PH.wk,'phwk',true,cmp);
   return h+'</section>';
 }
 /* ---------- fotos compartidas con el nutricionista (copia en la nube solo si el cliente lo activa) ---------- */
@@ -2531,12 +2535,13 @@ function proPhotosCard(c){
   var L=st.list;
   if(!L.length)return h+(st.state==='loading'?'<p class="muted">Cargando…</p>':'<p class="ghost">Aún no hay fotos compartidas.</p>')+'</section>';
   function nm(x){return esc(dayLabel(x.date).split(' ').slice(1).join(' '))+' · '+esc(x.angle);}
+  var cmp='';
   if(L.length>=2){
     var a=L.filter(function(x){return x.id===st.a;})[0]||L[0],b=L.filter(function(x){return x.id===st.b;})[0]||L[L.length-1];
     function opt(sel){return L.map(function(x){return '<option value="'+x.id+'"'+(x.id===sel.id?' selected':'')+'>'+nm(x)+'</option>';}).join('');}
-    h+='<h3>Comparar</h3><div class="cmp"><div><select data-bind="pcmpA" aria-label="Foto de antes">'+opt(a)+'</select><img src="'+a.url+'" alt="Foto de antes, '+esc(a.angle)+'"></div><div><select data-bind="pcmpB" aria-label="Foto de después">'+opt(b)+'</select><img src="'+b.url+'" alt="Foto de después, '+esc(b.angle)+'"></div></div>';
+    cmp='<h3>Comparar</h3><div class="cmp"><div><select data-bind="pcmpA" aria-label="Foto de antes">'+opt(a)+'</select><img src="'+a.url+'" alt="Foto de antes, '+esc(a.angle)+'"></div><div><select data-bind="pcmpB" aria-label="Foto de después">'+opt(b)+'</select><img src="'+b.url+'" alt="Foto de después, '+esc(b.angle)+'"></div></div>';
   }
-  h+=phWeekView(L,st.wk,'prophwk',false);
+  h+=phWeekView(L,st.wk,'prophwk',false,cmp);
   return h+'</section>';
 }
 function vProClient(){
@@ -2874,7 +2879,7 @@ function profileAct(a,b){
   case 'unlinkno':ui.unlink=null;render();return true;
   case 'unlinkok':unlinkOk(b.dataset.id);return true;
   case 'phshare':setSharePhotos(b.dataset.on==='1');return true;
-  case 'prophwk':(function(){var c=proFind(ui.psel);if(c&&PP[c.link]){PP[c.link].wk=+b.dataset.w;render();}})();return true;
+  case 'prophwk':(function(){var c=proFind(ui.psel);if(c&&PP[c.link]){var wv2=b.dataset.w==='c'?'c':+b.dataset.w;PP[c.link].wk=(PP[c.link].wk===wv2)?null:wv2;render();}})();return true;
   case 'acctdel':
     if(!ui.delAcct){ui.delAcct=1;render();return true;}
     readAu();if((ui.au.delconfirm||'').trim().toUpperCase()!=='BORRAR'){toast('Escribe BORRAR para confirmar');return true;}
@@ -2970,7 +2975,7 @@ app.addEventListener('click',function(e){
   if(a==='addmeasure'){addMeasure();return;}
   if(a==='delskin'){S.skin.splice(i,1);save();render();return;}
   if(a==='delwaist'){delete S.waist[d];save();render();return;}
-  if(a==='phwk'){PH.wk=+b.dataset.w;render();return;}
+  if(a==='phwk'){var wv=b.dataset.w==='c'?'c':+b.dataset.w;PH.wk=(PH.wk===wv)?null:wv;render();return;}
   if(a==='delphoto'){var dpid=PROF?PROF.id:'sotero',did=b.dataset.id;if(cloudOn()&&AUTH&&!AUTH.pro&&phFlags().indexOf(dpid)>-1)phRemoteDel(dpid,did).catch(function(){});idbDo('readwrite',function(st){return st.delete(did);}).then(function(){PH.state='idle';PH.cmpA=null;PH.cmpB=null;loadPhotos();},function(){toast('No se pudo quitar la foto');});return;}
   if(a==='tag'){var tgs=S.tags[d]||(S.tags[d]=[]),ix=tgs.indexOf(b.dataset.t);if(ix>-1)tgs.splice(ix,1);else tgs.push(b.dataset.t);if(!tgs.length)delete S.tags[d];save();render();return;}
   if(a==='feel'){var F=S.feel[d]||(S.feel[d]={}),kk=b.dataset.k,vv=+b.dataset.v;if(F[kk]===vv)delete F[kk];else F[kk]=vv;if(!Object.keys(F).length)delete S.feel[d];save();render();return;}
