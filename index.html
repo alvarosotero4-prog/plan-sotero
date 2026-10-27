@@ -1692,8 +1692,18 @@ function vAjustes(){
   var seg=ui.set==='cuenta'?'cuenta':'plan';
   return '<div class="chips" role="group" aria-label="Ajustes">'+[['plan','Plan'],['cuenta','Cuenta y datos']].map(function(x){return '<button class="chip" aria-pressed="'+(seg===x[0])+'" data-act="set" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>'+(seg==='cuenta'?vCuenta():vPlan());
 }
+var APP_V='37';
+function appUpdate(){
+  toast('Actualizando…');
+  var done=function(){location.reload();};
+  try{
+    var p1=(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations)?navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister();}));}):Promise.resolve();
+    var p2=window.caches?caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k);}));}):Promise.resolve();
+    Promise.all([p1,p2]).then(done,done);
+  }catch(e){done();}
+}
 function vCuenta(){
-  return coachCard()+accountCard()+'<section class="card"><h2>Tus datos</h2><p id="sync" class="muted">'+syncText()+'. Descarga una copia de vez en cuando por si borras los datos del navegador o cambias de móvil.</p><div class="btns"><button class="btn sm" data-act="export">Descargar copia</button><button class="btn sm" data-act="import">Restaurar copia</button><input type="file" id="imp" accept="application/json,.json" hidden><button class="btn danger sm" data-act="reset">'+(ui.confirm?'Confirmar: borrar todos los datos':'Borrar todos los datos')+'</button>'+(ui.confirm?'<button class="btn sm" data-act="resetno">Cancelar</button>':'')+'</div></section>';
+  return coachCard()+accountCard()+'<section class="card"><h2>Versión de la app</h2><p class="muted">Tupla, versión '+APP_V+'. Si no ves los últimos cambios, pulsa el botón: borra la copia guardada en este móvil y recarga la app. Tus datos no se tocan.</p><div class="btns"><button class="btn sm" data-act="appupd">Buscar actualización</button></div></section><section class="card"><h2>Tus datos</h2><p id="sync" class="muted">'+syncText()+'. Descarga una copia de vez en cuando por si borras los datos del navegador o cambias de móvil.</p><div class="btns"><button class="btn sm" data-act="export">Descargar copia</button><button class="btn sm" data-act="import">Restaurar copia</button><input type="file" id="imp" accept="application/json,.json" hidden><button class="btn danger sm" data-act="reset">'+(ui.confirm?'Confirmar: borrar todos los datos':'Borrar todos los datos')+'</button>'+(ui.confirm?'<button class="btn sm" data-act="resetno">Cancelar</button>':'')+'</div></section>';
 }
 function vPlan(){
   var t=S.settings.t;
@@ -3005,6 +3015,7 @@ app.addEventListener('click',function(e){
   if(a==='addmeasure'){addMeasure();return;}
   if(a==='delskin'){S.skin.splice(i,1);save();render();return;}
   if(a==='delwaist'){delete S.waist[d];save();render();return;}
+  if(a==='appupd'){appUpdate();return;}
   if(a==='avdel'){S.avatar=null;save();render();toast('Foto de perfil quitada');return;}
   if(a==='phwk'){var wv=b.dataset.w==='c'?'c':+b.dataset.w;PH.wk=(PH.wk===wv)?null:wv;render();return;}
   if(a==='delphoto'){var dpid=PROF?PROF.id:'sotero',did=b.dataset.id;if(cloudOn()&&AUTH&&!AUTH.pro&&phFlags().indexOf(dpid)>-1)phRemoteDel(dpid,did).catch(function(){});idbDo('readwrite',function(st){return st.delete(did);}).then(function(){PH.state='idle';PH.cmpA=null;PH.cmpB=null;loadPhotos();},function(){toast('No se pudo quitar la foto');});return;}
