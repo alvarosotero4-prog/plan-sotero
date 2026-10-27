@@ -516,6 +516,7 @@ function slotsFor(d){if(!isSot())return SLOTS;if(wdOf(d)===6&&!sunMorning(d))ret
 /* perfiles de clientes de un nutricionista: sin objetivos ni menús calculados; los pone el profesional */
 function proProf(){return !!(S&&S.profile&&S.profile.pro);}
 function coachMenu(){return S.coach&&S.coach.menu&&typeof S.coach.menu==='object'&&Object.keys(S.coach.menu).length?S.coach.menu:null;}
+function nutriMode(){return proProf()||!!coachMenu();}
 function tgtOn(){return !proProf()||!!(S.coach&&S.coach.t);}
 /* el menú del nutricionista se carga solo en las comidas de hoy y de los días siguientes (una vez por día) */
 function ensureMenu(d){
@@ -1090,9 +1091,9 @@ function vHoy(){
   var d=ui.date,k=dayKind(d),rows=sched(d),ck=S.checks[d]||{},done=0,total=0,li='';
   rows.forEach(function(r,i){if(r.type!=='meal')return;total++;if(ck[i])done++;li+=schedRow(r,i,ck[i],k,d);});
   var schedCard='<details class="card fold" data-wk="h-sched"'+((ui.open['h-sched']!=null?ui.open['h-sched']:true)?' open':'')+'><summary>Horario de comidas<span class="num">'+done+' de '+total+' hechas</span></summary><ul class="sched">'+li+'</ul></details>';
-  return strip()+dayHead(d)+alertBox()+coachBanner()+totalsCard(d)+matchCard(d)+schedCard+
+  return strip()+dayHead(d)+alertBox()+coachBanner()+totalsCard(d)+matchCard(d)+(nutriMode()?'':schedCard)+
     '<section class="card"><h2>Peso de hoy</h2>'+weightField(d)+'</section>'+trackCard(d)+
-    asFold('h-feel',feelCard(d),false)+asFold('h-diary',diaryCard(d),false)+asFold('h-const',constCard(d),false)+asFold('h-week',weekTable(),false);
+    asFold('h-feel',feelCard(d),false)+(nutriMode()?'':asFold('h-diary',diaryCard(d),false))+asFold('h-const',constCard(d),false)+asFold('h-week',weekTable(),false);
 }
 function stepOf(f){return f&&f.piece?f.piece:(f&&f.id==='aceite'?5:10);}
 function entryRow(d,slot,e,i){
@@ -1101,7 +1102,7 @@ function entryRow(d,slot,e,i){
   var at='data-d="'+d+'" data-s="'+slot+'" data-i="'+i+'"';
   return '<div class="ent"><div class="n"><b>'+esc(nm)+'</b><small>'+f0(n.kcal)+' kcal · P '+f1(n.p)+' · C '+f1(n.c)+' · G '+f1(n.g)+esc(units)+'</small></div>'+
     '<div class="stp"><button class="sb" data-act="step" data-dir="-1" '+at+' aria-label="Menos '+esc(nm)+'">−</button><div class="inp"><input type="text" inputmode="decimal" data-bind="g" '+at+' value="'+f0(e.g)+'" aria-label="Gramos de '+esc(nm)+'"><span>g</span></div><button class="sb" data-act="step" data-dir="1" '+at+' aria-label="Más '+esc(nm)+'">+</button></div>'+
-    '<button class="x" data-act="rm" '+at+' aria-label="Quitar">×</button></div>';
+    (nutriMode()?'<button class="btn sm" data-act="rm" '+at+' aria-label="Quitar '+esc(nm)+'">Quitar</button>':'<button class="x" data-act="rm" '+at+' aria-label="Quitar">×</button>')+'</div>';
 }
 function pickList(d,slot){
   var q=(ui.q||'').toLowerCase().trim(),l=foods().filter(function(f){return !q||f.name.toLowerCase().indexOf(q)>-1;});
@@ -1168,7 +1169,8 @@ function vComidas(){
   var d=ui.date,k=dayKind(d);
   return strip()+dayHead(d)+totalsCard(d)+matchCard(d)+
     ((proProf()||coachMenu())?'':'<div class="btns"><button class="btn main" data-act="useplanall" data-d="'+d+'">Cargar el menú del plan en todo el día</button></div>')+
-    '<details class="card fold" data-wk="c-act"'+(ui.open['c-act']?' open':'')+'><summary>Copiar o vaciar el día</summary><div class="btns"><button class="btn" data-act="copyday" data-d="'+d+'" data-from="'+addDays(d,-1)+'">Copiar de ayer</button>'+copySelect(d)+'<button class="btn danger" data-act="clearday" data-d="'+d+'">Vaciar el día</button></div></details>'+
+    (nutriMode()?'<p class="note">Si quitas algún alimento de tu menú, sustitúyelo por otro con las mismas características alimentarias (del mismo grupo de alimentos y en una cantidad parecida). Si tienes dudas, pregunta a tu nutricionista por el chat.</p>':'')+
+    (nutriMode()?'':'<details class="card fold" data-wk="c-act"'+(ui.open['c-act']?' open':'')+'><summary>Copiar o vaciar el día</summary><div class="btns"><button class="btn" data-act="copyday" data-d="'+d+'" data-from="'+addDays(d,-1)+'">Copiar de ayer</button>'+copySelect(d)+'<button class="btn danger" data-act="clearday" data-d="'+d+'">Vaciar el día</button></div></details>')+
     slotsFor(d).map(function(s){return slotCard(d,s,k);}).join('');
 }
 function chartSVG(ws){
