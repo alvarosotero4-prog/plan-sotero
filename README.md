@@ -1,4 +1,4 @@
-# Plan Sotero
+# Tupla
 
 App web (PWA) con plan de comidas y seguimiento de peso de 4 semanas.
 

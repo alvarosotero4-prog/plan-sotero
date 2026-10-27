@@ -6,11 +6,11 @@
 <meta name="theme-color" content="#062C33">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Plan Sotero">
+<meta name="apple-mobile-web-app-title" content="Tupla">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>Plan Sotero</title>
+<title>Tupla</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400;500;600;700&display=swap">
 <style>:root{color-scheme:light;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <style>
@@ -1105,9 +1105,9 @@ function header(){
   if(dd>=0&&dd<28) sub='Semana '+(Math.floor(dd/7)+1)+' · día '+(dd+1)+' de 28';
   else if(dd<0&&!isSot()) sub='Empieza el '+dayLabel(START).toLowerCase();
   else sub='Plan del '+rangeLabel(START,addDays(START,27));
-  if(isSot()){title='Plan Sotero';kind='Definición de 4 semanas';}
+  if(isSot()){title='Tupla';kind='Definición de 4 semanas';}
   else{title=PROF.name;kind=proProf()?'Seguimiento con tu nutricionista':GOALS[G.goal]+' de 4 semanas';}
-  document.title=isSot()?'Plan Sotero':'Plan de '+PROF.name;
+  document.title=isSot()?'Tupla':'Tupla · '+PROF.name;
   return '<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>'+esc(title)+'</h1></div>'+whoBtn()+'<p class="sub">'+kind+' · '+sub+'</p></header>';
 }
 function tabs(){
@@ -1634,9 +1634,9 @@ function profileCard(){
 /* ---------- pantallas: bienvenida, perfiles y cuestionario ---------- */
 function vWelcome(){
   var inv=ui.invite&&cloudOn()&&AUTH&&!AUTH.pro;
-  if(inv)return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tu plan</h1></div><p>Tu nutricionista te ha invitado. Responde su cuestionario inicial y él o ella te preparará tus objetivos y tus menús.</p><p class="muted">Has entrado como '+esc(AUTH.email)+'. Tus datos se guardan en tu cuenta.</p></div><div class="btns"><button class="btn main" data-act="pnew">Empezar el cuestionario</button><button class="btn" data-act="logout">Cerrar sesión</button></div>';
+  if(inv)return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tupla</h1></div><p>Tu nutricionista te ha invitado. Responde su cuestionario inicial y él o ella te preparará tus objetivos y tus menús.</p><p class="muted">Has entrado como '+esc(AUTH.email)+'. Tus datos se guardan en tu cuenta.</p></div><div class="btns"><button class="btn main" data-act="pnew">Empezar el cuestionario</button><button class="btn" data-act="logout">Cerrar sesión</button></div>';
   var hasSot=cloudOn()||INDEX.list.some(function(x){return x.type==='sot';});
-  return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tu plan</h1></div><p>Responde unas preguntas y la app te prepara un plan de comidas con calorías y macros, un horario de comidas y el seguimiento de tu peso.</p><p class="muted">'+(cloudOn()&&AUTH?'Has entrado como '+esc(AUTH.email)+'. Tus datos se guardan en tu cuenta.':'Tus datos se quedan solo en este dispositivo: no hay cuentas ni contraseñas. Puedes crear varios perfiles, uno para cada persona.')+'</p></div>'+
+  return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tupla</h1></div><p>Responde unas preguntas y la app te prepara un plan de comidas con calorías y macros, un horario de comidas y el seguimiento de tu peso.</p><p class="muted">'+(cloudOn()&&AUTH?'Has entrado como '+esc(AUTH.email)+'. Tus datos se guardan en tu cuenta.':'Tus datos se quedan solo en este dispositivo: no hay cuentas ni contraseñas. Puedes crear varios perfiles, uno para cada persona.')+'</p></div>'+
     '<div class="btns"><button class="btn main" data-act="pnew">Crear mi perfil</button>'+(hasSot?'':'<button class="btn" data-act="psotero">Usar el plan original de Sotero</button>')+(cloudOn()&&AUTH?'<button class="btn" data-act="logout">Cerrar sesión</button>':'')+'</div>';
 }
 function profSub(e){
@@ -2173,7 +2173,7 @@ function syncLabel(){
 function pwField(id,label,cur,val,ac){return '<label>'+label+'<input type="password" data-au="'+id+'" value="'+esc(val||'')+'" autocomplete="'+ac+'" minlength="8"></label>';}
 function vAuth(){
   var reg=ui.authMode==='reg',b=ui.busy,m=ui.authMsg;
-  return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tu plan</h1></div><p class="muted">Plan de comidas personalizado. Tu cuenta guarda tus datos y los sincroniza entre tus dispositivos.</p></div>'+
+  return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tupla</h1></div><p class="muted">Plan de comidas personalizado. Tu cuenta guarda tus datos y los sincroniza entre tus dispositivos.</p></div>'+
     '<section class="card"><div class="chips" role="group" aria-label="Acceso"><button class="chip" aria-pressed="'+!reg+'" data-act="aumode" data-v="login" type="button">Entrar</button><button class="chip" aria-pressed="'+reg+'" data-act="aumode" data-v="reg" type="button">Crear cuenta</button></div>'+
     (reg?'<div class="chips" role="group" aria-label="Tipo de cuenta"><button class="chip" type="button" aria-pressed="'+(ui.au.kind!=='pro')+'" data-act="aukind" data-v="client">Soy cliente</button><button class="chip" type="button" aria-pressed="'+(ui.au.kind==='pro')+'" data-act="aukind" data-v="pro">Soy nutricionista o dietista</button></div>':'')+
     '<form data-form="auth" class="fld" style="gap:12px" novalidate><div class="two" style="grid-template-columns:1fr"><label>Correo electrónico<input type="email" inputmode="email" data-au="email" value="'+esc(ui.au.email||'')+'" autocomplete="email" autocapitalize="none" spellcheck="false"></label>'+
