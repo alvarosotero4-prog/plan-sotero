@@ -429,7 +429,7 @@ var SLOTS_SOT=SLOTS, TYPES_SOT=TYPES;
 /* ---------- state ---------- */
 function isSot(){return !PROF||PROF.type==='sot';}
 function DEFGEN(){
-  return {v:1,settings:{match:'12:00',kg:70,t:{f:{kcal:2300,p:150,c:260,g:60},r:{kcal:2000,p:140,c:200,g:65}}},weights:{},waist:{},logs:{},checks:{},foods:[],plays:{},match:{},meals:[],fav:[],coach:null,track:{},lifts:{},feel:{},notes:{},tags:{},skin:[],profile:null,intake:null};
+  return {v:1,settings:{match:'12:00',kg:70,t:{f:{kcal:2300,p:150,c:260,g:60},r:{kcal:2000,p:140,c:200,g:65}}},weights:{},waist:{},logs:{},checks:{},foods:[],plays:{},match:{},meals:[],fav:[],coach:null,track:{},lifts:{},feel:{},notes:{},tags:{},skin:[],profile:null,intake:null,ml:{}};
 }
 function DEF(){
   if(!isSot())return DEFGEN();
@@ -449,6 +449,7 @@ function mergeState(o){
     foods:JSON.parse(JSON.stringify(o.foods||[])),
     meals:Array.isArray(o.meals)?JSON.parse(JSON.stringify(o.meals)):[],fav:Array.isArray(o.fav)?o.fav.filter(function(x){return typeof x==='string';}):[],coach:o.coach&&typeof o.coach==='object'?JSON.parse(JSON.stringify(o.coach)):null,track:JSON.parse(JSON.stringify(o.track||{})),lifts:JSON.parse(JSON.stringify(o.lifts||{})),feel:JSON.parse(JSON.stringify(o.feel||{})),notes:JSON.parse(JSON.stringify(o.notes||{})),tags:JSON.parse(JSON.stringify(o.tags||{})),
     skin:Array.isArray(o.skin)?JSON.parse(JSON.stringify(o.skin)):b.skin,
+    ml:o.ml&&typeof o.ml==='object'?JSON.parse(JSON.stringify(o.ml)):{},
     intake:o.intake&&typeof o.intake==='object'?JSON.parse(JSON.stringify(o.intake)):null,
     profile:o.profile&&typeof o.profile==='object'?JSON.parse(JSON.stringify(o.profile)):null};
 }
@@ -516,6 +517,13 @@ function slotsFor(d){if(!isSot())return SLOTS;if(wdOf(d)===6&&!sunMorning(d))ret
 function proProf(){return !!(S&&S.profile&&S.profile.pro);}
 function coachMenu(){return S.coach&&S.coach.menu&&typeof S.coach.menu==='object'&&Object.keys(S.coach.menu).length?S.coach.menu:null;}
 function tgtOn(){return !proProf()||!!(S.coach&&S.coach.t);}
+/* el menú del nutricionista se carga solo en las comidas de hoy y de los días siguientes (una vez por día) */
+function ensureMenu(d){
+  if(!coachMenu()||!d||diffDays(d,todayS())<0||S.ml[d])return;
+  var k=dayKind(d);S.logs[d]=S.logs[d]||{};
+  slotsFor(d).forEach(function(sl){var cur=S.logs[d][sl.id];if(cur&&cur.length)return;var pl=planSlot(k,sl.id,d);if(pl.length)S.logs[d][sl.id]=pl.map(function(x){return {f:x.f,g:x.g};});});
+  S.ml[d]=true;save();
+}
 function coachSlot(slot,d){
   var m=coachMenu();
   if(m){var day=m[String(wdOf(d||'2026-10-12'))]||{};return (day[slot]||[]).map(function(x){return {f:x.f,g:x.g};}).filter(function(x){return findFood(x.f);});}
@@ -1078,6 +1086,7 @@ function asFold(key,html,def){
 }
 function foldEach(prefix,html,def){return html.split('</section>').filter(function(x){return x.trim();}).map(function(x,i){return asFold(prefix+i,x+'</section>',def);}).join('');}
 function vHoy(){
+  ensureMenu(ui.date);
   var d=ui.date,k=dayKind(d),rows=sched(d),ck=S.checks[d]||{},done=0,total=0,li='';
   rows.forEach(function(r,i){if(r.type!=='meal')return;total++;if(ck[i])done++;li+=schedRow(r,i,ck[i],k,d);});
   var schedCard='<details class="card fold" data-wk="h-sched"'+((ui.open['h-sched']!=null?ui.open['h-sched']:true)?' open':'')+'><summary>Horario de comidas<span class="num">'+done+' de '+total+' hechas</span></summary><ul class="sched">'+li+'</ul></details>';
@@ -1154,6 +1163,7 @@ function copyDay(to,from){
   S.logs[to]=out;save();render();toast('Comidas copiadas de '+dayLabel(from));
 }
 function vComidas(){
+  ensureMenu(ui.date);
   var d=ui.date,k=dayKind(d);
   return strip()+dayHead(d)+totalsCard(d)+matchCard(d)+
     ((proProf()&&!coachMenu())?'':'<div class="btns"><button class="btn main" data-act="useplanall" data-d="'+d+'">'+(coachMenu()?'Cargar el menú de mi nutricionista en todo el día':'Cargar el menú del plan en todo el día')+'</button></div>')+
@@ -2342,6 +2352,7 @@ function coachApply(){
   if(pp&&(!S.coach||S.coach.link!==l.id||(Date.parse(pp.updated_at)||0)>(Date.parse(S.coach.at)||0))){
     S.coach={link:l.id,at:pp.updated_at,pro:pr.name||'',biz:pr.business||'',note:pp.note||'',t:pp.targets&&pp.targets.f&&pp.targets.r?clone(pp.targets):null,menu:pp.menu&&typeof pp.menu==='object'&&Object.keys(pp.menu).length?clone(pp.menu):null};
     if(S.coach.t)S.settings.t=clone(S.coach.t);
+    if(S.coach.menu){var tt0=todayS();Object.keys(S.ml||{}).forEach(function(x){if(diffDays(x,tt0)>0){delete S.ml[x];delete S.logs[x];}});}
     save();toast('Tu nutricionista ha actualizado tu plan');return true;
   }
   return false;
@@ -2351,6 +2362,7 @@ function coachBanner(){
   var h='',cl=(ui.links||[]).filter(function(x){return PROF&&x.profile_id===PROF.id;})[0];
   if(cl&&cloudOn()&&AUTH&&!AUTH.pro){var cpr=cl.professionals||{};if(Array.isArray(cpr))cpr=cpr[0]||{};
     h+='<section class="rec"><div class="hrow"><b>Chat con '+esc(cpr.name||'tu nutricionista')+'</b><span class="bdg" data-badge="'+cl.id+'" hidden></span></div><div class="btns"><button class="btn main sm" data-act="chatopen">Abrir chat</button></div></section>';}
+  if(coachMenu()&&S.ml&&S.ml[ui.date])h+='<p class="muted">El menú de '+esc(S.coach.pro||'tu nutricionista')+' ya está cargado en tus comidas de este día. Quita o cambia lo que no comas.</p>';
   if(S.coach&&S.coach.note)h+='<section class="rec"><b>Nota de '+esc(S.coach.pro||'tu nutricionista')+'</b><p>'+esc(S.coach.note)+'</p></section>';
   if(ui.invite&&cloudOn()&&AUTH&&!AUTH.pro&&!ui.noPro&&PROF&&!(ui.links||[]).some(function(x){return x.profile_id===PROF.id;}))
     h+='<section class="rec"><b>Tienes una invitación de tu nutricionista</b><p>Vincula tu perfil para que pueda seguir tu progreso y ajustar tu plan.</p><div class="btns"><button class="btn main sm" data-act="goinvite">Ver invitación</button></div></section>';
