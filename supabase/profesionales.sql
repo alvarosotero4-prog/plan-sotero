@@ -455,6 +455,81 @@ end; $$;
 revoke all on function public.admin_overview() from public, anon;
 grant execute on function public.admin_overview() to authenticated;
 
+-- 10) Citas y videollamadas ------------------------------------------------------
+-- El profesional crea y cambia las citas; el cliente las ve y solo puede responder (confirmar / no puedo).
+-- Las notas de cada visita son privadas del profesional (tabla aparte, el cliente no tiene acceso).
+create table if not exists public.appointments (
+  id         uuid primary key default gen_random_uuid(),
+  link_id    uuid not null references public.client_links(id) on delete cascade,
+  starts_at  timestamptz not null,
+  minutes    int not null default 30 check (minutes between 5 and 240),
+  kind       text not null default 'video' check (kind in ('video','presencial','tel')),
+  place      text check (char_length(place) <= 300),   -- enlace de la videollamada, dirección o teléfono
+  topic      text check (char_length(topic) <= 200),   -- lo ve el cliente
+  status     text not null default 'planned' check (status in ('planned','done','cancelled')),
+  client_resp text check (client_resp in ('yes','no')),
+  resp_at    timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists appointments_link_idx on public.appointments(link_id, starts_at);
+alter table public.appointments enable row level security;
+
+drop policy if exists appt_select on public.appointments;
+create policy appt_select on public.appointments for select
+  using (exists (select 1 from public.client_links l
+                 where l.id = appointments.link_id and l.status = 'active'
+                   and (l.client_id = auth.uid() or (l.pro_id = auth.uid() and public.pro_ok(auth.uid())))));
+drop policy if exists appt_insert on public.appointments;
+create policy appt_insert on public.appointments for insert
+  with check (exists (select 1 from public.client_links l
+                      where l.id = appointments.link_id and l.status = 'active'
+                        and l.pro_id = auth.uid() and public.pro_ok(auth.uid())));
+drop policy if exists appt_update on public.appointments;
+create policy appt_update on public.appointments for update
+  using (exists (select 1 from public.client_links l
+                 where l.id = appointments.link_id and l.status = 'active'
+                   and l.pro_id = auth.uid() and public.pro_ok(auth.uid())))
+  with check (exists (select 1 from public.client_links l
+                      where l.id = appointments.link_id and l.status = 'active'
+                        and l.pro_id = auth.uid() and public.pro_ok(auth.uid())));
+drop policy if exists appt_delete on public.appointments;
+create policy appt_delete on public.appointments for delete
+  using (exists (select 1 from public.client_links l
+                 where l.id = appointments.link_id and l.pro_id = auth.uid() and public.pro_ok(auth.uid())));
+
+-- Notas privadas de cada visita (solo el profesional)
+create table if not exists public.appointment_notes (
+  appt_id    uuid primary key references public.appointments(id) on delete cascade,
+  body       text check (char_length(body) <= 4000),
+  updated_at timestamptz not null default now()
+);
+alter table public.appointment_notes enable row level security;
+drop policy if exists appt_notes_all on public.appointment_notes;
+create policy appt_notes_all on public.appointment_notes for all
+  using (exists (select 1 from public.appointments a join public.client_links l on l.id = a.link_id
+                 where a.id = appointment_notes.appt_id and l.pro_id = auth.uid() and public.pro_ok(auth.uid())))
+  with check (exists (select 1 from public.appointments a join public.client_links l on l.id = a.link_id
+                      where a.id = appointment_notes.appt_id and l.pro_id = auth.uid() and l.status = 'active'
+                        and public.pro_ok(auth.uid())));
+
+-- El cliente responde a una cita futura: 'yes' (confirmo) o 'no' (no puedo)
+create or replace function public.appt_respond(p_appt uuid, p_resp text)
+returns void
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if auth.uid() is null then raise exception 'not_authenticated'; end if;
+  if p_resp not in ('yes','no') then raise exception 'bad_response'; end if;
+  update public.appointments a
+     set client_resp = p_resp, resp_at = now(), updated_at = now()
+   where a.id = p_appt and a.status = 'planned' and a.starts_at > now()
+     and exists (select 1 from public.client_links l
+                 where l.id = a.link_id and l.client_id = auth.uid() and l.status = 'active');
+  if not found then raise exception 'not_found'; end if;
+end; $$;
+revoke all on function public.appt_respond(uuid, text) from public, anon;
+grant execute on function public.appt_respond(uuid, text) to authenticated;
+
 -- Para activar a un profesional de pago sin límite de clientes:
 --   update public.professionals set status = 'active' where user_id = '<id>';
 -- Para suspenderlo:

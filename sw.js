@@ -1,4 +1,4 @@
-const CACHE = 'plan-sotero-v44';
+const CACHE = 'plan-sotero-v45';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'fonts/bricolage-Regular.woff', 'fonts/bricolage-Bold.woff', 'fonts/inter-Regular.woff', 'fonts/inter-Medium.woff', 'fonts/inter-SemiBold.woff', 'fonts/inter-Bold.woff'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
@@ -22,4 +22,11 @@ self.addEventListener('fetch', e => {
     if (r && (r.ok || r.type === 'opaque')) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); }
     return r;
   })));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const c of list) { if ('focus' in c) return c.focus(); }
+    return self.clients.openWindow('./');
+  }));
 });

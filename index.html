@@ -97,7 +97,7 @@ button{cursor:pointer}
 .inp input:focus-visible{outline:none}
 .inp:focus-within{border-color:var(--accent)}
 .inp span{color:var(--ink2);font-size:13px}
-input[type=text],input[type=time],input[type=email],input[type=password],select{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+input[type=text],input[type=time],input[type=date],input[type=email],input[type=password],select{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
 
 /* week strip */
 .stripbar{display:flex;align-items:stretch;gap:6px}
@@ -127,6 +127,10 @@ input[type=text],input[type=time],input[type=email],input[type=password],select{
 .mac b small{font-size:14px;color:var(--ink2);font-weight:500}
 .mac .l{font-size:12px;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
 .mac.p i{background:var(--p)} .mac.c i{background:var(--c)} .mac.g i{background:var(--g)}
+.aprow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.aprow>div:first-child{display:flex;flex-direction:column;gap:2px;min-width:0}.aprow small{color:var(--ink2)}.aprow .btns{align-items:center}.aprow a{color:var(--accent)}
+.remlist{display:flex;flex-direction:column;gap:12px;margin:12px 0}.remlist .hrow{flex-wrap:nowrap;gap:10px}.remlist .hrow .chk{flex:1;min-width:0}.remlist .hrow input[type=time]{width:auto;flex:none}
+a.btn{text-decoration:none;color:var(--ink);display:inline-flex;align-items:center;justify-content:center}
 .fold2{margin:10px 0}.fold2 summary{cursor:pointer;font-weight:600;padding:6px 0}
 .shopg h3{margin:0 0 6px}
 .shr{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
@@ -844,6 +848,7 @@ function mergeState(o){
     skin:Array.isArray(o.skin)?JSON.parse(JSON.stringify(o.skin)):b.skin,
     ml:o.ml&&typeof o.ml==='object'?JSON.parse(JSON.stringify(o.ml)):{},
     shop:o.shop&&typeof o.shop==='object'?JSON.parse(JSON.stringify(o.shop)):{},
+    rem:o.rem&&typeof o.rem==='object'?JSON.parse(JSON.stringify(o.rem)):null,
     intake:o.intake&&typeof o.intake==='object'?JSON.parse(JSON.stringify(o.intake)):null,
     profile:o.profile&&typeof o.profile==='object'?JSON.parse(JSON.stringify(o.profile)):null,
     avatar:avOk(o.avatar)?o.avatar:null};
@@ -1499,7 +1504,7 @@ function vHoy(){
   var d=ui.date,k=dayKind(d),rows=sched(d),ck=S.checks[d]||{},done=0,total=0,li='';
   rows.forEach(function(r,i){if(r.type!=='meal')return;total++;if(ck[i])done++;li+=schedRow(r,i,ck[i],k,d);});
   var schedCard='<details class="card fold" data-wk="h-sched"'+((ui.open['h-sched']!=null?ui.open['h-sched']:true)?' open':'')+'><summary>Horario de comidas<span class="num">'+done+' de '+total+' hechas</span></summary><ul class="sched">'+li+'</ul></details>';
-  return strip()+dayHead(d)+alertBox()+coachBanner()+totalsCard(d)+matchCard(d)+(nutriMode()?'':schedCard)+
+  return strip()+dayHead(d)+alertBox()+coachBanner()+remBanner()+totalsCard(d)+matchCard(d)+(nutriMode()?'':schedCard)+
     '<section class="card"><h2>Peso de hoy</h2>'+weightField(d)+'</section>'+trackCard(d)+
     asFold('h-feel',feelCard(d),false)+(nutriMode()?'':asFold('h-diary',diaryCard(d),false))+asFold('h-const',constCard(d),false)+asFold('h-week',weekTable(),false);
 }
@@ -1958,7 +1963,7 @@ function vAjustes(){
   var seg=ui.set==='cuenta'?'cuenta':'plan';
   return '<div class="chips" role="group" aria-label="Ajustes">'+[['plan','Plan'],['cuenta','Cuenta y datos']].map(function(x){return '<button class="chip" aria-pressed="'+(seg===x[0])+'" data-act="set" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>'+(seg==='cuenta'?vCuenta():vPlan());
 }
-var APP_V='42';
+var APP_V='45';
 function appUpdate(){
   toast('Actualizando…');
   var done=function(){location.reload();};
@@ -1969,7 +1974,7 @@ function appUpdate(){
   }catch(e){done();}
 }
 function vCuenta(){
-  return coachCard()+adminCard()+accountCard()+'<section class="card"><h2>Versión de la app</h2><p class="muted">Tupla, versión '+APP_V+'. Si no ves los últimos cambios, pulsa el botón: borra la copia guardada en este móvil y recarga la app. Tus datos no se tocan.</p><div class="btns"><button class="btn sm" data-act="appupd">Buscar actualización</button></div></section><section class="card"><h2>Tus datos</h2><p id="sync" class="muted">'+syncText()+'. Descarga una copia de vez en cuando por si borras los datos del navegador o cambias de móvil.</p><div class="btns"><button class="btn sm" data-act="export">Descargar copia</button><button class="btn sm" data-act="import">Restaurar copia</button><input type="file" id="imp" accept="application/json,.json" hidden><button class="btn danger sm" data-act="reset">'+(ui.confirm?'Confirmar: borrar todos los datos':'Borrar todos los datos')+'</button>'+(ui.confirm?'<button class="btn sm" data-act="resetno">Cancelar</button>':'')+'</div></section>';
+  return coachCard()+remCard()+adminCard()+accountCard()+'<section class="card"><h2>Versión de la app</h2><p class="muted">Tupla, versión '+APP_V+'. Si no ves los últimos cambios, pulsa el botón: borra la copia guardada en este móvil y recarga la app. Tus datos no se tocan.</p><div class="btns"><button class="btn sm" data-act="appupd">Buscar actualización</button></div></section><section class="card"><h2>Tus datos</h2><p id="sync" class="muted">'+syncText()+'. Descarga una copia de vez en cuando por si borras los datos del navegador o cambias de móvil.</p><div class="btns"><button class="btn sm" data-act="export">Descargar copia</button><button class="btn sm" data-act="import">Restaurar copia</button><input type="file" id="imp" accept="application/json,.json" hidden><button class="btn danger sm" data-act="reset">'+(ui.confirm?'Confirmar: borrar todos los datos':'Borrar todos los datos')+'</button>'+(ui.confirm?'<button class="btn sm" data-act="resetno">Cancelar</button>':'')+'</div></section>';
 }
 function vPlan(){
   var t=S.settings.t;
@@ -2849,7 +2854,7 @@ function proLoad(){
       var c={link:l.id,client:l.client_id,profile_id:l.profile_id,name:(row&&row.name)||l.client_name||'Cliente',email:l.client_email||'',type:row?row.type:'gen',data:row?row.data:null,updated:row?row.updated_at:null,plan:pp||null,pnote:pn||null,since:l.consented_at,share:!!l.share_photos};
       c.stats=c.data?proStats(c):null;return c;
     });
-    PC.loading=false;PC.at=Date.now();chatUnread();
+    PC.loading=false;PC.at=Date.now();chatUnread();proApptLoad();
   },function(e){PC.loading=false;PC.err=e&&e.net?'Sin conexión. Inténtalo de nuevo.':'No se pudieron cargar los clientes.';}).then(function(){if(ui.screen==='pro')render();});
 }
 function proFind(id){return (PC.list||[]).filter(function(c){return c.link===id;})[0]||null;}
@@ -2862,6 +2867,7 @@ function vProClients(){
   var h='<div class="hrow"><h2>Mis clientes</h2><button class="btn sm" data-act="proreload"'+(PC.loading?' disabled':'')+'>'+(PC.loading?'Cargando…':'Actualizar')+'</button></div>';
   if(PC.err)h+='<p class="err" role="alert">'+esc(PC.err)+'</p>';
   var L=(PC.list||[]).slice().sort(function(a,b){return proLevelRank(a)-proLevelRank(b)||a.name.localeCompare(b.name);});
+  if(L.length)h+=proAgendaCard();
   if(!L.length)return h+'<section class="card"><p>'+(PC.loading?'Cargando…':'Todavía no tienes clientes vinculados.')+'</p><p class="muted">Pasa a la pestaña Invitar, copia tu código o tu enlace y envíaselo a tus clientes. Cuando lo escriban y den su consentimiento, aparecerán aquí.</p><div class="btns"><button class="btn main sm" data-act="ptab" data-v="invitar">Invitar a un cliente</button></div></section>';
   var bad=L.filter(function(c){return c.stats&&c.stats.level!=='ok';}).length;
   h+='<p class="muted">'+L.length+' '+(L.length===1?'cliente':'clientes')+(bad?' · '+bad+' con avisos':' · todo en orden')+'</p><div class="cls">';
@@ -3049,7 +3055,7 @@ function proClientBody(c){
     '<label class="fld"><span class="lb">Nota para el cliente (la verá en Hoy)</span><textarea data-pt="note" rows="3" maxlength="600" placeholder="Por ejemplo: esta semana sube un poco los carbohidratos de la cena.">'+esc(dr.note!=null?dr.note:((c.plan&&c.plan.note)||''))+'</textarea></label>'+
     '<div class="btns"><button class="btn main" data-act="prosave" data-id="'+c.link+'">Guardar</button></div></section>';
   var tgHtml=h;h=hh;
-  h+=asFold('p-tg',tgHtml,true)+asFold('p-menu',proMenuCard(c),wt);
+  h+=asFold('p-tg',tgHtml,true)+asFold('p-menu',proMenuCard(c),wt)+asFold('p-appt',proApptCard(c,dr),true);
   if(wt)h+='<section class="card"><h2>Informe semanal</h2><p class="muted">Se activa cuando fijes los objetivos del cliente.</p></section>';
   else{
   h+='<div class="chips" role="group" aria-label="Semana">'+[0,1,2,3].map(function(i){return '<button class="chip" aria-pressed="'+(i===w)+'" data-act="pwk" data-w="'+i+'">Semana '+(i+1)+'</button>';}).join('')+'</div>'+reportBody(D)+
@@ -3182,9 +3188,9 @@ function coachApply(){
   }
   return false;
 }
-function cloudRefresh(){return syncPull().then(function(ch){return coachPull().then(function(c2){chatUnread();return ch||c2;});});}
+function cloudRefresh(){return syncPull().then(function(ch){return coachPull().then(function(c2){chatUnread();apptLoad();return ch||c2;});});}
 function coachBanner(){
-  var h='',cl=(ui.links||[]).filter(function(x){return PROF&&x.profile_id===PROF.id;})[0];
+  var h=apptBanner(),cl=(ui.links||[]).filter(function(x){return PROF&&x.profile_id===PROF.id;})[0];
   if(cl&&cloudOn()&&AUTH&&!AUTH.pro){var cpr=cl.professionals||{};if(Array.isArray(cpr))cpr=cpr[0]||{};
     h+='<section class="rec"><div class="hrow"><b>Chat con '+esc(cpr.name||'tu nutricionista')+'</b><span class="bdg" data-badge="'+cl.id+'" hidden></span></div><div class="btns"><button class="btn main sm" data-act="chatopen">Abrir chat</button></div></section>';}
   if(coachMenu()&&S.ml&&S.ml[ui.date])h+='<p class="muted">El menú de '+esc(S.coach.pro||'tu nutricionista')+' ya está cargado en tus comidas de este día. Quita o cambia lo que no comas.</p>';
@@ -3370,6 +3376,275 @@ function vCesta(){
   return h+'<p class="note">Los envases son orientativos: dependen del formato que compres. Los productos de Mercadona salen con su envase habitual.</p>';
 }
 
+/* ---------- recordatorios y citas ---------- */
+var APPT={list:[],ok:false,sig:''};
+var REM_DEF={on:false,weigh:{on:true,t:'08:30'},water:{on:false,t:'17:00'},meals:{on:true,t:'21:30'},cons:{on:true},appt:{on:true}};
+function remCfg(){
+  var o=S.rem&&typeof S.rem==='object'?S.rem:{},c=JSON.parse(JSON.stringify(REM_DEF));
+  c.on=!!o.on;
+  ['weigh','water','meals'].forEach(function(k){var x=o[k];if(x&&typeof x==='object'){c[k].on=!!x.on;if(typeof x.t==='string'&&/^([01]?\d|2[0-3]):[0-5]\d$/.test(x.t))c[k].t=x.t;}});
+  ['cons','appt'].forEach(function(k){if(o[k]&&typeof o[k]==='object')c[k].on=!!o[k].on;});
+  return c;
+}
+function remSet(path,val){
+  var c=remCfg(),p=path.split('.');
+  if(p.length===1)c[p[0]]=val;else c[p[0]][p[1]]=val;
+  S.rem=c;save();
+}
+function hmMin(hm){var p=String(hm).split(':');return (+p[0])*60+(+p[1]);}
+var KIND_L={video:'Videollamada',presencial:'En consulta',tel:'Llamada'};
+function apHM(iso){var d=new Date(iso);return pad(d.getHours())+':'+pad(d.getMinutes());}
+function apDay(iso){return fmtD(new Date(iso));}
+function apRel(iso){
+  var n=diffDays(apDay(iso),todayS());
+  return n===0?'Hoy':n===1?'Mañana':dayLabel(apDay(iso));
+}
+function apIsUrl(p){return /^https:\/\/[^\s<>"']+$/i.test(p||'');}
+/* avisos que tocan ahora según lo que falta por hacer */
+function remDue(now){
+  var c=remCfg(),t=todayS(),mins=now.getHours()*60+now.getMinutes(),out=[];
+  if(!c.on||!PROF)return out;
+  function after(hm){return mins>=hmMin(hm);}
+  if(c.weigh.on&&S.weights[t]==null&&after(c.weigh.t))out.push({k:'weigh',txt:'Pésate en ayunas y apúntalo en Hoy.',tab:'hoy'});
+  if(c.water.on&&after(c.water.t)){var wt=(S.track[t]||{}).water||0,wg=waterGoal(t);if(wt<wg)out.push({k:'water',txt:'Llevas '+f1(wt)+' L de agua; tu objetivo de hoy es '+f1(wg)+' L.',tab:'hoy'});}
+  if(c.meals.on&&after(c.meals.t)&&dayN(t).kcal<=0)out.push({k:'meals',txt:'Todavía no has registrado comidas hoy.',tab:'hoy'});
+  if(c.cons.on&&mins>=9*60){
+    var y=addDays(t,-1);
+    if(dayN(y).kcal<=0&&dayN(t).kcal<=0&&Object.keys(S.logs).some(function(d){return d<y&&dayN(d).kcal>0;}))out.push({k:'cons',txt:'Ayer no registraste comidas. Un día suelto no pasa nada: retoma hoy.',tab:'hoy'});
+  }
+  return out;
+}
+function remFired(){try{return JSON.parse(localStorage.getItem('tupla-rem-fired')||'{}')||{};}catch(e){return {};}}
+function remFiredSet(m){
+  try{var lim=addDays(todayS(),-10);Object.keys(m).forEach(function(k){if(m[k]<lim)delete m[k];});localStorage.setItem('tupla-rem-fired',JSON.stringify(m));}catch(e){}
+}
+function remHidden(k){return remFired()['h:'+k+':'+todayS()]===todayS();}
+function remNotify(title,body,tag){
+  try{
+    if(typeof Notification==='undefined'||Notification.permission!=='granted')return;
+    var opt={body:body,icon:'icon-192.png',badge:'icon-192.png',tag:tag};
+    if(navigator.serviceWorker&&navigator.serviceWorker.ready)navigator.serviceWorker.ready.then(function(r){return r.showNotification(title,opt);}).catch(function(){try{new Notification(title,opt);}catch(e){}});
+    else new Notification(title,opt);
+  }catch(e){}
+}
+/* citas próximas que merecen un aviso: 24 h antes y 1 h antes */
+function apptDueNotes(list,who){
+  var now=Date.now(),out=[];
+  (list||[]).forEach(function(a){
+    if(a.status!=='planned')return;
+    var st=Date.parse(a.starts_at),dt=st-now;
+    if(dt>0&&dt<=3600e3)out.push({k:'a1:'+a.id,title:'Cita en menos de una hora',body:(who?who+' · ':'')+apHM(a.starts_at)+' · '+(KIND_L[a.kind]||'')});
+    else if(dt>3600e3&&dt<=26*3600e3)out.push({k:'a24:'+a.id,title:apRel(a.starts_at)+' tienes una cita',body:(who?who+' · ':'')+apHM(a.starts_at)+' · '+(KIND_L[a.kind]||'')});
+  });
+  return out;
+}
+function remTick(){
+  try{
+    if(typeof Notification==='undefined'||Notification.permission!=='granted'||!AUTH)return;
+    var m=remFired(),t=todayS(),ch=false;
+    function fire(k,title,body){if(m[k])return;m[k]=t;ch=true;remNotify(title,body,k);}
+    if(AUTH.pro){
+      (PC.list||[]).forEach(function(c){apptDueNotes(c.appts,c.name).forEach(function(n){fire(n.k,n.title,n.body);});});
+    }else if(PROF&&!ui.screen){
+      var c=remCfg();
+      if(c.on)remDue(new Date()).forEach(function(r){fire(r.k+':'+t,'Tupla',r.txt);});
+      if(c.on&&c.appt.on)apptDueNotes(APPT.list,S.coach&&S.coach.pro||'').forEach(function(n){fire(n.k,n.title,n.body);});
+    }
+    if(ch)remFiredSet(m);
+  }catch(e){}
+}
+setInterval(remTick,60000);
+/* aviso dentro de Hoy */
+function remChange(t){
+  var k=t.dataset.rem;
+  if(t.type==='checkbox'){remSet(k,t.checked);render();return;}
+  if(/^([01]?\d|2[0-3]):[0-5]\d$/.test(t.value)){remSet(k,t.value);toast('Hora guardada');}
+  render();
+}
+function remBanner(){
+  var due=remDue(new Date()).filter(function(r){return !remHidden(r.k);});
+  if(!due.length)return '';
+  return due.map(function(r){return '<section class="rec"><div class="hrow"><b>Recordatorio</b><button class="btn sm" data-act="remhide" data-k="'+r.k+'">Ocultar hoy</button></div><p>'+esc(r.txt)+'</p></section>';}).join('');
+}
+function remPermNote(){
+  if(typeof Notification==='undefined')return '<p class="muted">Este navegador no permite avisos. Los recordatorios te saldrán dentro de la pestaña Hoy.</p>';
+  if(Notification.permission==='granted')return '<p class="note">Avisos del móvil activados. Suenan mientras la app esté abierta o en segundo plano reciente.</p>';
+  if(Notification.permission==='denied')return '<p class="muted">Has bloqueado los avisos en este navegador. Los recordatorios te saldrán dentro de la pestaña Hoy; para recibir avisos, permítelos en los ajustes del navegador.</p>';
+  return '<div class="btns"><button class="btn sm" data-act="remperm">Permitir avisos en este móvil</button></div>';
+}
+function remCard(){
+  if(!PROF)return '';
+  var c=remCfg();
+  function row(k,label){return '<div class="hrow"><label class="chk" style="cursor:pointer"><input type="checkbox" data-rem="'+k+'.on"'+(c[k].on?' checked':'')+'><span>'+label+'</span></label><input type="time" data-rem="'+k+'.t" value="'+c[k].t+'" aria-label="Hora: '+esc(label)+'"></div>';}
+  return '<section class="card"><h2>Recordatorios</h2>'+
+    '<label class="chk" style="cursor:pointer"><input type="checkbox" data-rem="on"'+(c.on?' checked':'')+'><span>Activar recordatorios</span></label>'+
+    (c.on?'<div class="remlist">'+row('weigh','Pesarme en ayunas')+row('water','Beber agua')+row('meals','Registrar mis comidas')+
+      '<label class="chk" style="cursor:pointer"><input type="checkbox" data-rem="cons.on"'+(c.cons.on?' checked':'')+'><span>Constancia: avisarme si ayer no registré nada</span></label>'+
+      '<label class="chk" style="cursor:pointer"><input type="checkbox" data-rem="appt.on"'+(c.appt.on?' checked':'')+'><span>Avisarme de mis citas con el nutricionista</span></label>'+
+      '</div><p class="muted">Cada recordatorio solo aparece si todavía no lo has hecho (por ejemplo, el del peso desaparece cuando lo apuntas).</p>'+remPermNote()+
+      '<h3>Que suenen siempre</h3><p class="muted">Una web no puede avisarte con la app cerrada. Para eso, añade los recordatorios al calendario del móvil: sonarán a su hora cada día aunque no abras Tupla.</p><div class="btns"><button class="btn sm" data-act="remics">Añadir al calendario del móvil</button></div>':
+      '<p class="muted">Te avisa del peso en ayunas, del agua, de registrar las comidas y de tus citas, solo cuando falta hacerlo.</p>')+'</section>';
+}
+/* .ics: calendario del móvil (suena con la app cerrada) */
+function icsEsc(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/;/g,'\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');}
+function icsFold(l){var o=[];while(l.length>73){o.push(l.slice(0,73));l=' '+l.slice(73);}o.push(l);return o.join('\r\n');}
+function icsUtc(ms){var d=new Date(ms);return d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+'T'+pad(d.getUTCHours())+pad(d.getUTCMinutes())+pad(d.getUTCSeconds())+'Z';}
+function icsLoc(ymd,hm){var p=ymd.split('-'),q=hm.split(':');return p[0]+p[1]+p[2]+'T'+pad(+q[0])+pad(+q[1])+'00';}
+function icsBuild(evs){
+  var L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Tupla//ES','CALSCALE:GREGORIAN','METHOD:PUBLISH'],stamp=icsUtc(Date.now());
+  evs.forEach(function(e){
+    L.push('BEGIN:VEVENT','UID:'+e.uid+'@tupla.app','DTSTAMP:'+stamp,e.start,e.end);
+    if(e.rrule)L.push('RRULE:'+e.rrule);
+    L.push('SUMMARY:'+icsEsc(e.sum));
+    if(e.loc)L.push('LOCATION:'+icsEsc(e.loc));
+    if(e.desc)L.push('DESCRIPTION:'+icsEsc(e.desc));
+    e.alarms.forEach(function(a){L.push('BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+icsEsc(e.sum),'TRIGGER:'+a,'END:VALARM');});
+    L.push('END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  return L.map(icsFold).join('\r\n')+'\r\n';
+}
+function icsSave(name,txt){
+  try{
+    var blob=new Blob([txt],{type:'text/calendar;charset=utf-8'}),a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(a.href);},3000);toast('Archivo de calendario listo: ábrelo para añadirlo');
+  }catch(e){toast('No se pudo crear el archivo de calendario');}
+}
+function remIcs(){
+  var c=remCfg(),t=todayS(),evs=[];
+  function add(k,sum,desc,hm){
+    var end=pad(Math.floor((hmMin(hm)+10)/60)%24)+':'+pad((hmMin(hm)+10)%60);
+    evs.push({uid:'rem-'+k,start:'DTSTART:'+icsLoc(t,hm),end:'DTEND:'+icsLoc(t,end),rrule:'FREQ=DAILY',sum:sum,desc:desc,alarms:['PT0S']});
+  }
+  if(c.weigh.on)add('weigh','Tupla: pesarme en ayunas','Apunta tu peso en Tupla.',c.weigh.t);
+  if(c.water.on)add('water','Tupla: beber agua','Revisa tu objetivo de agua de hoy.',c.water.t);
+  if(c.meals.on)add('meals','Tupla: registrar mis comidas','Apunta lo que has comido hoy.',c.meals.t);
+  if(!evs.length){toast('Activa al menos un recordatorio con hora');return;}
+  icsSave('tupla-recordatorios.ics',icsBuild(evs));
+}
+function apptIcs(a,who){
+  var st=Date.parse(a.starts_at),en=st+(a.minutes||30)*60000,loc=a.kind==='presencial'?(a.place||''):'',desc=[(KIND_L[a.kind]||'Cita'),a.topic||'',a.kind!=='presencial'&&a.place?a.place:''].filter(Boolean).join('\n');
+  icsSave('cita-'+apDay(a.starts_at)+'.ics',icsBuild([{uid:'appt-'+a.id,start:'DTSTART:'+icsUtc(st),end:'DTEND:'+icsUtc(en),sum:'Cita con '+(who||'nutricionista'),loc:loc,desc:desc,alarms:['-P1D','-PT30M']}]));
+}
+/* citas: lado cliente */
+function apptLoad(){
+  if(!cloudOn()||!AUTH||AUTH.pro)return Promise.resolve();
+  var since=new Date(Date.now()-2*3600e3).toISOString();
+  return ensureToken().then(function(){
+    return sbReq('GET','/rest/v1/appointments?select=id,link_id,starts_at,minutes,kind,place,topic,status,client_resp&status=eq.planned&starts_at=gte.'+encodeURIComponent(since)+'&order=starts_at.asc&limit=10',null,AUTH.access);
+  }).then(function(rows){
+    APPT.ok=true;APPT.list=Array.isArray(rows)?rows:[];
+    var sig=JSON.stringify(APPT.list);if(sig!==APPT.sig){APPT.sig=sig;if(!ui.screen&&ui.tab==='hoy')render();}
+  },function(){APPT.ok=false;});
+}
+function apptMine(){
+  var lk=S.coach&&S.coach.link;
+  return (APPT.list||[]).filter(function(a){return a.status==='planned'&&a.link_id===lk;});
+}
+function apptBanner(){
+  var l=apptMine()[0];if(!l)return '';
+  var who=S.coach&&S.coach.pro||'tu nutricionista',soon=diffDays(apDay(l.starts_at),todayS())<=1;
+  var h='<section class="rec'+(soon?' warn':'')+'"><b>'+(soon?esc(apRel(l.starts_at))+' toca revisión · '+apHM(l.starts_at):'Próxima cita · '+esc(apRel(l.starts_at))+' a las '+apHM(l.starts_at))+'</b><p>'+esc(KIND_L[l.kind]||'Cita')+' con '+esc(who)+' · '+(l.minutes||30)+' min'+(l.topic?'<br>'+esc(l.topic):'')+(l.place&&l.kind!=='video'?'<br>'+esc(l.place):'')+'</p>';
+  if(l.client_resp==='yes')h+='<p class="note">Has confirmado que irás.</p>';
+  else if(l.client_resp==='no')h+='<p class="note">Has avisado de que no puedes. Escríbele por el chat para cambiar la hora.</p>';
+  h+='<div class="btns">'+
+    (l.client_resp!=='yes'?'<button class="btn main sm" data-act="apptresp" data-id="'+l.id+'" data-v="yes">Confirmo</button>':'')+
+    (l.client_resp!=='no'?'<button class="btn sm" data-act="apptresp" data-id="'+l.id+'" data-v="no">No puedo</button>':'')+
+    (l.kind==='video'&&apIsUrl(l.place)?'<a class="btn sm" href="'+esc(l.place)+'" target="_blank" rel="noopener noreferrer">Abrir videollamada</a>':'')+
+    '<button class="btn sm" data-act="apptics" data-id="'+l.id+'">Añadir al calendario</button></div>';
+  if(l.kind==='video'&&l.place&&!apIsUrl(l.place))h+='<p class="muted">'+esc(l.place)+'</p>';
+  return h+'</section>';
+}
+function apptRespond(id,v){
+  ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/appt_respond',{p_appt:id,p_resp:v},AUTH.access);}).then(function(){
+    (APPT.list||[]).forEach(function(a){if(a.id===id)a.client_resp=v;});APPT.sig=JSON.stringify(APPT.list);render();
+    toast(v==='yes'?'Cita confirmada':'Avisado. Escribe a tu nutricionista para cambiar la hora.');
+  },function(e){toast(e&&e.net?'Sin conexión: inténtalo de nuevo':'No se pudo enviar tu respuesta');});
+}
+/* citas: lado profesional */
+function proApptLoad(){
+  if(!cloudOn()||!AUTH||!AUTH.pro||!PC.list||!PC.list.length){PC.apptErr=false;return Promise.resolve();}
+  var ids=PC.list.map(function(c){return c.link;}).join(',');
+  return ensureToken().then(function(){
+    return sbReq('GET','/rest/v1/appointments?select=id,link_id,starts_at,minutes,kind,place,topic,status,client_resp,appointment_notes(body)&link_id=in.('+ids+')&order=starts_at.desc&limit=400',null,AUTH.access);
+  }).then(function(rows){
+    PC.apptErr=false;rows=Array.isArray(rows)?rows:[];
+    PC.list.forEach(function(c){c.appts=rows.filter(function(a){return a.link_id===c.link;}).map(function(a){var n=Array.isArray(a.appointment_notes)?a.appointment_notes[0]:a.appointment_notes;a.note=n&&n.body||'';return a;});});
+    if(ui.screen==='pro')render();
+  },function(e){PC.apptErr=!(e&&e.net);if(ui.screen==='pro')render();});
+}
+function proAppts(c){return (c&&c.appts)||[];}
+function apStatus(a){
+  if(a.status==='cancelled')return '<span class="pill">Cancelada</span>';
+  if(a.status==='done')return '<span class="pill">Hecha</span>';
+  return a.client_resp==='yes'?'<span class="pill" style="background:var(--accent-soft);color:var(--good)">Confirmada</span>':a.client_resp==='no'?'<span class="pill" style="background:color-mix(in srgb,var(--bad) 15%,var(--surface));color:var(--bad)">No puede ir</span>':'<span class="pill">Sin responder</span>';
+}
+function proAgendaCard(){
+  var now=Date.now(),L=[];
+  (PC.list||[]).forEach(function(c){proAppts(c).forEach(function(a){if(a.status==='planned'&&Date.parse(a.starts_at)>now-3600e3)L.push({c:c,a:a});});});
+  L.sort(function(x,y){return Date.parse(x.a.starts_at)-Date.parse(y.a.starts_at);});
+  if(PC.apptErr)return '<section class="card"><h2>Agenda</h2><p class="muted">Las citas todavía no están activadas en el servidor.</p></section>';
+  var h='<section class="card"><h2>Agenda</h2>';
+  if(!L.length)h+='<p class="muted">No tienes citas programadas. Se crean desde la ficha de cada cliente.</p>';
+  else h+=L.slice(0,8).map(function(x){return '<div class="aprow"><div><b>'+esc(apRel(x.a.starts_at))+' · '+apHM(x.a.starts_at)+'</b><small>'+esc(x.c.name)+' · '+esc(KIND_L[x.a.kind]||'')+'</small></div><div class="btns">'+apStatus(x.a)+'<button class="btn sm" data-act="proopen" data-id="'+x.c.link+'">Abrir</button></div></div>';}).join('');
+  if(typeof Notification!=='undefined'&&Notification.permission==='default')h+='<div class="btns"><button class="btn sm" data-act="remperm">Permitir avisos de citas en este móvil</button></div>';
+  return h+'</section>';
+}
+function proApptCard(c,dr){
+  var now=Date.now(),A=proAppts(c),up=A.filter(function(a){return a.status==='planned'&&Date.parse(a.starts_at)>=now;}).sort(function(x,y){return Date.parse(x.starts_at)-Date.parse(y.starts_at);}),
+      past=A.filter(function(a){return !(a.status==='planned'&&Date.parse(a.starts_at)>=now);}).sort(function(x,y){return Date.parse(y.starts_at)-Date.parse(x.starts_at);});
+  var h='<section class="card"><h2>Citas y videollamadas</h2>';
+  if(PC.apptErr)return h+'<p class="muted">Las citas todavía no están activadas en el servidor.</p></section>';
+  var kd=dr.ak||'video',dd=dr.ad||addDays(todayS(),7),tt=dr.at||'10:00',mm=dr.am||'30';
+  h+='<div class="two"><label>Día<input type="date" data-pt="ad" value="'+esc(dd)+'" min="'+todayS()+'"></label><label>Hora<input type="time" data-pt="at" value="'+esc(tt)+'"></label>'+
+    '<label>Duración<select data-pt="am">'+['20','30','45','60'].map(function(x){return '<option value="'+x+'"'+(mm===x?' selected':'')+'>'+x+' min</option>';}).join('')+'</select></label>'+
+    '<label>Tipo<select data-pt="ak">'+['video','presencial','tel'].map(function(x){return '<option value="'+x+'"'+(kd===x?' selected':'')+'>'+KIND_L[x]+'</option>';}).join('')+'</select></label></div>'+
+    '<label class="fld"><span class="lb">'+(kd==='video'?'Enlace de la videollamada':kd==='tel'?'Teléfono':'Dirección')+'</span><input type="text" data-pt="ap" maxlength="300" value="'+esc(dr.ap||'')+'" placeholder="'+(kd==='video'?'https://meet.google.com/…':kd==='tel'?'600 000 000':'Calle y número')+'"></label>'+
+    '<label class="fld"><span class="lb">Motivo (lo ve el cliente)</span><input type="text" data-pt="ao" maxlength="200" value="'+esc(dr.ao||'')+'" placeholder="Por ejemplo: revisión mensual"></label>'+
+    '<label class="chk" style="cursor:pointer"><input type="checkbox" id="ap-chat" checked><span>Avisar al cliente por el chat</span></label>'+
+    '<div class="btns"><button class="btn main" data-act="apptadd" data-id="'+c.link+'">Programar cita</button></div>';
+  if(up.length)h+='<h3 style="margin-top:16px">Próximas</h3>'+up.map(function(a){return '<div class="aprow"><div><b>'+esc(apRel(a.starts_at))+' · '+apHM(a.starts_at)+' · '+(a.minutes||30)+' min</b><small>'+esc(KIND_L[a.kind]||'')+(a.topic?' · '+esc(a.topic):'')+'</small>'+(a.place?'<small>'+(apIsUrl(a.place)?'<a href="'+esc(a.place)+'" target="_blank" rel="noopener noreferrer">Abrir enlace</a>':esc(a.place))+'</small>':'')+'</div><div class="btns">'+apStatus(a)+'<button class="btn sm" data-act="apptics" data-id="'+a.id+'">Calendario</button><button class="btn sm" data-act="apptcancel" data-id="'+a.id+'">'+(ui.apcx===a.id?'Sí, cancelar':'Cancelar')+'</button></div></div>';}).join('');
+  if(past.length)h+='<h3 style="margin-top:16px">Visitas anteriores</h3><p class="muted">Tus notas de cada visita son privadas: el cliente no las ve.</p>'+past.slice(0,12).map(function(a){
+    var k='vn:'+a.id,v=dr[k]!=null?dr[k]:(a.note||'');
+    return '<details class="fold2"><summary>'+esc(dayLabel(apDay(a.starts_at)))+' · '+apHM(a.starts_at)+' '+apStatus(a)+'</summary>'+(a.topic?'<p class="muted">'+esc(a.topic)+'</p>':'')+
+      '<textarea data-pt="'+k+'" rows="4" maxlength="4000" placeholder="Qué se habló, qué se acordó para la próxima vez">'+esc(v)+'</textarea><div class="btns"><button class="btn sm" data-act="apptnote" data-id="'+a.id+'">Guardar nota de la visita</button>'+(a.status==='planned'?'<button class="btn sm" data-act="apptdone" data-id="'+a.id+'">Marcar como hecha</button>':'')+'</div></details>';}).join('');
+  return h+'</section>';
+}
+function apFind(id){var r=null;(PC.list||[]).forEach(function(c){proAppts(c).forEach(function(a){if(a.id===id)r={c:c,a:a};});});return r;}
+function proChatMsg(link,txt){
+  return ensureToken().then(function(){return sbReq('POST','/rest/v1/chat_messages',{link_id:link,sender_id:AUTH.uid,body:txt.slice(0,1000)},AUTH.access,{'Prefer':'return=minimal'});}).catch(function(){});
+}
+function apptAdd(c){
+  var d=proReadDraft(),dd=d.ad||addDays(todayS(),7),tt=d.at||'10:00',mm=parseInt(d.am||'30',10),kd=d.ak||'video';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dd)||!/^\d{1,2}:\d{2}$/.test(tt)){toast('Elige el día y la hora de la cita');return;}
+  var p=dd.split('-').map(Number),q=tt.split(':').map(Number),when=new Date(p[0],p[1]-1,p[2],q[0],q[1]);
+  if(isNaN(when.getTime())||when.getTime()<Date.now()){toast('La cita tiene que ser en el futuro');return;}
+  if(['video','presencial','tel'].indexOf(kd)<0||[20,30,45,60].indexOf(mm)<0){toast('Revisa el tipo y la duración');return;}
+  var place=(d.ap||'').trim().slice(0,300),topic=(d.ao||'').trim().slice(0,200),chat=document.getElementById('ap-chat');chat=!chat||chat.checked;
+  if(kd==='video'&&place&&/^[a-z][a-z0-9+.-]*:/i.test(place)&&!apIsUrl(place)){toast('El enlace debe empezar por https://');return;}
+  var row={link_id:c.link,starts_at:when.toISOString(),minutes:mm,kind:kd,place:place||null,topic:topic||null};
+  ensureToken().then(function(){return sbReq('POST','/rest/v1/appointments',[row],AUTH.access,{'Prefer':'return=representation'});}).then(function(r){
+    var a=Array.isArray(r)?r[0]:r;if(a){a.note='';(c.appts=c.appts||[]).push(a);}
+    var dr=ui.pdraft[c.link]||{};['ad','at','am','ak','ap','ao'].forEach(function(k){delete dr[k];});
+    render();toast(chat?'Cita programada y avisado por el chat':'Cita programada');
+    if(chat&&a)proChatMsg(c.link,'Cita programada: '+apRel(a.starts_at).toLowerCase()+' a las '+apHM(a.starts_at)+' ('+(KIND_L[a.kind]||'').toLowerCase()+')'+(a.topic?'. '+a.topic:'')+'. Confírmala en Hoy.');
+  },function(e){toast(e&&e.net?'Sin conexión: no se guardó':'No se pudo programar la cita');});
+}
+function apptPatch(id,patch,okMsg,after){
+  var f=apFind(id);if(!f)return;
+  patch.updated_at=new Date().toISOString();
+  ensureToken().then(function(){return sbReq('PATCH','/rest/v1/appointments?id=eq.'+encodeURIComponent(id),patch,AUTH.access,{'Prefer':'return=minimal'});}).then(function(){
+    Object.keys(patch).forEach(function(k){f.a[k]=patch[k];});render();toast(okMsg);if(after)after(f);
+  },function(e){toast(e&&e.net?'Sin conexión: no se guardó':'No se pudo guardar');});
+}
+function apptNote(id){
+  var f=apFind(id);if(!f)return;
+  var d=proReadDraft(),txt=(d['vn:'+id]!=null?d['vn:'+id]:f.a.note||'').trim().slice(0,4000);
+  ensureToken().then(function(){return sbReq('POST','/rest/v1/appointment_notes?on_conflict=appt_id',[{appt_id:id,body:txt,updated_at:new Date().toISOString()}],AUTH.access,{'Prefer':'resolution=merge-duplicates,return=minimal'});}).then(function(){
+    f.a.note=txt;var dr=ui.pdraft[f.c.link];if(dr)delete dr['vn:'+id];toast('Nota de la visita guardada');
+  },function(){toast('No se pudo guardar la nota');});
+}
 /* ---------- chat entre cliente y nutricionista ---------- */
 var CH={link:null,msgs:[],unread:{},draft:'',loading:false,sending:false,err:'',at:0,sig:''};
 function chatCtx(){
@@ -3583,6 +3858,17 @@ app.addEventListener('click',function(e){
   if(a==='tab'){ui.tab=b.dataset.t;ui.picker=null;ui.alt=null;ui.q='';render();return;}
   if(a==='date'){ui.date=d;ui.rwd=wdOf(d);render();return;}
   if(a==='wk'){ui.date=addDays(ui.date,+b.dataset.n);render();return;}
+  if(a==='remhide'){var fm=remFired();fm['h:'+b.dataset.k+':'+todayS()]=todayS();remFiredSet(fm);render();return;}
+  if(a==='remperm'){try{var pr=Notification.requestPermission(function(){});if(pr&&pr.then)pr.then(function(){render();toast(Notification.permission==='granted'?'Avisos activados':'Avisos no permitidos');});}catch(x){toast('Este navegador no permite avisos');}return;}
+  if(a==='remics'){remIcs();return;}
+  if(a==='apptresp'){apptRespond(b.dataset.id,b.dataset.v);return;}
+  if(a==='apptics'){var af=apFind(b.dataset.id);if(af)apptIcs(af.a,af.c.name);else{var ax=(APPT.list||[]).filter(function(x){return x.id===b.dataset.id;})[0];if(ax)apptIcs(ax,S.coach&&S.coach.pro);}return;}
+  if(a==='apptadd'){var ca=proFind(b.dataset.id);if(ca)apptAdd(ca);return;}
+  if(a==='apptnote'){apptNote(b.dataset.id);return;}
+  if(a==='apptdone'){apptPatch(b.dataset.id,{status:'done'},'Marcada como hecha');return;}
+  if(a==='apptcancel'){
+    if(ui.apcx!==b.dataset.id){ui.apcx=b.dataset.id;if(ui.psel)ui.pdraft[ui.psel]=Object.assign(ui.pdraft[ui.psel]||{},proReadDraft());render();return;}
+    ui.apcx=null;apptPatch(b.dataset.id,{status:'cancelled'},'Cita cancelada y avisado por el chat',function(f){proChatMsg(f.c.link,'Se ha cancelado la cita del '+apRel(f.a.starts_at).toLowerCase()+' a las '+apHM(f.a.starts_at)+'. Te propondré otra hora.');});return;}
   if(a==='shopwk'){ui.cw=+b.dataset.o||0;render();return;}
   if(a==='shopchk'){shopMark(b.dataset.f,b.checked);return;}
   if(a==='shopcopy'){copyText(shopText(shopList(coachMenu()),shopWeekStart(ui.cw||0)));return;}
@@ -3646,6 +3932,8 @@ app.addEventListener('click',function(e){
 });
 app.addEventListener('change',function(e){
   var t=e.target,bd=t.dataset.bind;
+  if(t.dataset&&t.dataset.rem!=null){remChange(t);return;}
+  if(t.dataset&&t.dataset.pt==='ak'&&ui.psel){var dk0=ui.pdraft[ui.psel]||(ui.pdraft[ui.psel]={});Object.assign(dk0,proReadDraft());render();return;}
   if(t.dataset&&t.dataset.ob!=null){if(t.dataset.ob!=='work')readOb();return;}
   if(t.id==='ph-file'){addPhoto(t);return;}
   if(t.id==='av-file'){setAvatar(t);return;}
@@ -3734,6 +4022,8 @@ function boot(){
   render();
 }
 boot();
+setTimeout(remTick,5000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)remTick();});
 document.addEventListener('visibilitychange',function(){
   if(!cloudOn()||!AUTH)return;
   if(AUTH.admin&&ui.screen==='admin'){if(!document.hidden&&Date.now()-(AD.at||0)>30000)adminLoad();return;}
