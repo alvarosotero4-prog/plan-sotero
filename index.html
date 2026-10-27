@@ -207,6 +207,7 @@ ol.plain{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 .msg small{display:block;color:var(--ink2);font-size:11px;margin-top:2px}
 .chatbox{display:flex;gap:8px;align-items:flex-end}
 .chatbox textarea{flex:1;min-width:0}
+.rcp p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 8px}
 .pmrow{display:flex;align-items:center;gap:8px}
 .pmn{flex:1;min-width:0;overflow-wrap:anywhere}
 .pmrow .inp{width:104px;flex:none}
@@ -455,7 +456,7 @@ function mergeState(o){
 }
 var PROF=null, INDEX=null, G=null;
 var S=DEF();
-var ui={liftSel:null,saving:null,pwk:0,tab:'hoy',date:todayS(),picker:null,alt:null,set:'plan',links:null,noPro:false,invite:'',unlink:null,linkMsg:null,ptab:'clientes',psel:null,pday:null,pcur:null,pdraft:{},prc:null,perr:'',q:'',open:{},confirm:false,sync:'local',rwd:null,screen:null,delp:null,confirmBlock:false,authMode:'login',au:{email:'',pw:'',pw2:''},authMsg:null,busy:false,rec:null,claim:null,prev:null,delAcct:0,pmenu:{},pmd:0,pms:null,pmq:'',invInfo:null,linkAuto:false,chatBack:null};
+var ui={liftSel:null,saving:null,pwk:0,tab:'hoy',date:todayS(),picker:null,alt:null,set:'plan',links:null,noPro:false,invite:'',unlink:null,linkMsg:null,ptab:'clientes',psel:null,pday:null,pcur:null,pdraft:{},prc:null,perr:'',q:'',open:{},confirm:false,sync:'local',rwd:null,screen:null,delp:null,confirmBlock:false,authMode:'login',au:{email:'',pw:'',pw2:''},authMsg:null,busy:false,rec:null,claim:null,prev:null,delAcct:0,pmr:null,rcp:null,pmenu:{},pmd:0,pms:null,pmq:'',invInfo:null,linkAuto:false,chatBack:null};
 ui.rwd=wdOf(ui.date);
 var MAINT=2450;
 
@@ -525,6 +526,14 @@ function ensureMenu(d){
   var k=dayKind(d);S.logs[d]=S.logs[d]||{};
   slotsFor(d).forEach(function(sl){var cur=S.logs[d][sl.id];if(cur&&cur.length)return;var pl=planSlot(k,sl.id,d);if(pl.length)S.logs[d][sl.id]=pl.map(function(x){return {f:x.f,g:x.g};});});
   S.ml[d]=mver();save();
+}
+function coachRecipe(d,slot){
+  var m=coachMenu();if(!m)return null;var day=m[String(wdOf(d||'2026-10-12'))],r=day&&day._r&&day._r[slot];
+  return r&&(r.t||r.v)?r:null;
+}
+function safeUrl(u){return /^https?:\/\/[^\s"'<>]+$/i.test(u||'')?u:'';}
+function recipePanel(r){
+  return '<div class="pick rcp">'+(r.t?'<p>'+esc(r.t)+'</p>':'')+(safeUrl(r.v)?'<p><a class="btn sm main" href="'+esc(safeUrl(r.v))+'" target="_blank" rel="noopener noreferrer">Ver vídeo de la receta</a></p>':'')+'</div>';
 }
 function coachSlot(slot,d){
   var m=coachMenu();
@@ -1147,9 +1156,12 @@ function slotCard(d,s,k){
   if(!isFree&&!coachMenu()&&!proProf())h+='<button class="btn sm" data-act="alt" data-d="'+d+'" data-s="'+s.id+'">'+(ui.alt===d+'|'+s.id?'Cerrar opciones':'Cambiar plato')+'</button>';
   if(prevD)h+='<button class="btn sm" data-act="repeat" data-d="'+d+'" data-s="'+s.id+'" data-from="'+prevD+'">Repetir del '+dayLabel(prevD).toLowerCase()+'</button>';
   h+='<button class="btn sm" data-act="openpick" data-s="'+s.id+'">'+(ui.picker===s.id?'Cerrar lista':'Añadir alimento')+'</button>';
+  var rcp=coachRecipe(d,s.id);
+  if(rcp)h+='<button class="btn sm" data-act="recipe" data-k="'+d+'|'+s.id+'" aria-expanded="'+(ui.rcp===d+'|'+s.id)+'">'+(ui.rcp===d+'|'+s.id?'Ocultar receta':'Receta')+'</button>';
   if(isSot()&&((k==='f'&&s.id==='snack')||(k==='r'&&s.id==='mid'))) h+='<button class="btn sm" data-act="tortitas" data-d="'+d+'" data-s="'+s.id+'">Cambiar por tortitas</button>';
   if(list.length) h+='<button class="btn sm" data-act="savemeal" data-d="'+d+'" data-s="'+s.id+'">Guardar como comida</button><button class="btn sm" data-act="clearslot" data-d="'+d+'" data-s="'+s.id+'">Vaciar</button>';
   h+='</div>';
+  if(rcp&&ui.rcp===d+'|'+s.id)h+=recipePanel(rcp);
   if(ui.alt===d+'|'+s.id) h+=altPanel(d,s,plan,list);
   if(ui.saving===d+'|'+s.id) h+='<div class="pick"><input type="text" id="mn" placeholder="Nombre de la comida, por ejemplo Arroz con pollo" autocomplete="off"><div class="btns"><button class="btn main sm" data-act="savemealok" data-d="'+d+'" data-s="'+s.id+'">Guardar</button><button class="btn sm" data-act="savemealno">Cancelar</button></div></div>';
   if(ui.picker===s.id) h+='<div class="pick">'+quickChips(d,s.id)+mealChips(d,s.id)+'<input type="text" id="q" placeholder="Buscar alimento" value="'+esc(ui.q)+'" autocomplete="off"><div class="picklist" id="picklist">'+pickList(d,s.id)+'</div></div>';
@@ -2452,7 +2464,9 @@ function proMenuCard(c){
       var f=findFood(x.f),nm=f?f.name:'Alimento borrado';
       h+='<div class="pmrow"><span class="pmn">'+esc(nm)+'</span><div class="inp"><input type="text" inputmode="decimal" data-pm="g" data-s="'+sl.id+'" data-i="'+i+'" value="'+String(Math.round(x.g*10)/10).replace('.',',')+'" aria-label="Gramos de '+esc(nm)+'"><span>g</span></div><button class="x" data-act="pmrm" data-s="'+sl.id+'" data-i="'+i+'" aria-label="Quitar '+esc(nm)+'">×</button></div>';
     });
-    h+='<div class="btns"><button class="btn sm" data-act="pmadd" data-s="'+sl.id+'">'+(ui.pms===sl.id?'Cerrar lista':'Añadir alimento')+'</button></div>';
+    var rc=(day._r||{})[sl.id]||{},hasR=!!(rc.t||rc.v);
+    h+='<div class="btns"><button class="btn sm" data-act="pmadd" data-s="'+sl.id+'">'+(ui.pms===sl.id?'Cerrar lista':'Añadir alimento')+'</button><button class="btn sm" data-act="pmrec" data-s="'+sl.id+'">'+(ui.pmr===sl.id?'Cerrar receta':(hasR?'Receta ●':'Receta'))+'</button></div>';
+    if(ui.pmr===sl.id)h+='<div class="pick"><label class="fld"><span class="lb">Receta de esta comida</span><textarea data-pm="rt" data-s="'+sl.id+'" rows="5" maxlength="2000" placeholder="Ingredientes y pasos…">'+esc(rc.t||'')+'</textarea></label><label class="fld"><span class="lb">Enlace a un vídeo (opcional)</span><input type="text" data-pm="rv" data-s="'+sl.id+'" value="'+esc(rc.v||'')+'" placeholder="https://…" autocapitalize="none" spellcheck="false" maxlength="300"></label><p class="muted">El cliente verá un botón Receta debajo de esta comida. Se guarda con el menú de este día.</p></div>';
     if(ui.pms===sl.id)h+='<div class="pick"><input type="text" id="pmq" data-pmq="1" placeholder="Buscar alimento" value="'+esc(ui.pmq||'')+'" autocomplete="off"><div class="picklist" id="pmlist">'+pmPickList(sl.id)+'</div></div>';
     h+='</div>';
   });
@@ -2462,8 +2476,13 @@ function proMenuCard(c){
   return h;
 }
 function proSaveMenu(c){
-  var m=pmDraft(c),out={};
-  Object.keys(m).forEach(function(d){var day={},any=false;Object.keys(m[d]||{}).forEach(function(sl){var arr=(m[d][sl]||[]).filter(function(x){return x&&x.f&&x.g>0;}).map(function(x){return {f:x.f,g:Math.round(x.g*10)/10};});if(arr.length){day[sl]=arr;any=true;}});if(any)out[d]=day;});
+  var m=pmDraft(c),out={},bad=false;
+  Object.keys(m).forEach(function(d){var day={},any=false;
+    var R=(m[d]&&m[d]._r)||{},ro={};
+    Object.keys(R).forEach(function(sl){var t=String(R[sl].t||'').trim().slice(0,2000),v=String(R[sl].v||'').trim();if(v&&!safeUrl(v)){bad=true;return;}if(t||v){ro[sl]={t:t,v:v};}});
+    if(Object.keys(ro).length){day._r=ro;any=true;}
+    Object.keys(m[d]||{}).forEach(function(sl){if(sl==='_r')return;var arr=(m[d][sl]||[]).filter(function(x){return x&&x.f&&x.g>0;}).map(function(x){return {f:x.f,g:Math.round(x.g*10)/10};});if(arr.length){day[sl]=arr;any=true;}});if(any)out[d]=day;});
+  if(bad){toast('El enlace del vídeo debe empezar por https:// y no llevar espacios');return;}
   var body={link_id:c.link,menu:out,updated_at:new Date().toISOString()};
   ensureToken().then(function(){return sbReq('POST','/rest/v1/pro_plans?on_conflict=link_id',[body],AUTH.access,{'Prefer':'resolution=merge-duplicates,return=minimal'});}).then(function(){
     c.plan=Object.assign({},c.plan||{},{menu:clone(out),updated_at:body.updated_at});ui.pmenu[c.link]=clone(out);render();toast('Menú guardado. El cliente lo verá al abrir la app.');
@@ -2580,7 +2599,9 @@ function profileAct(a,b){
   case 'privacy':if(ui.screen==='auth')readAu();ui.prev=ui.screen;ui.screen='privacy';render();toTop();return true;
   case 'privback':ui.screen=ui.prev||null;ui.prev=null;render();toTop();return true;
   case 'acctexport':exportAll();return true;
-  case 'pmday':ui.pmd=+b.dataset.i;ui.pms=null;ui.pmq='';render();return true;
+  case 'recipe':ui.rcp=ui.rcp===b.dataset.k?null:b.dataset.k;render();return true;
+  case 'pmrec':ui.pmr=ui.pmr===b.dataset.s?null:b.dataset.s;render();return true;
+  case 'pmday':ui.pmd=+b.dataset.i;ui.pms=null;ui.pmr=null;ui.pmq='';render();return true;
   case 'pmadd':ui.pms=ui.pms===b.dataset.s?null:b.dataset.s;ui.pmq='';render();if(ui.pms){var pq=document.getElementById('pmq');if(pq)pq.focus();}return true;
   case 'pmpick':{var c1=proFind(ui.psel);if(!c1)return true;var fd=withClient(c1,function(){return findFood(b.dataset.f);});if(!fd)return true;
     var dm=pmDraft(c1),dk=String(ui.pmd||0),sid=b.dataset.s;dm[dk]=dm[dk]||{};(dm[dk][sid]=dm[dk][sid]||[]).push({f:fd.id,g:fd.def||100});ui.pms=null;ui.pmq='';render();return true;}
@@ -2736,6 +2757,7 @@ app.addEventListener('change',function(e){
   if(t.dataset&&t.dataset.ob!=null){if(t.dataset.ob!=='work')readOb();return;}
   if(t.id==='ph-file'){addPhoto(t);return;}
   if(t.id==='ph-a')PH.angle=t.value;
+  if(t.dataset&&(t.dataset.pm==='rt'||t.dataset.pm==='rv')){var c8=proFind(ui.psel);if(c8){var dm8=pmDraft(c8),dk8=String(ui.pmd||0);dm8[dk8]=dm8[dk8]||{};var rr8=(dm8[dk8]._r=dm8[dk8]._r||{});(rr8[t.dataset.s]=rr8[t.dataset.s]||{})[t.dataset.pm==='rt'?'t':'v']=t.value;}return;}
   if(t.dataset&&t.dataset.pm==='g'){var c6=proFind(ui.psel);if(c6){var dd6=pmDraft(c6)[String(ui.pmd||0)],ar6=dd6&&dd6[t.dataset.s],it6=ar6&&ar6[+t.dataset.i],v6=num(t.value);if(it6&&v6!=null&&v6>0&&v6<=5000)it6.g=Math.round(v6*10)/10;render();}return;}
   if(!bd)return;
   if(bd==='w'||bd==='waist'){var v=num(t.value),map=bd==='w'?S.weights:S.waist;if(t.value.trim()===''||v==null||v<=0){delete map[t.dataset.d];}else map[t.dataset.d]=Math.round(v*10)/10;save();render();return;}
