@@ -303,6 +303,9 @@ textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-rad
 
 .filebtn{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;text-align:center;color:var(--accent-ink)!important;font-size:14px!important}
 .filebtn.dis{opacity:.6;pointer-events:none}
+.adsec{font-size:16px;margin:18px 2px 8px}
+.tabs button .bdg.in{position:absolute;top:-4px;right:-2px;left:auto;margin:0;font-size:11px;min-width:18px;padding:0 5px}
+.adt{width:100%;border-collapse:collapse}.adt th{text-align:left;font-weight:500;padding:9px 0;border-bottom:1px solid var(--line)}.adt td{text-align:right;font-weight:700;padding:9px 0;border-bottom:1px solid var(--line)}
 .cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .cmp>div{display:flex;flex-direction:column;gap:6px;min-width:0}
 .cmp select{width:100%}
@@ -1701,7 +1704,7 @@ function vAjustes(){
   var seg=ui.set==='cuenta'?'cuenta':'plan';
   return '<div class="chips" role="group" aria-label="Ajustes">'+[['plan','Plan'],['cuenta','Cuenta y datos']].map(function(x){return '<button class="chip" aria-pressed="'+(seg===x[0])+'" data-act="set" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>'+(seg==='cuenta'?vCuenta():vPlan());
 }
-var APP_V='39';
+var APP_V='40';
 function appUpdate(){
   toast('Actualizando…');
   var done=function(){location.reload();};
@@ -2165,7 +2168,7 @@ function ensureToken(){
   });
 }
 function forceLogout(msg){
-  AUTH=null;authStore();PROF=null;INDEX=null;PRO=null;PC={list:null,err:null,loading:false,at:0};CH.msgs=[];CH.unread={};CH.link=null;CH.draft='';ui.links=null;ui.psel=null;S=DEF();
+  AUTH=null;authStore();PROF=null;INDEX=null;PRO=null;AD={list:null,ov:null,loading:false,err:null,doc:null,aconf:null,arej:null,busy:false};PC={list:null,err:null,loading:false,at:0};CH.msgs=[];CH.unread={};CH.link=null;CH.draft='';ui.links=null;ui.psel=null;S=DEF();
   ui.screen='auth';ui.authMsg=msg?{k:'info',t:msg}:null;ui.busy=false;render();
 }
 
@@ -2245,7 +2248,11 @@ function legacyEntries(){
 }
 function afterLogin(){
   ui.busy=true;ui.authMsg=null;ui.perr='';render();
-  return proInit().then(function(){
+  return adminInit().then(function(ad){
+    if(ad){ui.busy=false;ui.screen='admin';ui.atab='solicitudes';render();toTop();adminLoad();return null;}
+    return proInit().then(function(){return 'x';});
+  }).then(function(x){
+    if(x===null)return;
     if(PRO){ui.busy=false;ui.screen='pro';ui.ptab='clientes';ui.psel=null;render();toTop();proLoad();return;}
     INDEX=loadIndex();
     var lg=legacyEntries();
@@ -2299,7 +2306,7 @@ function newPwSubmit(){
   },function(e){fail(authErr(e));});
 }
 function doLogout(){
-  var go=function(){AUTH=null;authStore();PROF=null;INDEX=null;PRO=null;PC={list:null,err:null,loading:false,at:0};CH.msgs=[];CH.unread={};CH.link=null;CH.draft='';ui.links=null;ui.psel=null;ui.perr='';S=DEF();ui.au={email:'',pw:'',pw2:''};ui.authMode='login';ui.authMsg={k:'info',t:'Has cerrado la sesión.'};ui.screen='auth';ui.busy=false;ui.acct=false;render();toTop();};
+  var go=function(){AUTH=null;authStore();PROF=null;INDEX=null;PRO=null;AD={list:null,ov:null,loading:false,err:null,doc:null,aconf:null,arej:null,busy:false};PC={list:null,err:null,loading:false,at:0};CH.msgs=[];CH.unread={};CH.link=null;CH.draft='';ui.links=null;ui.psel=null;ui.perr='';S=DEF();ui.au={email:'',pw:'',pw2:''};ui.authMode='login';ui.authMsg={k:'info',t:'Has cerrado la sesión.'};ui.screen='auth';ui.busy=false;ui.acct=false;render();toTop();};
   syncPush().then(go,go);
 }
 function syncLabel(){
@@ -2499,7 +2506,7 @@ function wipeLocal(){
 function deleteAccount(){
   ui.busy=true;render();
   Promise.all(phFlags().map(function(pid){return phPurge(pid);})).then(function(){return ensureToken();}).then(function(){return sbReq('POST','/rest/v1/rpc/delete_my_account',{},AUTH.access);}).then(function(){
-    wipeLocal();AUTH=null;PROF=null;INDEX=null;PRO=null;PC={list:null,err:null,loading:false,at:0};CH.msgs=[];CH.unread={};CH.link=null;CH.draft='';ui.links=null;ui.psel=null;S=DEF();ui.busy=false;ui.delAcct=0;ui.au={email:'',pw:'',pw2:''};ui.authMode='login';ui.authMsg={k:'info',t:'Tu cuenta y todos tus datos se han borrado.'};ui.screen='auth';render();toTop();
+    wipeLocal();AUTH=null;PROF=null;INDEX=null;PRO=null;AD={list:null,ov:null,loading:false,err:null,doc:null,aconf:null,arej:null,busy:false};PC={list:null,err:null,loading:false,at:0};CH.msgs=[];CH.unread={};CH.link=null;CH.draft='';ui.links=null;ui.psel=null;S=DEF();ui.busy=false;ui.delAcct=0;ui.au={email:'',pw:'',pw2:''};ui.authMode='login';ui.authMsg={k:'info',t:'Tu cuenta y todos tus datos se han borrado.'};ui.screen='auth';render();toTop();
   },function(e){
     ui.busy=false;
     toast(e&&e.net?'Sin conexión: no se pudo borrar la cuenta':(e&&(e.status===404||e.code==='PGRST202')?'El borrado de cuentas aún no está activado en el servidor':'No se pudo borrar la cuenta'));
@@ -2625,6 +2632,90 @@ function vProInvite(){
   return '<section class="card"><h2>Tu código de invitación</h2>'+(code?'<p class="bigcode" aria-label="Código">'+esc(code)+'</p><div class="btns"><button class="btn sm main" data-act="procopy" data-k="code">Copiar código</button><button class="btn sm" data-act="procopy" data-k="link">Copiar enlace</button><button class="btn sm" data-act="procopy" data-k="msg">Copiar mensaje para el cliente</button></div><p class="muted selectable">'+esc(proLink(code))+'</p>':'<p class="muted">Tu código aparecerá cuando se active tu cuenta profesional.</p>')+'</section>'+
     '<section class="card"><h2>Cómo funciona</h2><ol class="plain"><li>Envías el código o el enlace a tu cliente.</li><li>Tu cliente crea su cuenta y su plan, y escribe tu código en Ajustes, Cuenta y datos. Ve claro qué compartirá contigo y da su consentimiento.</li><li>Aparece en tu lista con su informe, su diario de comidas y su peso. Puedes ajustar sus objetivos y dejarle notas.</li><li>Tu cliente puede dejar de compartir cuando quiera, y tú también puedes terminar el vínculo.</li></ol></section>'+
     '<section class="card"><h2>Tu plan</h2><p>'+(trial?'<b>Prueba gratuita</b>: hasta '+PRO.max_clients+' clientes ('+n+' ahora).':PRO.status==='suspended'?'<b>Cuenta suspendida.</b> Contacta con quien administra la app.':'<b>Cuenta profesional activa</b>: sin límite de clientes.')+'</p>'+(trial?'<p class="muted">Cuando quieras ampliar el número de clientes, contacta con quien administra la app.</p>':'')+'</section>';
+}
+/* ---------- administrador ---------- */
+var AD={list:null,ov:null,loading:false,err:null,doc:null,aconf:null,arej:null,busy:false};
+function adminInit(){
+  if(!cloudOn()||!AUTH)return Promise.resolve(false);
+  return ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/is_admin',{},AUTH.access);}).then(function(r){
+    AUTH.admin=r===true;authStore();return AUTH.admin;
+  },function(e){return e&&e.net?!!AUTH.admin:false;});
+}
+function adminLoad(){
+  if(!AUTH||!AUTH.admin)return Promise.resolve();
+  AD.loading=true;AD.err=null;if(ui.screen==='admin')render();
+  return ensureToken().then(function(){
+    return Promise.all([sbReq('POST','/rest/v1/rpc/admin_list_pros',{},AUTH.access),sbReq('POST','/rest/v1/rpc/admin_overview',{},AUTH.access)]);
+  }).then(function(r){AD.list=Array.isArray(r[0])?r[0]:[];AD.ov=r[1]||null;AD.at=Date.now();},function(e){
+    AD.err=e&&e.net?'Sin conexión. Inténtalo de nuevo.':'No se pudieron cargar los datos. ¿Has ejecutado el SQL de administrador?';
+  }).then(function(){AD.loading=false;if(ui.screen==='admin')render();});
+}
+function adFind(id){return (AD.list||[]).filter(function(x){return x.user_id===id;})[0];}
+function adDate(v){try{return v?new Date(v).toLocaleDateString('es-ES'):'';}catch(e){return '';}}
+function adCard(x){
+  var h='<section class="card"><div class="hrow"><h2 style="margin:0">'+esc(x.name)+'</h2><span class="pill'+(x.license_checked&&x.status!=='suspended'?' k-f':'')+'">'+(x.status==='suspended'?'Suspendida':x.license_checked?(x.status==='active'?'Plan activo':'En prueba'):x.license_doc?'Por revisar':'Sin justificante')+'</span></div>'+
+    '<p class="muted">'+(x.business?esc(x.business)+' · ':'')+esc(x.email)+'</p>'+
+    '<p>Nº de colegiado: <b>'+esc(x.license||'—')+'</b></p>'+
+    '<p class="muted">Registrado el '+adDate(x.created_at)+(x.doc_at?' · justificante subido el '+adDate(x.doc_at):'')+(x.license_checked?' · '+x.clients+(x.status==='trial'?' de '+x.max_clients:'')+(x.clients===1?' cliente':' clientes'):'')+'</p>';
+  if(x.review_note&&!x.license_checked)h+='<p class="muted">Último rechazo: '+esc(x.review_note)+'</p>';
+  var b='',dis=AD.busy?' disabled':'';
+  if(x.license_doc)b+='<button class="btn sm" data-act="addoc" data-id="'+x.user_id+'"'+dis+'>'+(AD.doc&&AD.doc.id===x.user_id?'Cerrar justificante':'Ver justificante')+'</button>';
+  if(AD.doc&&AD.doc.id===x.user_id){
+    h+=AD.doc.err?'<p class="err" role="alert">'+esc(AD.doc.err)+'</p>':AD.doc.loading?'<p class="muted">Cargando justificante…</p>':AD.doc.pdf?'<p><a class="btn sm" href="'+AD.doc.url+'" target="_blank" rel="noopener">Abrir PDF</a></p>':'<p><a href="'+AD.doc.url+'" target="_blank" rel="noopener"><img src="'+AD.doc.url+'" alt="Justificante de '+esc(x.name)+'" style="max-width:100%;border-radius:10px;border:1px solid var(--line)"></a></p>';
+  }
+  if(!x.license_checked){
+    if(x.license_doc)b+='<button class="btn main sm" data-act="adset" data-id="'+x.user_id+'" data-v="approve"'+dis+'>Aprobar</button>';
+    b+='<button class="btn sm" data-act="adrej" data-id="'+x.user_id+'">'+(AD.arej===x.user_id?'Cancelar':'Rechazar')+'</button>';
+    h+='<div class="btns">'+b+'</div>';
+    if(AD.arej===x.user_id)h+='<label class="fld"><span class="lb">Motivo (lo verá el profesional)</span><textarea data-adnote="'+x.user_id+'" rows="3" maxlength="300" placeholder="Por ejemplo: la foto no se lee bien. Sube otra donde se vean tu nombre y tu número."></textarea></label><div class="btns"><button class="btn main sm" data-act="adset" data-id="'+x.user_id+'" data-v="reject"'+dis+'>Enviar rechazo</button></div>';
+    return h+'</section>';
+  }
+  if(x.status!=='active')b+='<button class="btn sm" data-act="adset" data-id="'+x.user_id+'" data-v="active"'+dis+'>Dar plan activo</button>';
+  if(x.status==='active'||x.status==='suspended')b+='<button class="btn sm" data-act="adset" data-id="'+x.user_id+'" data-v="trial"'+dis+'>Pasar a prueba</button>';
+  if(x.status!=='suspended')b+=AD.aconf===x.user_id+':suspend'?'<button class="btn main sm" data-act="adset" data-id="'+x.user_id+'" data-v="suspend"'+dis+'>Confirmar: suspender</button>':'<button class="btn sm" data-act="adconf" data-id="'+x.user_id+'" data-v="suspend">Suspender</button>';
+  return h+'<div class="btns">'+b+'</div></section>';
+}
+function vAdmin(){
+  var T=[['solicitudes','Solicitudes'],['pros','Profesionales'],['resumen','Resumen'],['cuenta','Cuenta']],L=AD.list||[],
+    wait=L.filter(function(x){return !x.license_checked;}),
+    h='<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Administración</h1></div><p class="sub">Tupla · '+esc(AUTH?AUTH.email:'')+'</p></header>';
+  h+='<nav class="tabs" role="tablist" aria-label="Administración">'+T.map(function(t){var n=t[0]==='solicitudes'&&wait.length?' <span class="bdg in">'+wait.length+'</span>':'';return '<button role="tab" aria-selected="'+(ui.atab===t[0])+'" data-act="atab" data-v="'+t[0]+'">'+t[1]+n+'</button>';}).join('')+'</nav>';
+  if(AD.err)h+='<p class="err" role="alert">'+esc(AD.err)+'</p>';
+  var re='<div class="hrow"><span class="muted">'+(AD.loading?'Cargando…':AD.at?'Actualizado a las '+new Date(AD.at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):'')+'</span><button class="btn sm" data-act="adreload"'+(AD.loading?' disabled':'')+'>Actualizar</button></div>';
+  if(ui.atab==='cuenta')return h+'<section class="card"><h2>Cuenta de administrador</h2><p class="muted">'+esc(AUTH.email)+'. Desde aquí revisas a los profesionales; no ves los datos de sus clientes.</p><div class="btns"><button class="btn" data-act="logout">Cerrar sesión</button></div></section><section class="card"><h2>Versión de la app</h2><p class="muted">Tupla, versión '+APP_V+'.</p><div class="btns"><button class="btn sm" data-act="appupd">Buscar actualización</button></div></section>';
+  if(ui.atab==='resumen'){
+    var o=AD.ov;
+    if(!o)return h+re+'<section class="card"><p class="muted">'+(AD.loading?'Cargando…':'Sin datos todavía.')+'</p></section>';
+    var rows=[['Cuentas en total',o.users],['Perfiles creados',o.profiles],['Profesionales',o.pros],['Solicitudes por revisar',o.waiting],['Profesionales sin justificante',o.nodoc],['Profesionales activos',o.approved],['Profesionales suspendidos',o.suspended],['Vínculos activos cliente–profesional',o.links]];
+    return h+re+'<section class="card"><table class="adt"><tbody>'+rows.map(function(r){return '<tr><th>'+r[0]+'</th><td class="num">'+r[1]+'</td></tr>';}).join('')+'</tbody></table></section>';
+  }
+  if(ui.atab==='pros'){
+    var ok=L.filter(function(x){return x.license_checked;});
+    return h+re+(ok.length?ok.map(adCard).join(''):'<section class="card"><p>'+(AD.loading?'Cargando…':'Todavía no hay profesionales aprobados.')+'</p></section>');
+  }
+  var w1=wait.filter(function(x){return x.license_doc;}),w2=wait.filter(function(x){return !x.license_doc;});
+  if(!wait.length)return h+re+'<section class="card"><p>'+(AD.loading?'Cargando…':'No hay solicitudes pendientes.')+'</p><p class="muted">Cuando un nutricionista se registre y suba su justificante, aparecerá aquí.</p></section>';
+  return h+re+(w1.length?'<h2 class="adsec">Por revisar ('+w1.length+')</h2>'+w1.map(adCard).join(''):'')+(w2.length?'<h2 class="adsec">Registrados sin justificante ('+w2.length+')</h2>'+w2.map(adCard).join(''):'');
+}
+function adminDoc(id){
+  var x=adFind(id);if(!x||!x.license_doc)return;
+  if(AD.doc&&AD.doc.url){try{URL.revokeObjectURL(AD.doc.url);}catch(e){}}
+  if(AD.doc&&AD.doc.id===id){AD.doc=null;render();return;}
+  var pdf=/\.pdf$/i.test(x.license_doc);AD.doc={id:id,loading:true,pdf:pdf};render();
+  ensureToken().then(function(){return phFetch('GET','/storage/v1/object/authenticated/pro-docs/'+x.license_doc);}).then(function(r){return r.blob();}).then(function(b){
+    var blob=pdf?new Blob([b],{type:'application/pdf'}):b;
+    if(AD.doc&&AD.doc.id===id){AD.doc.url=URL.createObjectURL(blob);AD.doc.loading=false;}render();
+  },function(e){if(AD.doc&&AD.doc.id===id){AD.doc.loading=false;AD.doc.err=e&&e.net?'Sin conexión.':'No se pudo abrir el justificante.';}render();});
+}
+function adminSet(id,act){
+  var x=adFind(id);if(!x||AD.busy)return;var note=null;
+  if(act==='reject'){var ta=app.querySelector('[data-adnote="'+id+'"]');note=ta?ta.value.trim():'';if(!note){toast('Escribe el motivo del rechazo');return;}}
+  AD.busy=true;render();
+  ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/admin_set_pro',{p_user:id,p_action:act,p_note:note},AUTH.access);}).then(function(){
+    AD.busy=false;AD.aconf=null;AD.arej=null;if(AD.doc&&AD.doc.id===id)AD.doc=null;
+    toast({approve:'Profesional aprobado',reject:'Rechazo enviado',suspend:'Cuenta suspendida',trial:'Pasada a prueba',active:'Plan activo concedido'}[act]||'Hecho');
+    return adminLoad();
+  },function(e){AD.busy=false;render();toast(e&&e.net?'Sin conexión. Inténtalo de nuevo.':'No se pudo completar la acción.');});
 }
 /* verificación del profesional: no puede usar el panel hasta que el administrador apruebe su justificante */
 function proVerified(){return !!(PRO&&(PRO.license_checked||PRO.pending||PRO.offline));}
@@ -3028,7 +3119,7 @@ function render(){renderMain();chatBadges();}
 function renderMain(){
   var y=window.scrollY;
   if(ui.screen){
-    app.innerHTML=ui.screen==='welcome'?vWelcome():ui.screen==='profiles'?vProfiles():ui.screen==='auth'?vAuth():ui.screen==='newpw'?vNewPw():ui.screen==='claim'?vClaim():ui.screen==='privacy'?vPrivacy():ui.screen==='terms'?vTerms():ui.screen==='legal'?vLegal():ui.screen==='report'?vReport():ui.screen==='pro'?(PRO?vPro():'<p class="muted" style="padding:24px 16px">Cargando…</p>'):ui.screen==='proterms'?vProTerms():ui.screen==='chat'?vChat():vOnb();
+    app.innerHTML=ui.screen==='welcome'?vWelcome():ui.screen==='profiles'?vProfiles():ui.screen==='auth'?vAuth():ui.screen==='newpw'?vNewPw():ui.screen==='claim'?vClaim():ui.screen==='privacy'?vPrivacy():ui.screen==='terms'?vTerms():ui.screen==='legal'?vLegal():ui.screen==='report'?vReport():ui.screen==='admin'?vAdmin():ui.screen==='pro'?(PRO?vPro():'<p class="muted" style="padding:24px 16px">Cargando…</p>'):ui.screen==='proterms'?vProTerms():ui.screen==='chat'?vChat():vOnb();
     document.title='Plan';
     return;
   }
@@ -3077,6 +3168,12 @@ function profileAct(a,b){
   case 'pronote':{var c2=proFind(b.dataset.id);if(c2)proSaveNote(c2);return true;}
   case 'prosaveprof':proSaveProf();return true;
   case 'proverify':proVerifyCheck();return true;
+  case 'atab':ui.atab=v;render();toTop();return true;
+  case 'adreload':adminLoad();return true;
+  case 'addoc':adminDoc(b.dataset.id);return true;
+  case 'adrej':AD.arej=AD.arej===b.dataset.id?null:b.dataset.id;render();return true;
+  case 'adconf':AD.aconf=b.dataset.id+':'+v;render();return true;
+  case 'adset':adminSet(b.dataset.id,v);return true;
   case 'prorevoke':ui.prc=b.dataset.id;render();return true;
   case 'prorevokeno':ui.prc=null;render();return true;
   case 'prorevokeok':proRevoke(b.dataset.id);return true;
@@ -3286,6 +3383,8 @@ function boot(){
     if(rec){ui.rec=rec;ui.screen='newpw';render();return;}
     if(!AUTH){try{var iq0=new URLSearchParams(location.search).get('pro');if(iq0){localStorage.setItem('plan-invite',iq0.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12));history.replaceState(null,'',location.pathname+location.hash);}ui.invite=localStorage.getItem('plan-invite')||'';}catch(x){}ui.au.kind='client';ui.screen='auth';render();return;}
     try{var iq=new URLSearchParams(location.search).get('pro');if(iq){localStorage.setItem('plan-invite',iq.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12));history.replaceState(null,'',location.pathname+location.hash);}ui.invite=localStorage.getItem('plan-invite')||'';}catch(x){}
+    if(AUTH.admin){ui.screen='admin';ui.atab='solicitudes';render();adminInit().then(function(a){if(a)adminLoad();else location.reload();});return;}
+    adminInit().then(function(ad){if(ad)location.reload();});
     if(AUTH.pro){ui.screen='pro';ui.ptab='clientes';render();proInit().then(function(){if(PRO){render();proLoad();}else{INDEX=loadIndex();openActive();cloudRefresh().then(syncPush);}});return;}
     INDEX=loadIndex();openActive();
     cloudRefresh().then(function(ch){
@@ -3302,6 +3401,7 @@ function boot(){
 boot();
 document.addEventListener('visibilitychange',function(){
   if(!cloudOn()||!AUTH)return;
+  if(AUTH.admin){if(!document.hidden&&Date.now()-(AD.at||0)>30000)adminLoad();return;}
   if(AUTH.pro){if(!document.hidden&&PRO&&Date.now()-PC.at>30000&&ui.screen==='pro'&&!ui.psel)proLoad();return;}
   if(!INDEX)return;
   if(document.hidden){syncPush();return;}

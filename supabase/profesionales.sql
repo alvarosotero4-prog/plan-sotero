@@ -369,6 +369,92 @@ create policy prodocs_owner on storage.objects for all
 --   update public.professionals set license_checked = false, license_doc = null, doc_at = null,
 --          review_note = 'La foto no se lee bien. Sube otra donde se vean tu nombre y tu número.' where user_id = '<id>';
 
+-- 9) Administrador ---------------------------------------------------------------
+-- Las cuentas de administrador se dan de alta SOLO a mano desde este editor (nunca desde la app):
+--   insert into public.admins (user_id) select id from auth.users where email = 'tu-correo-de-admin@ejemplo.com';
+-- Quitar a un administrador:   delete from public.admins where user_id = '<id>';
+create table if not exists public.admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table public.admins enable row level security;  -- sin políticas: nadie la lee desde la app
+
+create or replace function public.is_admin()
+returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.admins where user_id = auth.uid())
+$$;
+revoke all on function public.is_admin() from public, anon;
+grant execute on function public.is_admin() to authenticated;
+
+-- El administrador puede abrir los justificantes (solo esa carpeta de archivos)
+drop policy if exists prodocs_admin on storage.objects;
+create policy prodocs_admin on storage.objects for select
+  using (bucket_id = 'pro-docs' and public.is_admin());
+
+-- Lista de profesionales con su correo y nº de clientes activos
+create or replace function public.admin_list_pros()
+returns json
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not public.is_admin() then raise exception 'not_admin'; end if;
+  return coalesce((
+    select json_agg(x order by x.created_at desc) from (
+      select p.user_id, p.name, p.business, p.license, p.license_checked, p.license_doc, p.doc_at,
+             p.review_note, p.status, p.max_clients, p.code, p.created_at, u.email,
+             (select count(*) from public.client_links l where l.pro_id = p.user_id and l.status = 'active')::int as clients
+        from public.professionals p join auth.users u on u.id = p.user_id
+    ) x), '[]'::json);
+end; $$;
+revoke all on function public.admin_list_pros() from public, anon;
+grant execute on function public.admin_list_pros() to authenticated;
+
+-- Acciones sobre un profesional: approve, reject (con motivo), suspend, trial, active
+create or replace function public.admin_set_pro(p_user uuid, p_action text, p_note text default null)
+returns void
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not public.is_admin() then raise exception 'not_admin'; end if;
+  if p_action = 'approve' then
+    update public.professionals set license_checked = true, review_note = null where user_id = p_user;
+  elsif p_action = 'reject' then
+    if coalesce(trim(p_note), '') = '' then raise exception 'note_required'; end if;
+    update public.professionals set license_checked = false, license_doc = null, doc_at = null,
+           review_note = left(trim(p_note), 300) where user_id = p_user;
+  elsif p_action = 'suspend' then
+    update public.professionals set status = 'suspended' where user_id = p_user;
+  elsif p_action = 'trial' then
+    update public.professionals set status = 'trial' where user_id = p_user;
+  elsif p_action = 'active' then
+    update public.professionals set status = 'active' where user_id = p_user;
+  else
+    raise exception 'bad_action';
+  end if;
+  if not found then raise exception 'not_found'; end if;
+end; $$;
+revoke all on function public.admin_set_pro(uuid, text, text) from public, anon;
+grant execute on function public.admin_set_pro(uuid, text, text) to authenticated;
+
+-- Resumen con cifras (sin datos personales)
+create or replace function public.admin_overview()
+returns json
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if not public.is_admin() then raise exception 'not_admin'; end if;
+  return json_build_object(
+    'users',      (select count(*) from auth.users),
+    'pros',       (select count(*) from public.professionals),
+    'waiting',    (select count(*) from public.professionals where not license_checked and license_doc is not null),
+    'nodoc',      (select count(*) from public.professionals where not license_checked and license_doc is null),
+    'approved',   (select count(*) from public.professionals where license_checked and status <> 'suspended'),
+    'suspended',  (select count(*) from public.professionals where status = 'suspended'),
+    'links',      (select count(*) from public.client_links where status = 'active'),
+    'profiles',   (select count(*) from public.plan_profiles)
+  );
+end; $$;
+revoke all on function public.admin_overview() from public, anon;
+grant execute on function public.admin_overview() to authenticated;
+
 -- Para activar a un profesional de pago sin límite de clientes:
 --   update public.professionals set status = 'active' where user_id = '<id>';
 -- Para suspenderlo:
