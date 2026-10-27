@@ -1,4 +1,4 @@
-const CACHE = 'plan-sotero-v42';
+const CACHE = 'plan-sotero-v43';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'fonts/bricolage-Regular.woff', 'fonts/bricolage-Bold.woff', 'fonts/inter-Regular.woff', 'fonts/inter-Medium.woff', 'fonts/inter-SemiBold.woff', 'fonts/inter-Bold.woff'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
