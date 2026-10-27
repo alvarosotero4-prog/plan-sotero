@@ -1704,7 +1704,7 @@ function vAjustes(){
   var seg=ui.set==='cuenta'?'cuenta':'plan';
   return '<div class="chips" role="group" aria-label="Ajustes">'+[['plan','Plan'],['cuenta','Cuenta y datos']].map(function(x){return '<button class="chip" aria-pressed="'+(seg===x[0])+'" data-act="set" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>'+(seg==='cuenta'?vCuenta():vPlan());
 }
-var APP_V='40';
+var APP_V='41';
 function appUpdate(){
   toast('Actualizando…');
   var done=function(){location.reload();};
@@ -1715,7 +1715,7 @@ function appUpdate(){
   }catch(e){done();}
 }
 function vCuenta(){
-  return coachCard()+accountCard()+'<section class="card"><h2>Versión de la app</h2><p class="muted">Tupla, versión '+APP_V+'. Si no ves los últimos cambios, pulsa el botón: borra la copia guardada en este móvil y recarga la app. Tus datos no se tocan.</p><div class="btns"><button class="btn sm" data-act="appupd">Buscar actualización</button></div></section><section class="card"><h2>Tus datos</h2><p id="sync" class="muted">'+syncText()+'. Descarga una copia de vez en cuando por si borras los datos del navegador o cambias de móvil.</p><div class="btns"><button class="btn sm" data-act="export">Descargar copia</button><button class="btn sm" data-act="import">Restaurar copia</button><input type="file" id="imp" accept="application/json,.json" hidden><button class="btn danger sm" data-act="reset">'+(ui.confirm?'Confirmar: borrar todos los datos':'Borrar todos los datos')+'</button>'+(ui.confirm?'<button class="btn sm" data-act="resetno">Cancelar</button>':'')+'</div></section>';
+  return coachCard()+adminCard()+accountCard()+'<section class="card"><h2>Versión de la app</h2><p class="muted">Tupla, versión '+APP_V+'. Si no ves los últimos cambios, pulsa el botón: borra la copia guardada en este móvil y recarga la app. Tus datos no se tocan.</p><div class="btns"><button class="btn sm" data-act="appupd">Buscar actualización</button></div></section><section class="card"><h2>Tus datos</h2><p id="sync" class="muted">'+syncText()+'. Descarga una copia de vez en cuando por si borras los datos del navegador o cambias de móvil.</p><div class="btns"><button class="btn sm" data-act="export">Descargar copia</button><button class="btn sm" data-act="import">Restaurar copia</button><input type="file" id="imp" accept="application/json,.json" hidden><button class="btn danger sm" data-act="reset">'+(ui.confirm?'Confirmar: borrar todos los datos':'Borrar todos los datos')+'</button>'+(ui.confirm?'<button class="btn sm" data-act="resetno">Cancelar</button>':'')+'</div></section>';
 }
 function vPlan(){
   var t=S.settings.t;
@@ -1772,10 +1772,10 @@ function profileCard(){
 /* ---------- pantallas: bienvenida, perfiles y cuestionario ---------- */
 function vWelcome(){
   var inv=ui.invite&&cloudOn()&&AUTH&&!AUTH.pro;
-  if(inv)return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tupla</h1></div><p>Tu nutricionista te ha invitado. Responde su cuestionario inicial y él o ella te preparará tus objetivos y tus menús.</p><p class="muted">Has entrado como '+esc(AUTH.email)+'. Tus datos se guardan en tu cuenta.</p></div><div class="btns"><button class="btn main" data-act="pnew">Empezar el cuestionario</button><button class="btn" data-act="logout">Cerrar sesión</button></div>'+lgLinks();
+  if(inv)return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tupla</h1></div><p>Tu nutricionista te ha invitado. Responde su cuestionario inicial y él o ella te preparará tus objetivos y tus menús.</p><p class="muted">Has entrado como '+esc(AUTH.email)+'. Tus datos se guardan en tu cuenta.</p></div><div class="btns"><button class="btn main" data-act="pnew">Empezar el cuestionario</button>'+adminBtn()+'<button class="btn" data-act="logout">Cerrar sesión</button></div>'+lgLinks();
   var hasSot=cloudOn()||INDEX.list.some(function(x){return x.type==='sot';});
   return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tupla</h1></div><p>Responde unas preguntas y la app te prepara un plan de comidas con calorías y macros, un horario de comidas y el seguimiento de tu peso.</p><p class="muted">'+(cloudOn()&&AUTH?'Has entrado como '+esc(AUTH.email)+'. Tus datos se guardan en tu cuenta.':'Tus datos se quedan solo en este dispositivo: no hay cuentas ni contraseñas. Puedes crear varios perfiles, uno para cada persona.')+'</p></div>'+
-    '<div class="btns"><button class="btn main" data-act="pnew">Crear mi perfil</button>'+(hasSot?'':'<button class="btn" data-act="psotero">Usar el plan original de Sotero</button>')+(cloudOn()&&AUTH?'<button class="btn" data-act="logout">Cerrar sesión</button>':'')+'</div>'+lgLinks();
+    '<div class="btns"><button class="btn main" data-act="pnew">Crear mi perfil</button>'+(hasSot?'':'<button class="btn" data-act="psotero">Usar el plan original de Sotero</button>')+adminBtn()+(cloudOn()&&AUTH?'<button class="btn" data-act="logout">Cerrar sesión</button>':'')+'</div>'+lgLinks();
 }
 function profSub(e){
   if(e.type==='sot')return 'Plan original · definición';
@@ -1795,6 +1795,7 @@ function vProfiles(){
   h+='</section><div class="btns">';
   if(INDEX.list.length<6)h+='<button class="btn main" data-act="pnew">Crear un perfil nuevo</button>';
   if(!cloudOn()&&!INDEX.list.some(function(x){return x.type==='sot';}))h+='<button class="btn" data-act="psotero">Añadir el plan original de Sotero</button>';
+  h+=adminBtn();
   if(cloudOn()&&AUTH)h+='<button class="btn" data-act="logout">Cerrar sesión</button>';
   if(INDEX.active&&INDEX.list.some(function(x){return x.id===INDEX.active;}))h+='<button class="btn" data-act="pback">Volver</button>';
   return h+'</div>';
@@ -2248,11 +2249,8 @@ function legacyEntries(){
 }
 function afterLogin(){
   ui.busy=true;ui.authMsg=null;ui.perr='';render();
-  return adminInit().then(function(ad){
-    if(ad){ui.busy=false;ui.screen='admin';ui.atab='solicitudes';render();toTop();adminLoad();return null;}
-    return proInit().then(function(){return 'x';});
-  }).then(function(x){
-    if(x===null)return;
+  adminInit().then(function(a){if(a)adminSeen();});
+  return proInit().then(function(){
     if(PRO){ui.busy=false;ui.screen='pro';ui.ptab='clientes';ui.psel=null;render();toTop();proLoad();return;}
     INDEX=loadIndex();
     var lg=legacyEntries();
@@ -2641,6 +2639,13 @@ function adminInit(){
     AUTH.admin=r===true;authStore();return AUTH.admin;
   },function(e){return e&&e.net?!!AUTH.admin:false;});
 }
+function isAdm(){return !!(AUTH&&AUTH.admin);}
+function adminBtn(){return isAdm()?'<button class="btn" data-act="admgo">Administración</button>':'';}
+function adminCard(){return isAdm()?'<section class="card"><h2>Administración</h2><p class="muted">Tu cuenta también es de administrador: tu plan y tus datos siguen aquí, y desde el panel revisas a los profesionales.</p><div class="btns"><button class="btn main sm" data-act="admgo">Abrir el panel de administración</button></div></section>':'';}
+function adminSeen(){
+  if(!AUTH)return;
+  if(ui.screen===null&&ui.tab==='ajustes'&&ui.set==='cuenta'||ui.screen==='pro'&&ui.ptab==='cuenta'||ui.screen==='welcome'||ui.screen==='profiles')render();
+}
 function adminLoad(){
   if(!AUTH||!AUTH.admin)return Promise.resolve();
   AD.loading=true;AD.err=null;if(ui.screen==='admin')render();
@@ -2678,11 +2683,11 @@ function adCard(x){
 function vAdmin(){
   var T=[['solicitudes','Solicitudes'],['pros','Profesionales'],['resumen','Resumen'],['cuenta','Cuenta']],L=AD.list||[],
     wait=L.filter(function(x){return !x.license_checked;}),
-    h='<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Administración</h1></div><p class="sub">Tupla · '+esc(AUTH?AUTH.email:'')+'</p></header>';
+    h='<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Administración</h1></div><p class="sub">Tupla · '+esc(AUTH?AUTH.email:'')+'</p></header><div class="btns"><button class="btn sm" data-act="admback">← Volver a '+(AUTH&&AUTH.pro&&PRO?'mi panel profesional':'mi plan')+'</button></div>';
   h+='<nav class="tabs" role="tablist" aria-label="Administración">'+T.map(function(t){var n=t[0]==='solicitudes'&&wait.length?' <span class="bdg in">'+wait.length+'</span>':'';return '<button role="tab" aria-selected="'+(ui.atab===t[0])+'" data-act="atab" data-v="'+t[0]+'">'+t[1]+n+'</button>';}).join('')+'</nav>';
   if(AD.err)h+='<p class="err" role="alert">'+esc(AD.err)+'</p>';
   var re='<div class="hrow"><span class="muted">'+(AD.loading?'Cargando…':AD.at?'Actualizado a las '+new Date(AD.at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):'')+'</span><button class="btn sm" data-act="adreload"'+(AD.loading?' disabled':'')+'>Actualizar</button></div>';
-  if(ui.atab==='cuenta')return h+'<section class="card"><h2>Cuenta de administrador</h2><p class="muted">'+esc(AUTH.email)+'. Desde aquí revisas a los profesionales; no ves los datos de sus clientes.</p><div class="btns"><button class="btn" data-act="logout">Cerrar sesión</button></div></section><section class="card"><h2>Versión de la app</h2><p class="muted">Tupla, versión '+APP_V+'.</p><div class="btns"><button class="btn sm" data-act="appupd">Buscar actualización</button></div></section>';
+  if(ui.atab==='cuenta')return h+'<section class="card"><h2>Cuenta de administrador</h2><p class="muted">'+esc(AUTH.email)+'. Desde aquí revisas a los profesionales; no ves los datos de sus clientes. Tu plan y tus datos como cliente siguen en tu cuenta.</p><div class="btns"><button class="btn" data-act="admback">Volver a mi plan</button><button class="btn" data-act="logout">Cerrar sesión</button></div></section><section class="card"><h2>Versión de la app</h2><p class="muted">Tupla, versión '+APP_V+'.</p><div class="btns"><button class="btn sm" data-act="appupd">Buscar actualización</button></div></section>';
   if(ui.atab==='resumen'){
     var o=AD.ov;
     if(!o)return h+re+'<section class="card"><p class="muted">'+(AD.loading?'Cargando…':'Sin datos todavía.')+'</p></section>';
@@ -2759,7 +2764,7 @@ function proVerifyCheck(){
   },function(){toast('No se pudo comprobar. Inténtalo de nuevo.');});
 }
 function vProAccount(){
-  return '<section class="card"><h2>Datos profesionales</h2><p class="muted">Tus clientes ven este nombre cuando se vinculan contigo.</p><div class="form"><label>Tu nombre<input type="text" data-au="pname" value="'+esc(ui.au.pname!=null?ui.au.pname:PRO.name)+'" maxlength="80" autocomplete="name"></label><label>Consulta o empresa (opcional)<input type="text" data-au="pbiz" value="'+esc(ui.au.pbiz!=null?ui.au.pbiz:(PRO.business||''))+'" maxlength="80"></label><label>Nº de colegiado o de registro profesional<input type="text" data-au="plic" value="'+esc(ui.au.plic!=null?ui.au.plic:(PRO.license||''))+'" maxlength="40" autocomplete="off"></label><button class="btn main" data-act="prosaveprof">Guardar</button></div></section>'+
+  return adminCard()+'<section class="card"><h2>Datos profesionales</h2><p class="muted">Tus clientes ven este nombre cuando se vinculan contigo.</p><div class="form"><label>Tu nombre<input type="text" data-au="pname" value="'+esc(ui.au.pname!=null?ui.au.pname:PRO.name)+'" maxlength="80" autocomplete="name"></label><label>Consulta o empresa (opcional)<input type="text" data-au="pbiz" value="'+esc(ui.au.pbiz!=null?ui.au.pbiz:(PRO.business||''))+'" maxlength="80"></label><label>Nº de colegiado o de registro profesional<input type="text" data-au="plic" value="'+esc(ui.au.plic!=null?ui.au.plic:(PRO.license||''))+'" maxlength="40" autocomplete="off"></label><button class="btn main" data-act="prosaveprof">Guardar</button></div></section>'+
     accountCard()+'<section class="card"><h2>Condiciones</h2><div class="btns"><button class="btn sm" data-act="proterms">Condiciones para profesionales</button><button class="btn sm" data-act="privacy">Información de privacidad</button></div></section>';
 }
 function vPro(){
@@ -3168,6 +3173,8 @@ function profileAct(a,b){
   case 'pronote':{var c2=proFind(b.dataset.id);if(c2)proSaveNote(c2);return true;}
   case 'prosaveprof':proSaveProf();return true;
   case 'proverify':proVerifyCheck();return true;
+  case 'admgo':if(isAdm()){ui.screen='admin';ui.atab='solicitudes';render();toTop();adminLoad();}return true;
+  case 'admback':if(AUTH&&AUTH.pro&&PRO){ui.screen='pro';ui.ptab='cuenta';render();toTop();proLoad();}else if(INDEX){openActive();}else{ui.screen='welcome';render();toTop();}return true;
   case 'atab':ui.atab=v;render();toTop();return true;
   case 'adreload':adminLoad();return true;
   case 'addoc':adminDoc(b.dataset.id);return true;
@@ -3383,8 +3390,7 @@ function boot(){
     if(rec){ui.rec=rec;ui.screen='newpw';render();return;}
     if(!AUTH){try{var iq0=new URLSearchParams(location.search).get('pro');if(iq0){localStorage.setItem('plan-invite',iq0.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12));history.replaceState(null,'',location.pathname+location.hash);}ui.invite=localStorage.getItem('plan-invite')||'';}catch(x){}ui.au.kind='client';ui.screen='auth';render();return;}
     try{var iq=new URLSearchParams(location.search).get('pro');if(iq){localStorage.setItem('plan-invite',iq.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12));history.replaceState(null,'',location.pathname+location.hash);}ui.invite=localStorage.getItem('plan-invite')||'';}catch(x){}
-    if(AUTH.admin){ui.screen='admin';ui.atab='solicitudes';render();adminInit().then(function(a){if(a)adminLoad();else location.reload();});return;}
-    adminInit().then(function(ad){if(ad)location.reload();});
+    adminInit().then(function(ad){if(ad)adminSeen();});
     if(AUTH.pro){ui.screen='pro';ui.ptab='clientes';render();proInit().then(function(){if(PRO){render();proLoad();}else{INDEX=loadIndex();openActive();cloudRefresh().then(syncPush);}});return;}
     INDEX=loadIndex();openActive();
     cloudRefresh().then(function(ch){
@@ -3401,7 +3407,7 @@ function boot(){
 boot();
 document.addEventListener('visibilitychange',function(){
   if(!cloudOn()||!AUTH)return;
-  if(AUTH.admin){if(!document.hidden&&Date.now()-(AD.at||0)>30000)adminLoad();return;}
+  if(AUTH.admin&&ui.screen==='admin'){if(!document.hidden&&Date.now()-(AD.at||0)>30000)adminLoad();return;}
   if(AUTH.pro){if(!document.hidden&&PRO&&Date.now()-PC.at>30000&&ui.screen==='pro'&&!ui.psel)proLoad();return;}
   if(!INDEX)return;
   if(document.hidden){syncPush();return;}
