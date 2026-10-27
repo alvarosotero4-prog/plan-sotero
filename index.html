@@ -1102,7 +1102,7 @@ function entryRow(d,slot,e,i){
   var at='data-d="'+d+'" data-s="'+slot+'" data-i="'+i+'"';
   return '<div class="ent"><div class="n"><b>'+esc(nm)+'</b><small>'+f0(n.kcal)+' kcal · P '+f1(n.p)+' · C '+f1(n.c)+' · G '+f1(n.g)+esc(units)+'</small></div>'+
     '<div class="stp"><button class="sb" data-act="step" data-dir="-1" '+at+' aria-label="Menos '+esc(nm)+'">−</button><div class="inp"><input type="text" inputmode="decimal" data-bind="g" '+at+' value="'+f0(e.g)+'" aria-label="Gramos de '+esc(nm)+'"><span>g</span></div><button class="sb" data-act="step" data-dir="1" '+at+' aria-label="Más '+esc(nm)+'">+</button></div>'+
-    (nutriMode()?'<button class="btn sm" data-act="rm" '+at+' aria-label="Quitar '+esc(nm)+'">Quitar</button>':'<button class="x" data-act="rm" '+at+' aria-label="Quitar">×</button>')+'</div>';
+    '<button class="x" data-act="rm" '+at+' aria-label="Quitar '+esc(nm)+'">×</button></div>';
 }
 function pickList(d,slot){
   var q=(ui.q||'').toLowerCase().trim(),l=foods().filter(function(f){return !q||f.name.toLowerCase().indexOf(q)>-1;});
