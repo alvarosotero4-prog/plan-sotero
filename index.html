@@ -1139,7 +1139,7 @@ function slotCard(d,s,k){
   if(list.length) h+=list.map(function(e,i){return entryRow(d,s.id,e,i);}).join('');
   else h+=plan.length?'<p class="ghost">'+plan.map(function(x){var f=findFood(x[0]||x.f);return f?esc(f.name)+' '+x.g+' g':'';}).join(' · ')+'</p>':'<p class="ghost">Tu nutricionista no ha puesto menú en esta comida. Apunta lo que comas.</p>';
   h+='<div class="btns">';
-  if(!list.length&&plan.length) h+='<button class="btn main sm" data-act="useplan" data-d="'+d+'" data-s="'+s.id+'">'+(coachMenu()?'Usar el menú de mi nutricionista':'Usar el menú del plan')+'</button>';
+  if(!list.length&&plan.length&&!coachMenu()) h+='<button class="btn main sm" data-act="useplan" data-d="'+d+'" data-s="'+s.id+'">Usar el menú del plan</button>';
   var prevD=list.length?null:lastSlotDay(d,s.id),isFree=plan.length===1&&plan[0].f==='libre';
   if(!isFree&&!coachMenu()&&!proProf())h+='<button class="btn sm" data-act="alt" data-d="'+d+'" data-s="'+s.id+'">'+(ui.alt===d+'|'+s.id?'Cerrar opciones':'Cambiar plato')+'</button>';
   if(prevD)h+='<button class="btn sm" data-act="repeat" data-d="'+d+'" data-s="'+s.id+'" data-from="'+prevD+'">Repetir del '+dayLabel(prevD).toLowerCase()+'</button>';
@@ -1166,7 +1166,7 @@ function vComidas(){
   ensureMenu(ui.date);
   var d=ui.date,k=dayKind(d);
   return strip()+dayHead(d)+totalsCard(d)+matchCard(d)+
-    ((proProf()&&!coachMenu())?'':'<div class="btns"><button class="btn main" data-act="useplanall" data-d="'+d+'">'+(coachMenu()?'Cargar el menú de mi nutricionista en todo el día':'Cargar el menú del plan en todo el día')+'</button></div>')+
+    ((proProf()||coachMenu())?'':'<div class="btns"><button class="btn main" data-act="useplanall" data-d="'+d+'">Cargar el menú del plan en todo el día</button></div>')+
     '<details class="card fold" data-wk="c-act"'+(ui.open['c-act']?' open':'')+'><summary>Copiar o vaciar el día</summary><div class="btns"><button class="btn" data-act="copyday" data-d="'+d+'" data-from="'+addDays(d,-1)+'">Copiar de ayer</button>'+copySelect(d)+'<button class="btn danger" data-act="clearday" data-d="'+d+'">Vaciar el día</button></div></details>'+
     slotsFor(d).map(function(s){return slotCard(d,s,k);}).join('');
 }
