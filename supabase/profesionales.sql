@@ -143,6 +143,7 @@ begin
   select * into pr from public.professionals where code = upper(trim(p_code));
   if not found then raise exception 'invalid_code'; end if;
   if pr.status = 'suspended' then raise exception 'pro_suspended'; end if;
+  if not pr.license_checked then raise exception 'pro_unverified'; end if;
   if pr.user_id = auth.uid() then raise exception 'self_link'; end if;
   select name into v_name from public.plan_profiles where user_id = auth.uid() and id = p_profile;
   if not found then raise exception 'profile_not_found'; end if;
@@ -190,7 +191,7 @@ alter table public.pro_plans add column if not exists menu jsonb;
 create or replace function public.pro_by_code(p_code text)
 returns json
 language sql stable security definer set search_path = public, auth as $$
-  select json_build_object('name', name, 'business', business, 'status', status)
+  select json_build_object('name', name, 'business', business, 'status', status, 'verified', license_checked)
     from public.professionals
    where code = upper(trim(p_code)) and status <> 'suspended' and auth.uid() is not null
 $$;
@@ -303,6 +304,70 @@ create policy photos_obj_pro on storage.objects for select
                        and l.client_id::text = (storage.foldername(name))[1]
                        and l.profile_id = (storage.foldername(name))[2]
                        and l.status = 'active' and l.share_photos));
+
+-- 8) Verificación de profesionales ---------------------------------------------
+-- Un profesional nuevo no puede usar el panel ni vincular clientes hasta que tú lo apruebes.
+-- Sube un justificante (foto o PDF) a un almacenamiento privado que solo ve él y tú (desde el panel de Supabase).
+alter table public.professionals add column if not exists license_doc text;
+alter table public.professionals add column if not exists doc_at timestamptz;
+alter table public.professionals add column if not exists review_note text;
+
+-- ¿Puede operar este profesional? (aprobado y no suspendido). SECURITY DEFINER para no entrar en bucle con las políticas.
+create or replace function public.pro_ok(p_uid uuid)
+returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.professionals
+                  where user_id = p_uid and license_checked and status <> 'suspended')
+$$;
+revoke all on function public.pro_ok(uuid) from public, anon;
+grant execute on function public.pro_ok(uuid) to authenticated;
+
+-- El profesional solo ve sus clientes si está aprobado. Como las demás tablas (planes, notas, chat, fotos, perfiles)
+-- comprueban el vínculo a través de esta tabla, un profesional no aprobado o suspendido pierde el acceso a todo.
+drop policy if exists links_select on public.client_links;
+create policy links_select on public.client_links for select
+  using (client_id = auth.uid() or (pro_id = auth.uid() and public.pro_ok(auth.uid())));
+
+-- El profesional registra qué archivo ha subido como justificante
+create or replace function public.submit_pro_doc(p_path text)
+returns public.professionals
+language plpgsql security definer set search_path = public, auth as $$
+declare r public.professionals;
+begin
+  if auth.uid() is null then raise exception 'not_authenticated'; end if;
+  if p_path is null or position(auth.uid()::text || '/' in p_path) <> 1 then raise exception 'bad_path'; end if;
+  update public.professionals
+     set license_doc = p_path, doc_at = now(), review_note = null
+   where user_id = auth.uid() returning * into r;
+  if not found then raise exception 'not_professional'; end if;
+  return r;
+end; $$;
+revoke all on function public.submit_pro_doc(text) from public, anon;
+grant execute on function public.submit_pro_doc(text) to authenticated;
+
+-- Almacenamiento privado de justificantes: solo JPEG o PDF, máximo 5 MB. Cada profesional solo toca su carpeta.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('pro-docs', 'pro-docs', false, 5242880, array['image/jpeg', 'application/pdf'])
+on conflict (id) do update
+  set public = false, file_size_limit = 5242880, allowed_mime_types = array['image/jpeg', 'application/pdf'];
+
+drop policy if exists prodocs_owner on storage.objects;
+create policy prodocs_owner on storage.objects for all
+  using (bucket_id = 'pro-docs' and (storage.foldername(name))[1] = auth.uid()::text)
+  with check (bucket_id = 'pro-docs' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Cuentas que ya existían antes de este paso (por ejemplo la tuya de pruebas): apruébalas a mano con
+--   update public.professionals set license_checked = true where user_id = '<id>';
+
+-- Revisar solicitudes: profesionales sin aprobar y con justificante subido
+--   select user_id, name, business, license, doc_at, license_doc from public.professionals
+--    where not license_checked and license_doc is not null order by doc_at;
+--   El archivo está en Supabase > Storage > pro-docs > carpeta con el user_id.
+-- Aprobar:
+--   update public.professionals set license_checked = true, review_note = null where user_id = '<id>';
+-- Rechazar (el profesional verá el motivo y podrá subir otro justificante):
+--   update public.professionals set license_checked = false, license_doc = null, doc_at = null,
+--          review_note = 'La foto no se lee bien. Sube otra donde se vean tu nombre y tu número.' where user_id = '<id>';
 
 -- Para activar a un profesional de pago sin límite de clientes:
 --   update public.professionals set status = 'active' where user_id = '<id>';

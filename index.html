@@ -302,6 +302,7 @@ textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-rad
 .sbar i{display:block;height:100%}
 
 .filebtn{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;text-align:center;color:var(--accent-ink)!important;font-size:14px!important}
+.filebtn.dis{opacity:.6;pointer-events:none}
 .cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .cmp>div{display:flex;flex-direction:column;gap:6px;min-width:0}
 .cmp select{width:100%}
@@ -594,7 +595,7 @@ function mergeState(o){
 }
 var PROF=null, INDEX=null, G=null;
 var S=DEF();
-var ui={liftSel:null,saving:null,pwk:0,tab:'hoy',date:todayS(),picker:null,alt:null,set:'plan',links:null,noPro:false,invite:'',unlink:null,linkMsg:null,ptab:'clientes',psel:null,pday:null,pcur:null,pdraft:{},prc:null,perr:'',q:'',open:{},confirm:false,sync:'local',rwd:null,screen:null,delp:null,confirmBlock:false,authMode:'login',au:{email:'',pw:'',pw2:''},authMsg:null,busy:false,rec:null,claim:null,prev:null,delAcct:0,pmr:null,rcp:null,pmenu:{},pmd:0,pms:null,pmq:'',invInfo:null,linkAuto:false,chatBack:null};
+var ui={docBusy:false,liftSel:null,saving:null,pwk:0,tab:'hoy',date:todayS(),picker:null,alt:null,set:'plan',links:null,noPro:false,invite:'',unlink:null,linkMsg:null,ptab:'clientes',psel:null,pday:null,pcur:null,pdraft:{},prc:null,perr:'',q:'',open:{},confirm:false,sync:'local',rwd:null,screen:null,delp:null,confirmBlock:false,authMode:'login',au:{email:'',pw:'',pw2:''},authMsg:null,busy:false,rec:null,claim:null,prev:null,delAcct:0,pmr:null,rcp:null,pmenu:{},pmd:0,pms:null,pmq:'',invInfo:null,linkAuto:false,chatBack:null};
 ui.rwd=wdOf(ui.date);
 var MAINT=2450;
 
@@ -1520,10 +1521,10 @@ function loadPhotos(){
     PH.state='ready';if(!ui.screen&&ui.tab==='peso')render();
   },function(){PH.state='error';PH.list=[];if(!ui.screen&&ui.tab==='peso')render();});
 }
-function shrink(file){
+function shrink(file,mx){
   return new Promise(function(res,rej){
     function draw(src,w,h){
-      var k=Math.min(1,1000/Math.max(w,h)),c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);
+      var k=Math.min(1,(mx||1000)/Math.max(w,h)),c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);
       c.getContext('2d').drawImage(src,0,0,c.width,c.height);
       c.toBlob(function(b){b?res(b):rej(new Error('blob'));},'image/jpeg',0.82);
     }
@@ -1700,7 +1701,7 @@ function vAjustes(){
   var seg=ui.set==='cuenta'?'cuenta':'plan';
   return '<div class="chips" role="group" aria-label="Ajustes">'+[['plan','Plan'],['cuenta','Cuenta y datos']].map(function(x){return '<button class="chip" aria-pressed="'+(seg===x[0])+'" data-act="set" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>'+(seg==='cuenta'?vCuenta():vPlan());
 }
-var APP_V='38';
+var APP_V='39';
 function appUpdate(){
   toast('Actualizando…');
   var done=function(){location.reload();};
@@ -1917,7 +1918,7 @@ function inviteCheck(){
   if(!code||!cloudOn()||!AUTH||AUTH.pro)return Promise.resolve(null);
   if(ui.invInfo&&ui.invInfo.code===code&&ui.invInfo.ok!=null)return Promise.resolve(ui.invInfo);
   return ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/pro_by_code',{p_code:code},AUTH.access);}).then(function(r){
-    ui.invInfo=r&&r.name?{code:code,ok:true,name:r.name,business:r.business||''}:{code:code,ok:false};return ui.invInfo;
+    ui.invInfo=r&&r.name?(r.verified===false?{code:code,ok:false,unv:true}:{code:code,ok:true,name:r.name,business:r.business||''}):{code:code,ok:false};return ui.invInfo;
   },function(e){return {code:code,ok:e&&e.net?null:false,net:!!(e&&e.net)};});
 }
 function startNew(){
@@ -1925,7 +1926,7 @@ function startNew(){
     inviteCheck().then(function(info){
       if(info&&info.net){toast('Sin conexión. Inténtalo de nuevo.');return;}
       ob=info&&info.ok?obNewPro(info):obNew();
-      if(info&&info.ok===false)toast('No se pudo comprobar el código de tu nutricionista. Haz el cuestionario normal y vincúlalo después.');
+      if(info&&info.ok===false)toast(info.unv?'Tu nutricionista aún no ha sido verificado. Haz el cuestionario normal y vincúlalo más adelante.':'No se pudo comprobar el código de tu nutricionista. Haz el cuestionario normal y vincúlalo después.');
       ui.screen='onb';render();toTop();
     });
     return;
@@ -2313,7 +2314,7 @@ function vAuth(){
     '<section class="card"><div class="chips" role="group" aria-label="Acceso"><button class="chip" aria-pressed="'+!reg+'" data-act="aumode" data-v="login" type="button">Entrar</button><button class="chip" aria-pressed="'+reg+'" data-act="aumode" data-v="reg" type="button">Crear cuenta</button></div>'+
     (reg?'<div class="chips" role="group" aria-label="Tipo de cuenta"><button class="chip" type="button" aria-pressed="'+(ui.au.kind!=='pro')+'" data-act="aukind" data-v="client">Soy cliente</button><button class="chip" type="button" aria-pressed="'+(ui.au.kind==='pro')+'" data-act="aukind" data-v="pro">Soy nutricionista o dietista</button></div>':'')+
     '<form data-form="auth" class="fld" style="gap:12px" novalidate><div class="two" style="grid-template-columns:1fr"><label>Correo electrónico<input type="email" inputmode="email" data-au="email" value="'+esc(ui.au.email||'')+'" autocomplete="email" autocapitalize="none" spellcheck="false"></label>'+
-    pwField('pw','Contraseña',0,ui.au.pw,reg?'new-password':'current-password')+(reg?pwField('pw2','Repite la contraseña',0,ui.au.pw2,'new-password'):'')+(reg&&ui.au.kind==='pro'?'<label>Tu nombre profesional<input type="text" data-au="pname" value="'+esc(ui.au.pname||'')+'" maxlength="80" autocomplete="name"></label><label>Consulta o empresa (opcional)<input type="text" data-au="pbiz" value="'+esc(ui.au.pbiz||'')+'" maxlength="80"></label><label>Nº de colegiado o de registro profesional<input type="text" data-au="plic" value="'+esc(ui.au.plic||'')+'" maxlength="40" autocomplete="off"></label>':'')+'</div>'+
+    pwField('pw','Contraseña',0,ui.au.pw,reg?'new-password':'current-password')+(reg?pwField('pw2','Repite la contraseña',0,ui.au.pw2,'new-password'):'')+(reg&&ui.au.kind==='pro'?'<label>Tu nombre profesional<input type="text" data-au="pname" value="'+esc(ui.au.pname||'')+'" maxlength="80" autocomplete="name"></label><label>Consulta o empresa (opcional)<input type="text" data-au="pbiz" value="'+esc(ui.au.pbiz||'')+'" maxlength="80"></label><label>Nº de colegiado o de registro profesional<input type="text" data-au="plic" value="'+esc(ui.au.plic||'')+'" maxlength="40" autocomplete="off"></label><p class="muted">Al crear la cuenta tendrás que subir un justificante de tu colegiación (foto o PDF de tu carné o de un certificado). Tu cuenta se activará cuando lo hayamos revisado.</p>':'')+'</div>'+
     (reg?'<label class="chk" style="cursor:pointer;align-items:flex-start"><input type="checkbox" data-au="terms"'+(ui.au.terms?' checked':'')+'><span>Tengo 18 años o más, he leído la <a href="#" data-act="privacy">información de privacidad</a> y acepto las <a href="#" data-act="terms">condiciones de uso</a>'+(ui.au.kind==='pro'?' y las <a href="#" data-act="proterms">condiciones para profesionales</a>':'')+'</span></label>':'')+
     (m?'<p class="'+(m.k==='err'?'err':'note')+'" role="alert">'+esc(m.t)+'</p>':'')+
     '<div class="btns"><button class="btn main" type="submit"'+(b?' disabled':'')+'>'+(b?'Un momento…':reg?'Crear cuenta':'Entrar')+'</button>'+(reg?'':'<button class="btn" type="button" data-act="aurecover"'+(b?' disabled':'')+'>He olvidado la contraseña</button>')+'</div></form>'+
@@ -2433,7 +2434,7 @@ function vProTerms(){
     ['Qué es esta herramienta',[
       'Una aplicación para que tus clientes registren su alimentación y su peso, y para que tú puedas verlo, ajustar sus objetivos y menús y dejarles notas. Es una ayuda; no es un producto sanitario ni sustituye tu criterio profesional.']],
     ['Tu condición profesional',[
-      'Declaras ser dietista-nutricionista, nutricionista u otro profesional que ejerce legalmente, y que el número de colegiado o de registro que indicas es real. Podemos pedirte que lo acredites y suspender la cuenta si no es así.']],
+      'Declaras ser dietista-nutricionista, nutricionista u otro profesional que ejerce legalmente, y que el número de colegiado o de registro que indicas es real. Para activar tu cuenta debes subir un justificante (foto o PDF de tu carné de colegiado o de un certificado de tu colegio). Lo revisamos a mano, solo lo ve quien administra la app y se usa únicamente para comprobar tu colegiación. Hasta que se apruebe no puedes ver el panel ni vincular clientes, y podemos suspender la cuenta si la información no es real.']],
     ['Quién es responsable de los datos',[
       'Tú eres el responsable del tratamiento de los datos de salud de tus clientes que consultas con esta herramienta. El titular de la app actúa como encargado del tratamiento: los aloja y los pone a tu disposición solo para prestar el servicio, y no los usa para otros fines.']],
     ['Encargo de tratamiento (art. 28 RGPD)',[
@@ -2528,7 +2529,7 @@ function proInit(){
       ui.perr='No se ha podido activar tu cuenta profesional: el servidor todavía no tiene el panel de profesionales. Avisa a quien administra la app.';
       return PRO;
     }
-    if(AUTH.pro&&!PRO&&e&&e.net){PRO={user_id:AUTH.uid,name:m.pname||'Profesional',business:m.pbiz||'',code:'',status:'trial',max_clients:3,offline:true};return PRO;}
+    if(AUTH.pro&&!PRO&&e&&e.net){PRO={user_id:AUTH.uid,name:m.pname||'Profesional',business:m.pbiz||'',code:'',status:'trial',max_clients:3,offline:true,license_checked:true};return PRO;}
     return PRO;
   });
 }
@@ -2574,7 +2575,7 @@ function proStats(c){
   });}catch(e){return null;}
 }
 function proLoad(){
-  if(!AUTH||!AUTH.pro||!PRO||PRO.pending)return Promise.resolve();
+  if(!AUTH||!AUTH.pro||!PRO||PRO.pending||!proVerified())return Promise.resolve();
   PC.loading=true;PC.err=null;if(ui.screen==='pro')render();
   return ensureToken().then(function(){
     return sbReq('GET','/rest/v1/client_links?select=id,profile_id,client_id,client_name,client_email,consented_at,share_photos,pro_plans(targets,note,menu,updated_at),pro_notes(body,updated_at)&pro_id=eq.'+AUTH.uid+'&status=eq.active&order=created_at.asc',null,AUTH.access);
@@ -2625,6 +2626,47 @@ function vProInvite(){
     '<section class="card"><h2>Cómo funciona</h2><ol class="plain"><li>Envías el código o el enlace a tu cliente.</li><li>Tu cliente crea su cuenta y su plan, y escribe tu código en Ajustes, Cuenta y datos. Ve claro qué compartirá contigo y da su consentimiento.</li><li>Aparece en tu lista con su informe, su diario de comidas y su peso. Puedes ajustar sus objetivos y dejarle notas.</li><li>Tu cliente puede dejar de compartir cuando quiera, y tú también puedes terminar el vínculo.</li></ol></section>'+
     '<section class="card"><h2>Tu plan</h2><p>'+(trial?'<b>Prueba gratuita</b>: hasta '+PRO.max_clients+' clientes ('+n+' ahora).':PRO.status==='suspended'?'<b>Cuenta suspendida.</b> Contacta con quien administra la app.':'<b>Cuenta profesional activa</b>: sin límite de clientes.')+'</p>'+(trial?'<p class="muted">Cuando quieras ampliar el número de clientes, contacta con quien administra la app.</p>':'')+'</section>';
 }
+/* verificación del profesional: no puede usar el panel hasta que el administrador apruebe su justificante */
+function proVerified(){return !!(PRO&&(PRO.license_checked||PRO.pending||PRO.offline));}
+function vProVerify(){
+  var sent=!!PRO.license_doc,h='<section class="card"><h2>'+(sent?'Tu cuenta está en revisión':'Verifica que eres profesional')+'</h2>';
+  if(PRO.review_note)h+='<p class="err" role="alert">No hemos podido aprobar tu justificante: '+esc(PRO.review_note)+'</p>';
+  if(sent){
+    var d='';try{d=PRO.doc_at?' el '+new Date(PRO.doc_at).toLocaleDateString('es-ES'):'';}catch(e){}
+    h+='<p>Hemos recibido tu justificante'+d+'. Lo revisamos a mano y activamos tu cuenta cuando esté comprobado. Hasta entonces no podrás ver el panel ni invitar a clientes.</p><p class="muted">Vuelve a abrir la app más tarde o pulsa el botón para comprobarlo.</p>';
+  } else {
+    h+='<p>Para proteger a los clientes, revisamos a cada profesional antes de activar su cuenta. Sube una foto o un PDF de tu carné de colegiado, o de un certificado de tu colegio, donde se vean tu nombre y tu número'+(PRO.license?' ('+esc(PRO.license)+')':'')+'.</p>';
+  }
+  h+='<div class="btns"><label class="btn main filebtn'+(ui.docBusy?' dis':'')+'">'+(ui.docBusy?'Subiendo…':sent?'Cambiar justificante':'Subir justificante')+'<input type="file" id="pd-file" accept="image/*,application/pdf" hidden'+(ui.docBusy?' disabled':'')+'></label>'+(sent?'<button class="btn sm" data-act="proverify"'+(ui.docBusy?' disabled':'')+'>Comprobar si ya está aprobada</button>':'')+'</div>'+
+    '<p class="muted">Solo lo ve quien administra la app y se usa únicamente para comprobar tu colegiación. Archivos JPG, PNG o PDF de hasta 5 MB.</p></section>';
+  return h;
+}
+function proUploadDoc(input){
+  var f=input.files&&input.files[0];input.value='';if(!f||ui.docBusy)return;
+  var pdf=f.type==='application/pdf';
+  if(!pdf&&!/^image\//.test(f.type)){toast('Sube una foto o un PDF');return;}
+  if(pdf&&f.size>5*1024*1024){toast('El PDF pesa más de 5 MB');return;}
+  ui.docBusy=true;render();
+  var old=PRO&&PRO.license_doc,path=AUTH.uid+'/justificante-'+Date.now()+(pdf?'.pdf':'.jpg');
+  (pdf?Promise.resolve(f):shrink(f,1800)).then(function(blob){
+    if(blob.size>5*1024*1024)throw new Error('big');
+    return ensureToken().then(function(){return phFetch('POST','/storage/v1/object/pro-docs/'+path,blob,pdf?'application/pdf':'image/jpeg');});
+  }).then(function(){
+    return sbReq('POST','/rest/v1/rpc/submit_pro_doc',{p_path:path},AUTH.access);
+  }).then(function(r){
+    PRO=r;ui.docBusy=false;render();toast('Justificante enviado. Lo revisaremos pronto.');
+    if(old&&old!==path)phFetch('DELETE','/storage/v1/object/pro-docs/'+old).catch(function(){});
+  },function(e){
+    ui.docBusy=false;render();
+    toast(e&&e.net?'Sin conexión. Inténtalo de nuevo.':e&&e.message==='big'?'El archivo es demasiado grande':'No se pudo enviar el justificante. Inténtalo de nuevo.');
+  });
+}
+function proVerifyCheck(){
+  ensureToken().then(function(){return proInit();}).then(function(){
+    if(PRO&&PRO.license_checked){toast('Tu cuenta está aprobada');ui.ptab='clientes';render();proLoad();}
+    else{render();toast(PRO&&PRO.review_note?'Revisa el motivo indicado':'Todavía en revisión');}
+  },function(){toast('No se pudo comprobar. Inténtalo de nuevo.');});
+}
 function vProAccount(){
   return '<section class="card"><h2>Datos profesionales</h2><p class="muted">Tus clientes ven este nombre cuando se vinculan contigo.</p><div class="form"><label>Tu nombre<input type="text" data-au="pname" value="'+esc(ui.au.pname!=null?ui.au.pname:PRO.name)+'" maxlength="80" autocomplete="name"></label><label>Consulta o empresa (opcional)<input type="text" data-au="pbiz" value="'+esc(ui.au.pbiz!=null?ui.au.pbiz:(PRO.business||''))+'" maxlength="80"></label><label>Nº de colegiado o de registro profesional<input type="text" data-au="plic" value="'+esc(ui.au.plic!=null?ui.au.plic:(PRO.license||''))+'" maxlength="40" autocomplete="off"></label><button class="btn main" data-act="prosaveprof">Guardar</button></div></section>'+
     accountCard()+'<section class="card"><h2>Condiciones</h2><div class="btns"><button class="btn sm" data-act="proterms">Condiciones para profesionales</button><button class="btn sm" data-act="privacy">Información de privacidad</button></div></section>';
@@ -2633,7 +2675,11 @@ function vPro(){
   var T=[['clientes','Clientes'],['invitar','Invitar'],['cuenta','Cuenta']],h='<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Panel profesional</h1></div><p class="sub">'+esc(PRO?PRO.name:'')+(PRO&&PRO.business?' · '+esc(PRO.business):'')+'</p></header>';
   if(ui.perr)h+='<p class="note" role="alert">'+esc(ui.perr)+'</p>';
   if(ui.psel)return h+vProClient();
+  var ver=proVerified();
+  if(!ver){T=[['verif','Verificación'],['cuenta','Cuenta']];if(ui.ptab!=='cuenta')ui.ptab='verif';}
+  else if(ui.ptab==='verif')ui.ptab='clientes';
   h+='<nav class="tabs" role="tablist" aria-label="Panel">'+T.map(function(t){return '<button role="tab" aria-selected="'+(ui.ptab===t[0])+'" data-act="ptab" data-v="'+t[0]+'">'+t[1]+'</button>';}).join('')+'</nav>';
+  if(!ver&&ui.ptab==='verif')return h+vProVerify();
   return h+(ui.ptab==='invitar'?vProInvite():ui.ptab==='cuenta'?vProAccount():vProClients());
 }
 function ptInput(dr,key,cur,lab){var v=dr&&dr[key]!=null?dr[key]:(cur==null?'':String(Math.round(cur)));return '<input type="text" inputmode="decimal" data-pt="'+key+'" value="'+esc(v)+'" aria-label="'+esc(lab)+'">';}
@@ -2820,6 +2866,7 @@ function linkErr(e){
   if(m.indexOf('invalid_code')>-1)return 'Ese código no existe. Revísalo con tu nutricionista.';
   if(m.indexOf('pro_full')>-1)return 'Tu nutricionista ha alcanzado el límite de clientes de su cuenta de prueba. Avísale.';
   if(m.indexOf('pro_suspended')>-1)return 'La cuenta de ese nutricionista no está activa.';
+  if(m.indexOf('pro_unverified')>-1)return 'Ese nutricionista todavía no ha sido verificado, así que no puedes vincularte aún. Avísale.';
   if(m.indexOf('self_link')>-1)return 'No puedes vincularte contigo mismo.';
   if(m.indexOf('profile_not_found')>-1)return 'Tu perfil aún no se ha subido a tu cuenta. Espera unos segundos e inténtalo de nuevo.';
   return 'No se pudo vincular. Inténtalo de nuevo.';
@@ -3029,6 +3076,7 @@ function profileAct(a,b){
   case 'prosave':{var c1=proFind(b.dataset.id);if(c1)proSaveTargets(c1);return true;}
   case 'pronote':{var c2=proFind(b.dataset.id);if(c2)proSaveNote(c2);return true;}
   case 'prosaveprof':proSaveProf();return true;
+  case 'proverify':proVerifyCheck();return true;
   case 'prorevoke':ui.prc=b.dataset.id;render();return true;
   case 'prorevokeno':ui.prc=null;render();return true;
   case 'prorevokeok':proRevoke(b.dataset.id);return true;
@@ -3168,6 +3216,7 @@ app.addEventListener('change',function(e){
   if(t.dataset&&t.dataset.ob!=null){if(t.dataset.ob!=='work')readOb();return;}
   if(t.id==='ph-file'){addPhoto(t);return;}
   if(t.id==='av-file'){setAvatar(t);return;}
+  if(t.id==='pd-file'){proUploadDoc(t);return;}
   if(t.id==='ph-a')PH.angle=t.value;
   if(t.dataset&&(t.dataset.pm==='rt'||t.dataset.pm==='rv')){var c8=proFind(ui.psel);if(c8){var dm8=pmDraft(c8),dk8=String(ui.pmd||0);dm8[dk8]=dm8[dk8]||{};var rr8=(dm8[dk8]._r=dm8[dk8]._r||{});(rr8[t.dataset.s]=rr8[t.dataset.s]||{})[t.dataset.pm==='rt'?'t':'v']=t.value;}return;}
   if(t.dataset&&t.dataset.pm==='g'){var c6=proFind(ui.psel);if(c6){var dd6=pmDraft(c6)[String(ui.pmd||0)],ar6=dd6&&dd6[t.dataset.s],it6=ar6&&ar6[+t.dataset.i],v6=num(t.value);if(it6&&v6!=null&&v6>0&&v6<=5000)it6.g=Math.round(v6*10)/10;render();}return;}
