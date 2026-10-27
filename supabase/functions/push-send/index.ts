@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Envía los recordatorios push de Tupla. Se ejecuta cada 5 minutos (ver sección 11 de profesionales.sql).
 // Secretos necesarios (Edge Functions > Secrets): VAPID_PUBLIC, VAPID_PRIVATE, VAPID_SUBJECT, CRON_SECRET.
 // Desactiva "Verify JWT" al desplegarla: se protege con la cabecera x-cron-secret.
