@@ -14,6 +14,9 @@ create table if not exists public.professionals (
   max_clients int not null default 3,
   created_at timestamptz not null default now()
 );
+-- Nº de colegiado o de registro profesional (lo escribe el profesional; tú marcas license_checked cuando lo compruebes)
+alter table public.professionals add column if not exists license text;
+alter table public.professionals add column if not exists license_checked boolean not null default false;
 
 create table if not exists public.client_links (
   id          uuid primary key default gen_random_uuid(),
@@ -94,7 +97,9 @@ create policy pro_read_clients on public.plan_profiles for select
                    and l.profile_id = plan_profiles.id and l.status = 'active'));
 
 -- 3) Funciones ---------------------------------------------------------------
-create or replace function public.become_professional(p_name text, p_business text default null)
+-- (la versión anterior no tenía p_license: se elimina para que no haya dos funciones con el mismo nombre)
+drop function if exists public.become_professional(text, text);
+create or replace function public.become_professional(p_name text, p_business text default null, p_license text default null)
 returns public.professionals
 language plpgsql security definer set search_path = public, auth as $$
 declare
@@ -106,7 +111,10 @@ begin
   select * into r from public.professionals where user_id = auth.uid();
   if found then
     update public.professionals
-       set name = trim(p_name), business = nullif(trim(coalesce(p_business, '')), '')
+       set name = trim(p_name), business = nullif(trim(coalesce(p_business, '')), ''),
+           license_checked = case when nullif(trim(coalesce(p_license, '')), '') is not null
+                                   and nullif(trim(coalesce(p_license, '')), '') is distinct from license then false else license_checked end,
+           license = coalesce(nullif(trim(coalesce(p_license, '')), ''), license)
      where user_id = auth.uid() returning * into r;
     return r;
   end if;
@@ -119,8 +127,8 @@ begin
     i := i + 1;
     if i > 25 then raise exception 'code_failed'; end if;
   end loop;
-  insert into public.professionals (user_id, name, business, code)
-  values (auth.uid(), trim(p_name), nullif(trim(coalesce(p_business, '')), ''), v_code)
+  insert into public.professionals (user_id, name, business, code, license)
+  values (auth.uid(), trim(p_name), nullif(trim(coalesce(p_business, '')), ''), v_code, nullif(trim(coalesce(p_license, '')), ''))
   returning * into r;
   return r;
 end; $$;
@@ -166,10 +174,10 @@ begin
    where id = p_link and (client_id = auth.uid() or pro_id = auth.uid());
 end; $$;
 
-revoke all on function public.become_professional(text, text) from public, anon;
+revoke all on function public.become_professional(text, text, text) from public, anon;
 revoke all on function public.link_with_code(text, text)      from public, anon;
 revoke all on function public.revoke_link(uuid)               from public, anon;
-grant execute on function public.become_professional(text, text) to authenticated;
+grant execute on function public.become_professional(text, text, text) to authenticated;
 grant execute on function public.link_with_code(text, text)      to authenticated;
 grant execute on function public.revoke_link(uuid)               to authenticated;
 
@@ -300,3 +308,7 @@ create policy photos_obj_pro on storage.objects for select
 --   update public.professionals set status = 'active' where user_id = '<id>';
 -- Para suspenderlo:
 --   update public.professionals set status = 'suspended' where user_id = '<id>';
+-- Para revisar los profesionales nuevos y su nº de colegiado:
+--   select user_id, name, business, license, license_checked, status, created_at from public.professionals order by created_at desc;
+-- Cuando hayas comprobado el nº de colegiado:
+--   update public.professionals set license_checked = true where user_id = '<id>';

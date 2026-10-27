@@ -11,10 +11,15 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Tupla</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400;500;600;700&display=swap">
 <style>:root{color-scheme:light;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <style>
 /* Layout: one column under a sticky tab bar. Cards hold totals and forms; a timeline grid shows the week. */
+@font-face{font-family:'Bricolage Grotesque';font-style:normal;font-weight:400 500;font-display:swap;src:url(fonts/bricolage-Regular.woff) format('woff')}
+@font-face{font-family:'Bricolage Grotesque';font-style:normal;font-weight:600 900;font-display:swap;src:url(fonts/bricolage-Bold.woff) format('woff')}
+@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;src:url(fonts/inter-Regular.woff) format('woff')}
+@font-face{font-family:'Inter';font-style:normal;font-weight:500;font-display:swap;src:url(fonts/inter-Medium.woff) format('woff')}
+@font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;src:url(fonts/inter-SemiBold.woff) format('woff')}
+@font-face{font-family:'Inter';font-style:normal;font-weight:700 900;font-display:swap;src:url(fonts/inter-Bold.woff) format('woff')}
 :root{
   --bg:#F3F6F9; --surface:#FFFFFF; --surface2:#E9EEF4; --ink:#0E1D2C; --ink2:#586A7E; --line:#E0E7EF;
   --accent:#087454; --accent2:#0A8A63; --accent-ink:#FFFFFF; --accent-soft:#DAF3E8;
@@ -24,7 +29,7 @@
   --t-football:#087454; --t-kids:#3563E9; --t-strength:#7048BD; --t-meal:#E08A00; --t-rest:#7C8CA0;
   --t-work:#456A8C; --t-free:#1F9AA0; --t-prep:#94A3B5; --t-sleep:#33405E; --t-wake:#94A3B5;
   --font-d:'Bricolage Grotesque','Avenir Next',system-ui,sans-serif;
-  --font-b:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-b:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -330,6 +335,9 @@ textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-rad
 .kv span:nth-child(even){font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
 .note{border-left:4px solid var(--warn);background:color-mix(in srgb,var(--warn) 12%,var(--surface));border-radius:6px;padding:8px 12px;font-size:13px}
 
+.pend{background:color-mix(in srgb,var(--warn) 22%,transparent);border-radius:4px;padding:0 4px}
+.lglinks{text-align:center;margin:18px 0 6px}
+.lglinks a{color:inherit}
 /* foto de perfil */
 .av.has{background:var(--surface2);overflow:hidden;padding:0}
 .av img{width:100%;height:100%;object-fit:cover;display:block}
@@ -1692,7 +1700,7 @@ function vAjustes(){
   var seg=ui.set==='cuenta'?'cuenta':'plan';
   return '<div class="chips" role="group" aria-label="Ajustes">'+[['plan','Plan'],['cuenta','Cuenta y datos']].map(function(x){return '<button class="chip" aria-pressed="'+(seg===x[0])+'" data-act="set" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>'+(seg==='cuenta'?vCuenta():vPlan());
 }
-var APP_V='37';
+var APP_V='38';
 function appUpdate(){
   toast('Actualizando…');
   var done=function(){location.reload();};
@@ -1760,10 +1768,10 @@ function profileCard(){
 /* ---------- pantallas: bienvenida, perfiles y cuestionario ---------- */
 function vWelcome(){
   var inv=ui.invite&&cloudOn()&&AUTH&&!AUTH.pro;
-  if(inv)return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tupla</h1></div><p>Tu nutricionista te ha invitado. Responde su cuestionario inicial y él o ella te preparará tus objetivos y tus menús.</p><p class="muted">Has entrado como '+esc(AUTH.email)+'. Tus datos se guardan en tu cuenta.</p></div><div class="btns"><button class="btn main" data-act="pnew">Empezar el cuestionario</button><button class="btn" data-act="logout">Cerrar sesión</button></div>';
+  if(inv)return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tupla</h1></div><p>Tu nutricionista te ha invitado. Responde su cuestionario inicial y él o ella te preparará tus objetivos y tus menús.</p><p class="muted">Has entrado como '+esc(AUTH.email)+'. Tus datos se guardan en tu cuenta.</p></div><div class="btns"><button class="btn main" data-act="pnew">Empezar el cuestionario</button><button class="btn" data-act="logout">Cerrar sesión</button></div>'+lgLinks();
   var hasSot=cloudOn()||INDEX.list.some(function(x){return x.type==='sot';});
   return '<div class="hero"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Tupla</h1></div><p>Responde unas preguntas y la app te prepara un plan de comidas con calorías y macros, un horario de comidas y el seguimiento de tu peso.</p><p class="muted">'+(cloudOn()&&AUTH?'Has entrado como '+esc(AUTH.email)+'. Tus datos se guardan en tu cuenta.':'Tus datos se quedan solo en este dispositivo: no hay cuentas ni contraseñas. Puedes crear varios perfiles, uno para cada persona.')+'</p></div>'+
-    '<div class="btns"><button class="btn main" data-act="pnew">Crear mi perfil</button>'+(hasSot?'':'<button class="btn" data-act="psotero">Usar el plan original de Sotero</button>')+(cloudOn()&&AUTH?'<button class="btn" data-act="logout">Cerrar sesión</button>':'')+'</div>';
+    '<div class="btns"><button class="btn main" data-act="pnew">Crear mi perfil</button>'+(hasSot?'':'<button class="btn" data-act="psotero">Usar el plan original de Sotero</button>')+(cloudOn()&&AUTH?'<button class="btn" data-act="logout">Cerrar sesión</button>':'')+'</div>'+lgLinks();
 }
 function profSub(e){
   if(e.type==='sot')return 'Plan original · definición';
@@ -2139,7 +2147,7 @@ function authErr(e){
 }
 function setSession(j){
   if(!j||!j.access_token||!j.user)return false;
-  AUTH={access:j.access_token,refresh:j.refresh_token,exp:Math.floor(Date.now()/1000)+(j.expires_in||3600),uid:j.user.id,email:j.user.email||'',meta:(j.user.user_metadata&&typeof j.user.user_metadata==='object')?{role:j.user.user_metadata.role,pname:j.user.user_metadata.pname,pbiz:j.user.user_metadata.pbiz}:{}};
+  AUTH={access:j.access_token,refresh:j.refresh_token,exp:Math.floor(Date.now()/1000)+(j.expires_in||3600),uid:j.user.id,email:j.user.email||'',meta:(j.user.user_metadata&&typeof j.user.user_metadata==='object')?{role:j.user.user_metadata.role,pname:j.user.user_metadata.pname,pbiz:j.user.user_metadata.pbiz,plic:j.user.user_metadata.plic}:{}};
   authStore();return true;
 }
 function ensureToken(){
@@ -2256,9 +2264,9 @@ function authSubmit(){
   function fail(t){ui.authMsg={k:'err',t:t};ui.busy=false;render();}
   if(!validEmail(em))return fail('Escribe un correo válido.');
   if(!pw)return fail('Escribe la contraseña.');
-  if(reg){if(pw.length<8)return fail('La contraseña debe tener al menos 8 caracteres.');if(pw!==ui.au.pw2)return fail('Las contraseñas no coinciden.');if(ui.au.kind==='pro'&&!(ui.au.pname||'').trim())return fail('Escribe tu nombre profesional.');if(!ui.au.terms)return fail('Marca la casilla para poder crear la cuenta.');}
+  if(reg){if(pw.length<8)return fail('La contraseña debe tener al menos 8 caracteres.');if(pw!==ui.au.pw2)return fail('Las contraseñas no coinciden.');if(ui.au.kind==='pro'&&!(ui.au.pname||'').trim())return fail('Escribe tu nombre profesional.');if(ui.au.kind==='pro'&&(ui.au.plic||'').trim().length<3)return fail('Escribe tu número de colegiado o de registro profesional.');if(!ui.au.terms)return fail('Marca la casilla para poder crear la cuenta.');}
   ui.busy=true;ui.authMsg=null;render();
-  var body={email:em,password:pw};if(reg&&ui.au.kind==='pro')body.data={role:'pro',pname:(ui.au.pname||'').trim().slice(0,80),pbiz:(ui.au.pbiz||'').trim().slice(0,80)};
+  var body={email:em,password:pw};if(reg){body.data={terms_v:LEGAL.v,terms_at:new Date().toISOString()};if(ui.au.kind==='pro'){body.data.role='pro';body.data.pname=(ui.au.pname||'').trim().slice(0,80);body.data.pbiz=(ui.au.pbiz||'').trim().slice(0,80);body.data.plic=(ui.au.plic||'').trim().slice(0,40);}}
   var rq=reg?sbReq('POST','/auth/v1/signup',body):sbReq('POST','/auth/v1/token?grant_type=password',body);
   rq.then(function(j){
     if(!setSession(j)){
@@ -2305,11 +2313,11 @@ function vAuth(){
     '<section class="card"><div class="chips" role="group" aria-label="Acceso"><button class="chip" aria-pressed="'+!reg+'" data-act="aumode" data-v="login" type="button">Entrar</button><button class="chip" aria-pressed="'+reg+'" data-act="aumode" data-v="reg" type="button">Crear cuenta</button></div>'+
     (reg?'<div class="chips" role="group" aria-label="Tipo de cuenta"><button class="chip" type="button" aria-pressed="'+(ui.au.kind!=='pro')+'" data-act="aukind" data-v="client">Soy cliente</button><button class="chip" type="button" aria-pressed="'+(ui.au.kind==='pro')+'" data-act="aukind" data-v="pro">Soy nutricionista o dietista</button></div>':'')+
     '<form data-form="auth" class="fld" style="gap:12px" novalidate><div class="two" style="grid-template-columns:1fr"><label>Correo electrónico<input type="email" inputmode="email" data-au="email" value="'+esc(ui.au.email||'')+'" autocomplete="email" autocapitalize="none" spellcheck="false"></label>'+
-    pwField('pw','Contraseña',0,ui.au.pw,reg?'new-password':'current-password')+(reg?pwField('pw2','Repite la contraseña',0,ui.au.pw2,'new-password'):'')+(reg&&ui.au.kind==='pro'?'<label>Tu nombre profesional<input type="text" data-au="pname" value="'+esc(ui.au.pname||'')+'" maxlength="80" autocomplete="name"></label><label>Consulta o empresa (opcional)<input type="text" data-au="pbiz" value="'+esc(ui.au.pbiz||'')+'" maxlength="80"></label>':'')+'</div>'+
-    (reg?'<label class="chk" style="cursor:pointer;align-items:flex-start"><input type="checkbox" data-au="terms"'+(ui.au.terms?' checked':'')+'><span>Tengo 18 años o más y he leído la <a href="#" data-act="privacy">información de privacidad</a>'+(ui.au.kind==='pro'?' y las <a href="#" data-act="proterms">condiciones para profesionales</a>':'')+'</span></label>':'')+
+    pwField('pw','Contraseña',0,ui.au.pw,reg?'new-password':'current-password')+(reg?pwField('pw2','Repite la contraseña',0,ui.au.pw2,'new-password'):'')+(reg&&ui.au.kind==='pro'?'<label>Tu nombre profesional<input type="text" data-au="pname" value="'+esc(ui.au.pname||'')+'" maxlength="80" autocomplete="name"></label><label>Consulta o empresa (opcional)<input type="text" data-au="pbiz" value="'+esc(ui.au.pbiz||'')+'" maxlength="80"></label><label>Nº de colegiado o de registro profesional<input type="text" data-au="plic" value="'+esc(ui.au.plic||'')+'" maxlength="40" autocomplete="off"></label>':'')+'</div>'+
+    (reg?'<label class="chk" style="cursor:pointer;align-items:flex-start"><input type="checkbox" data-au="terms"'+(ui.au.terms?' checked':'')+'><span>Tengo 18 años o más, he leído la <a href="#" data-act="privacy">información de privacidad</a> y acepto las <a href="#" data-act="terms">condiciones de uso</a>'+(ui.au.kind==='pro'?' y las <a href="#" data-act="proterms">condiciones para profesionales</a>':'')+'</span></label>':'')+
     (m?'<p class="'+(m.k==='err'?'err':'note')+'" role="alert">'+esc(m.t)+'</p>':'')+
     '<div class="btns"><button class="btn main" type="submit"'+(b?' disabled':'')+'>'+(b?'Un momento…':reg?'Crear cuenta':'Entrar')+'</button>'+(reg?'':'<button class="btn" type="button" data-act="aurecover"'+(b?' disabled':'')+'>He olvidado la contraseña</button>')+'</div></form>'+
-    (reg?'<p class="muted">Mínimo 8 caracteres. '+(ui.au.kind==='pro'?'Después verás tu panel y tu código para invitar a tus clientes.':'Después te haré unas preguntas para preparar tu plan.')+'</p>':'')+(reg&&ui.au.kind!=='pro'&&ui.invite?'<p class="note">Tu nutricionista te ha invitado. Cuando tengas tu plan, vincúlate en Ajustes, Cuenta y datos.</p>':'')+'<p class="muted"><a href="#" data-act="privacy">Información de privacidad</a></p></section>';
+    (reg?'<p class="muted">Mínimo 8 caracteres. '+(ui.au.kind==='pro'?'Después verás tu panel y tu código para invitar a tus clientes.':'Después te haré unas preguntas para preparar tu plan.')+'</p>':'')+(reg&&ui.au.kind!=='pro'&&ui.invite?'<p class="note">Tu nutricionista te ha invitado. Cuando tengas tu plan, vincúlate en Ajustes, Cuenta y datos.</p>':'')+lgLinks()+'</section>';
 }
 function vNewPw(){
   var b=ui.busy,m=ui.authMsg;
@@ -2332,32 +2340,152 @@ function claimOk(){
 }
 
 /* ---------- privacidad, exportar y borrar la cuenta ---------- */
+/* ---------- textos legales ---------- */
+/* Rellena estos datos antes de abrir la app al público y pon draft:false cuando un abogado haya revisado los textos. */
+var LEGAL={draft:true,v:'2026-10-27',name:'',nif:'',addr:'',email:'',host:'Supabase',region:''};
+function pend(t){return '<span class="pend">[pendiente: '+t+']</span>';}
+function lgOwner(){
+  return (LEGAL.name?esc(LEGAL.name):pend('nombre o razón social'))+', NIF '+(LEGAL.nif?esc(LEGAL.nif):pend('NIF'))+', domicilio en '+(LEGAL.addr?esc(LEGAL.addr):pend('domicilio'))+', correo de contacto '+(LEGAL.email?esc(LEGAL.email):pend('correo'))+'.';
+}
+function lgMail(){return LEGAL.email?esc(LEGAL.email):pend('correo de contacto');}
+function lgDraft(){return LEGAL.draft?'<p class="note"><b>Borrador pendiente de revisión legal.</b> Este texto es una base de trabajo y debe ser revisado por un abogado antes de usar la app con personas reales.</p>':'';}
+function lgHtml(sec){
+  return sec.map(function(x){
+    var out='<h3>'+x[0]+'</h3>',list=[];
+    function flush(){if(list.length){out+='<ul class="plain">'+list.map(function(i){return '<li>'+i+'</li>';}).join('')+'</ul>';list=[];}}
+    x[1].forEach(function(l){if(l.indexOf('- ')===0)list.push(l.slice(2));else{flush();out+='<p>'+l+'</p>';}});
+    flush();return out;
+  }).join('');
+}
+function lgPage(title,sec){
+  return '<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>'+title+'</h1></div><p class="sub">Versión '+esc(LEGAL.v)+'</p></header><section class="card">'+lgDraft()+lgHtml(sec)+'<div class="btns"><button class="btn main" data-act="privback">Volver</button></div></section>';
+}
+function lgLinks(){return '<p class="muted lglinks"><a href="#" data-act="legal">Aviso legal</a> · <a href="#" data-act="privacy">Privacidad</a> · <a href="#" data-act="terms">Condiciones de uso</a></p>';}
 function vPrivacy(){
-  return '<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Privacidad</h1></div></header><section class="card">'+
-    '<h3>Qué datos se guardan</h3><p>Tu correo electrónico y, por cada perfil, los datos que escribes: edad, altura, peso, medidas, dieta, alergias, horarios, comidas, registros de peso y de sueño, y notas. Son datos de salud, así que se tratan con cuidado.</p>'+
-    '<h3>Para qué</h3><p>Solo para calcular y mostrarte tu plan y sincronizarlo entre tus dispositivos. No se venden ni se usan para publicidad.</p>'+
-    '<h3>Dónde y quién puede verlos</h3><p>Se guardan en tu cuenta, en los servidores de Supabase, con la contraseña cifrada y protegidos para que cada persona solo acceda a lo suyo. La persona que administra la app puede ver técnicamente los datos guardados en el servidor, y se compromete a usarlos solo para resolver fallos.</p>'+
-    '<h3>Fotos</h3><p>Las fotos de progreso se guardan en tu dispositivo y no se suben a la cuenta. Solo si estás vinculado con un nutricionista y activas compartirlas, se sube una copia a un almacenamiento privado que ve esa persona. Si dejas de compartir, de vincularte o borras la foto, se elimina la copia.</p>'+
-    '<h3>Si te vinculas con un nutricionista</h3><p>Solo si tú lo decides, escribiendo su código. Entonces esa persona podrá ver las comidas, el peso, las medidas, el seguimiento, tu foto de perfil si la pones y las notas del diario del perfil que elijas, ajustar tus objetivos y dejarte notas. Tú decides cuándo dejar de compartir, desde Ajustes, Cuenta y datos, y deja de verlo al instante. Tus fotos de progreso solo las verá si lo activas tú aparte. Esa persona es la responsable de usar tus datos solo para tu seguimiento nutricional. Si el nutricionista te envió una invitación, el cuestionario inicial (salud, hábitos y alimentación) también lo verá solo esa persona. El chat guarda los mensajes que os escribís, que solo veis vosotros dos mientras estéis vinculados; no lo uses para urgencias médicas.</p>'+
-    '<h3>Tus derechos</h3><p>Puedes descargar todos tus datos y borrar tu cuenta y todo lo que contiene cuando quieras, desde la pestaña Cuenta. El borrado es inmediato y definitivo.</p>'+
-    '<h3>Aviso</h3><p>El plan es orientativo y no sustituye el consejo de un médico o dietista. La app es solo para mayores de 18 años.</p>'+
-    '<div class="btns"><button class="btn main" data-act="privback">Volver</button></div></section>';
+  return lgPage('Privacidad',[
+    ['Quién es el responsable',[
+      '<b>Titular de la app:</b> '+lgOwner(),
+      'El titular es responsable de los datos de tu cuenta (correo y acceso) y, si usas la app por tu cuenta sin nutricionista, también de los datos de tu plan.',
+      'Si te vinculas con un nutricionista, esa persona es la responsable de los datos de salud que consulta para tu seguimiento, y el titular actúa como su encargado del tratamiento: los guarda y los pone a su disposición solo para prestar el servicio.']],
+    ['Qué datos tratamos y para qué',[
+      '- <b>Cuenta</b>: correo y contraseña (guardada cifrada). Para crear tu cuenta y que puedas entrar. Base legal: ejecución del servicio que solicitas.',
+      '- <b>Plan y salud</b>: edad, altura, peso, medidas, dieta, alergias, horarios, comidas, registros de peso, sueño y notas, y el cuestionario clínico si te lo pide tu nutricionista. Para calcular tu plan, mostrártelo y sincronizarlo entre tus dispositivos. Son datos de salud: los tratamos solo con tu consentimiento explícito, que das al crear el perfil.',
+      '- <b>Compartir con tu nutricionista</b>: solo si escribes su código. Comparte las comidas, el peso, las medidas, el seguimiento, tu foto de perfil si la pones y las notas del diario del perfil que elijas. Consentimiento explícito, que puedes retirar cuando quieras.',
+      '- <b>Fotos de progreso</b> (opcional): se guardan en tu dispositivo. Solo si lo activas, se sube una copia a un almacenamiento privado que ve tu nutricionista. Consentimiento explícito.',
+      '- <b>Foto de perfil</b> (opcional): miniatura que ve tu nutricionista para identificarte.',
+      '- <b>Chat</b>: los mensajes que te envías con tu nutricionista.',
+      '- <b>Seguridad</b>: datos técnicos mínimos del acceso para evitar abusos. Base legal: interés legítimo en la seguridad del servicio.',
+      'No usamos tus datos para publicidad ni los vendemos, y no tomamos decisiones sobre ti solo de forma automática: el cálculo de calorías es una estimación orientativa que puedes ignorar o consultar con tu nutricionista.']],
+    ['Quién más puede recibir tus datos',[
+      '- <b>Tu nutricionista</b>, solo si te vinculas.',
+      '- <b>'+esc(LEGAL.host)+'</b>: alojamiento de la base de datos, el acceso a la cuenta y el almacenamiento de fotos'+(LEGAL.region?' (región: '+esc(LEGAL.region)+')':' '+pend('región de la UE elegida'))+'.',
+      '- <b>Proveedor de correo</b> '+pend('nombre del proveedor')+': envío de correos de confirmación y de recuperar contraseña.',
+      '- <b>Pasarela de pago</b>, cuando se active el cobro a nutricionistas: solo para los datos de pago de los profesionales, nunca para los de los clientes.',
+      '- <b>GitHub Pages</b>: sirve los archivos de la web. No recibe tus datos de salud.',
+      'Si algún proveedor trata datos fuera de la UE, se hace con las garantías del RGPD (cláusulas contractuales tipo o decisión de adecuación).']],
+    ['Cuánto tiempo los guardamos',[
+      'Mientras tu cuenta esté activa. Al borrar tu cuenta se eliminan de la aplicación al momento tu cuenta, tus perfiles, tus registros, tus fotos compartidas y tus mensajes. Las copias de seguridad del proveedor pueden conservarse hasta '+pend('plazo de las copias')+' y se sobrescriben después.',
+      'Si terminas el vínculo con un nutricionista, esa persona deja de ver tus datos al instante y se borra la copia compartida de tus fotos. Los mensajes del chat se conservan, sin que nadie más los vea, hasta que borres tu cuenta.']],
+    ['Tus derechos',[
+      'Puedes acceder a tus datos, rectificarlos, suprimirlos, limitar u oponerte a su tratamiento, pedir su portabilidad y retirar tu consentimiento cuando quieras.',
+      '- <b>En la app</b>: descargar todos tus datos y borrar tu cuenta, desde Ajustes, Cuenta y datos. Y dejar de compartir con tu nutricionista cuando quieras.',
+      '- <b>Por escrito</b>: a '+lgMail()+'.',
+      'Si crees que no se han atendido bien tus derechos, puedes reclamar ante la Agencia Española de Protección de Datos (www.aepd.es).']],
+    ['Seguridad',[
+      'Las conexiones van cifradas (HTTPS), las contraseñas se guardan cifradas, cada persona solo accede a lo suyo y el nutricionista solo a los perfiles de clientes vinculados. Las fotos compartidas van a un almacenamiento privado sin enlaces públicos. Si hubiera una brecha que afecte a tus datos, te lo comunicaremos y lo notificaremos a la autoridad en los plazos legales.']],
+    ['Edad',['La app es solo para mayores de 18 años.']],
+    ['Almacenamiento en tu dispositivo',[
+      'La app guarda en tu dispositivo lo necesario para funcionar: tu sesión, tus perfiles, tus preferencias y las fotos. No usa cookies de publicidad, ni de análisis, ni de terceros, y las tipografías van incluidas en la app. Por eso no hay aviso de cookies.']],
+    ['Cambios',['Si cambiamos este texto de forma importante, te avisaremos en la app. Versión '+esc(LEGAL.v)+'.']]
+  ]);
+}
+function vTerms(){
+  return lgPage('Condiciones de uso',[
+    ['Qué es Tupla',[
+      'Una herramienta para registrar tu alimentación, tu peso y tu seguimiento, y para recibir un plan orientativo de comidas. Puedes usarla por tu cuenta o vinculada con tu nutricionista.',
+      'No es un servicio médico ni sanitario, no hace diagnósticos ni sustituye el consejo de un médico o dietista. Si tomas medicación o tienes una condición médica, consulta antes con tu médico. En una urgencia, llama al 112; no uses el chat.']],
+    ['Tu cuenta',[
+      '- Tienes que ser mayor de 18 años y dar datos veraces.',
+      '- Eres responsable de tu contraseña y de lo que se haga con tu cuenta.',
+      '- Puedes borrar tu cuenta cuando quieras desde Ajustes, Cuenta y datos.']],
+    ['Tu nutricionista',[
+      'Si te vinculas, tu nutricionista decide tus objetivos y tus menús bajo su responsabilidad profesional. Tupla solo pone la herramienta; la relación profesional es entre tú y él o ella.']],
+    ['Uso correcto',[
+      'No uses la app para fines ilegales, para dañar a otras personas ni para intentar acceder a datos que no son tuyos. Sube solo fotos tuyas y que quieras compartir. Podemos suspender cuentas con uso indebido.']],
+    ['Disponibilidad y responsabilidad',[
+      'Hacemos lo posible por que la app funcione siempre, pero puede haber cortes o errores. Los cálculos son orientativos. Esto no limita los derechos que la ley te reconoce como consumidor.']],
+    ['Cambios y ley aplicable',[
+      'Podemos actualizar estas condiciones y te avisaremos en la app. Se rigen por la ley española; si eres consumidor, puedes acudir a los juzgados de tu domicilio.']],
+    ['Titular y contacto',['Titular: '+lgOwner()]]
+  ]);
+}
+function vLegal(){
+  return lgPage('Aviso legal',[
+    ['Titular del sitio',['En cumplimiento de la Ley 34/2002 (LSSI-CE): '+lgOwner()]],
+    ['Objeto',['Tupla es una aplicación web para el seguimiento de la alimentación y el peso, para personas y para nutricionistas.']],
+    ['Propiedad intelectual',['El código, el diseño y la marca Tupla pertenecen a su titular. Las tipografías Bricolage Grotesque e Inter se distribuyen con licencia SIL Open Font License (sus textos están en la carpeta de tipografías de la app).']],
+    ['Responsabilidad',['El contenido es orientativo y no constituye consejo médico. El titular no se hace responsable del uso que se haga de la información fuera de lo previsto en las condiciones de uso.']],
+    ['Ley aplicable',['Legislación española. Para consumidores, los juzgados de su domicilio.']]
+  ]);
+}
+function vProTerms(){
+  return lgPage('Condiciones para profesionales',[
+    ['Qué es esta herramienta',[
+      'Una aplicación para que tus clientes registren su alimentación y su peso, y para que tú puedas verlo, ajustar sus objetivos y menús y dejarles notas. Es una ayuda; no es un producto sanitario ni sustituye tu criterio profesional.']],
+    ['Tu condición profesional',[
+      'Declaras ser dietista-nutricionista, nutricionista u otro profesional que ejerce legalmente, y que el número de colegiado o de registro que indicas es real. Podemos pedirte que lo acredites y suspender la cuenta si no es así.']],
+    ['Quién es responsable de los datos',[
+      'Tú eres el responsable del tratamiento de los datos de salud de tus clientes que consultas con esta herramienta. El titular de la app actúa como encargado del tratamiento: los aloja y los pone a tu disposición solo para prestar el servicio, y no los usa para otros fines.']],
+    ['Encargo de tratamiento (art. 28 RGPD)',[
+      '- <b>Objeto y duración</b>: alojar y poner a tu disposición los datos de tus clientes vinculados mientras uses la app y esté vigente cada vínculo.',
+      '- <b>Datos y personas</b>: datos identificativos y de salud (peso, medidas, comidas, cuestionario, fotos, chat) de tus clientes.',
+      '- <b>Instrucciones</b>: el encargado trata los datos solo según tus instrucciones, que son las funciones de la app, y no los usa para otros fines.',
+      '- <b>Confidencialidad y seguridad</b>: personal obligado a confidencialidad y medidas técnicas adecuadas (cifrado en tránsito, control de acceso por cliente, almacenamiento privado).',
+      '- <b>Subencargados autorizados</b>: '+esc(LEGAL.host)+' (alojamiento)'+(LEGAL.region?', región '+esc(LEGAL.region):'')+'; proveedor de correo '+pend('nombre')+'; pasarela de pago para tus pagos. Te avisaremos antes de cambiarlos.',
+      '- <b>Ayuda con derechos y brechas</b>: te ayudaremos a atender los derechos de tus clientes y te avisaremos sin demora si detectamos una brecha de seguridad.',
+      '- <b>Al terminar</b>: puedes pedir que se supriman los datos o que se te devuelvan; el cliente puede borrar su cuenta cuando quiera.',
+      '- <b>Auditoría</b>: puedes pedir información para comprobar que se cumple este encargo.']],
+    ['Tus obligaciones',[
+      '- Informar a tus clientes de que usas esta herramienta y de para qué usas sus datos.',
+      '- Tener una base legal para tratar sus datos de salud (normalmente su consentimiento explícito, que la app recoge al vincular).',
+      '- Usar los datos solo para el seguimiento nutricional del propio cliente y guardar la confidencialidad.',
+      '- Dejar de acceder cuando el cliente revoque el vínculo o termine la relación profesional.',
+      '- No compartir tu cuenta ni tu código de invitación con terceros.',
+      '- Ser tú quien decide las pautas, los objetivos y los menús que das; la app solo es el medio.']],
+    ['Qué ve cada parte',[
+      'Al vincularse, el cliente comparte contigo las comidas, el peso, las medidas, el seguimiento, su foto de perfil si la pone y las notas del diario del perfil que elija. Las fotos de progreso solo las ves si el cliente decide compartirlas, y las pierdes de vista si deja de hacerlo. El cliente puede dejar de compartir en cualquier momento y entonces dejas de ver sus datos al instante. Tus notas privadas no las ve el cliente.']],
+    ['Prueba gratuita y precio',['La cuenta empieza en prueba gratuita con un máximo de clientes. Las condiciones económicas de la versión de pago se comunicarán antes de cobrar nada.']],
+    ['Titular y contacto',['Titular: '+lgOwner()]]
+  ]);
 }
 function accountCard(){
   if(!cloudOn()||!AUTH)return '';
-  var h='<section class="card"><h2>Cuenta y privacidad</h2><p class="muted">'+esc(AUTH.email)+' · <span id="sync2">'+syncLabel().replace(' ('+esc(AUTH.email)+')','')+'</span></p><div class="btns"><button class="btn sm" data-act="logout">Cerrar sesión</button>'+(PRO?'':'<button class="btn sm" data-act="acctexport">Descargar todos mis datos</button>')+'<button class="btn sm" data-act="privacy">Información de privacidad</button></div>';
+  var h='<section class="card"><h2>Cuenta y privacidad</h2><p class="muted">'+esc(AUTH.email)+' · <span id="sync2">'+syncLabel().replace(' ('+esc(AUTH.email)+')','')+'</span></p><div class="btns"><button class="btn sm" data-act="logout">Cerrar sesión</button>'+(PRO?'':'<button class="btn sm" data-act="acctexport">Descargar todos mis datos</button>')+'<button class="btn sm" data-act="privacy">Información de privacidad</button><button class="btn sm" data-act="terms">Condiciones de uso</button><button class="btn sm" data-act="legal">Aviso legal</button></div>';
   if(ui.delAcct){
     h+='<p class="note">Se borrarán para siempre tu cuenta, todos tus perfiles y sus registros, en el servidor y en este dispositivo. No se puede deshacer. Descarga antes una copia si quieres conservarla.</p><label class="fld"><span class="lb">Escribe BORRAR para confirmar</span><input type="text" data-au="delconfirm" value="'+esc(ui.au.delconfirm||'')+'" autocomplete="off" autocapitalize="characters"></label><div class="btns"><button class="btn danger sm" data-act="acctdel"'+(ui.busy?' disabled':'')+'>Borrar mi cuenta definitivamente</button><button class="btn sm" data-act="acctdelno">Cancelar</button></div>';
   } else h+='<div class="btns"><button class="btn danger sm" data-act="acctdel">Borrar mi cuenta</button></div>';
   return h+'</section>';
 }
 function exportAll(){
-  try{
-    var out={cuenta:AUTH.email,exportado:new Date().toISOString(),perfiles:[]};
-    INDEX.list.forEach(function(e){var raw=null;try{raw=JSON.parse(localStorage.getItem(e.key)||'null');}catch(x){}out.perfiles.push({id:e.id,nombre:e.name,tipo:e.type,datos:raw});});
-    var blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'}),a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);a.download='mis-datos-plan-'+todayS()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);toast('Datos descargados');
-  }catch(e){toast('No se pudieron descargar los datos');}
+  var out={cuenta:AUTH.email,exportado:new Date().toISOString(),version_textos_legales:LEGAL.v,perfiles:[]};
+  INDEX.list.forEach(function(e){var raw=null;try{raw=JSON.parse(localStorage.getItem(e.key)||'null');}catch(x){}out.perfiles.push({id:e.id,nombre:e.name,tipo:e.type,datos:raw});});
+  function save(){
+    try{
+      var blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'}),a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);a.download='mis-datos-tupla-'+todayS()+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href);},2000);toast('Datos descargados');
+    }catch(e){toast('No se pudieron descargar los datos');}
+  }
+  /* además de los perfiles: vínculos con nutricionistas, chat y fotos compartidas */
+  ensureToken().then(function(){
+    return sbReq('GET','/rest/v1/client_links?select=id,profile_id,status,consented_at,revoked_at,share_photos,professionals(name,business)&client_id=eq.'+AUTH.uid,null,AUTH.access);
+  }).then(function(links){
+    out.vinculos=links||[];
+    var ids=(links||[]).map(function(l){return l.id;});
+    var chat=ids.length?sbReq('GET','/rest/v1/chat_messages?select=link_id,sender_id,body,created_at,read_at&link_id=in.('+ids.join(',')+')&order=created_at.asc',null,AUTH.access):Promise.resolve([]);
+    return chat.then(function(m){out.chat=(m||[]).map(function(x){return {vinculo:x.link_id,enviado_por:x.sender_id===AUTH.uid?'mí':'mi nutricionista',texto:x.body,fecha:x.created_at,leido:x.read_at};});});
+  }).then(function(){
+    return sbReq('GET','/rest/v1/progress_photos?select=profile_id,id,date,angle&user_id=eq.'+AUTH.uid,null,AUTH.access).then(function(r){out.fotos_compartidas=r||[];},function(){});
+  }).then(save,function(){out.aviso='No se pudieron incluir los vínculos y el chat porque no hubo conexión.';save();});
 }
 function wipeLocal(){
   var uid=AUTH?AUTH.uid:'';
@@ -2389,7 +2517,7 @@ function proInit(){
   }).then(function(rows){
     if(rows&&rows[0]){PRO=rows[0];AUTH.pro=true;authStore();return PRO;}
     if(m.role==='pro'&&m.pname){
-      return sbReq('POST','/rest/v1/rpc/become_professional',{p_name:m.pname,p_business:m.pbiz||null},AUTH.access).then(function(r){
+      return sbReq('POST','/rest/v1/rpc/become_professional',{p_name:m.pname,p_business:m.pbiz||null,p_license:m.plic||null},AUTH.access).then(function(r){
         PRO=r;AUTH.pro=true;authStore();return PRO;
       });
     }
@@ -2498,7 +2626,7 @@ function vProInvite(){
     '<section class="card"><h2>Tu plan</h2><p>'+(trial?'<b>Prueba gratuita</b>: hasta '+PRO.max_clients+' clientes ('+n+' ahora).':PRO.status==='suspended'?'<b>Cuenta suspendida.</b> Contacta con quien administra la app.':'<b>Cuenta profesional activa</b>: sin límite de clientes.')+'</p>'+(trial?'<p class="muted">Cuando quieras ampliar el número de clientes, contacta con quien administra la app.</p>':'')+'</section>';
 }
 function vProAccount(){
-  return '<section class="card"><h2>Datos profesionales</h2><p class="muted">Tus clientes ven este nombre cuando se vinculan contigo.</p><div class="form"><label>Tu nombre<input type="text" data-au="pname" value="'+esc(ui.au.pname!=null?ui.au.pname:PRO.name)+'" maxlength="80" autocomplete="name"></label><label>Consulta o empresa (opcional)<input type="text" data-au="pbiz" value="'+esc(ui.au.pbiz!=null?ui.au.pbiz:(PRO.business||''))+'" maxlength="80"></label><button class="btn main" data-act="prosaveprof">Guardar</button></div></section>'+
+  return '<section class="card"><h2>Datos profesionales</h2><p class="muted">Tus clientes ven este nombre cuando se vinculan contigo.</p><div class="form"><label>Tu nombre<input type="text" data-au="pname" value="'+esc(ui.au.pname!=null?ui.au.pname:PRO.name)+'" maxlength="80" autocomplete="name"></label><label>Consulta o empresa (opcional)<input type="text" data-au="pbiz" value="'+esc(ui.au.pbiz!=null?ui.au.pbiz:(PRO.business||''))+'" maxlength="80"></label><label>Nº de colegiado o de registro profesional<input type="text" data-au="plic" value="'+esc(ui.au.plic!=null?ui.au.plic:(PRO.license||''))+'" maxlength="40" autocomplete="off"></label><button class="btn main" data-act="prosaveprof">Guardar</button></div></section>'+
     accountCard()+'<section class="card"><h2>Condiciones</h2><div class="btns"><button class="btn sm" data-act="proterms">Condiciones para profesionales</button><button class="btn sm" data-act="privacy">Información de privacidad</button></div></section>';
 }
 function vPro(){
@@ -2619,10 +2747,11 @@ function proSaveNote(c){
   },function(){toast('No se pudo guardar la nota');});
 }
 function proSaveProf(){
-  readAu();var nm=(ui.au.pname||'').trim(),bz=(ui.au.pbiz||'').trim();
+  readAu();var nm=(ui.au.pname||'').trim(),bz=(ui.au.pbiz||'').trim(),lic=(ui.au.plic||'').trim();
   if(!nm){toast('Escribe tu nombre');return;}
-  ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/become_professional',{p_name:nm,p_business:bz||null},AUTH.access);}).then(function(r){
-    PRO=r;ui.au.pname=null;ui.au.pbiz=null;render();toast('Datos guardados');
+  if(lic.length<3){toast('Escribe tu número de colegiado o de registro');return;}
+  ensureToken().then(function(){return sbReq('POST','/rest/v1/rpc/become_professional',{p_name:nm,p_business:bz||null,p_license:lic},AUTH.access);}).then(function(r){
+    PRO=r;ui.au.pname=null;ui.au.pbiz=null;ui.au.plic=null;render();toast('Datos guardados');
   },function(){toast('No se pudieron guardar los datos');});
 }
 function proRevoke(id){
@@ -2847,22 +2976,12 @@ setInterval(function(){
   if(ui.screen==='chat')chatLoad();
   else if(Date.now()-CH.at>40000)chatUnread();
 },8000);
-function vProTerms(){
-  return '<header class="top"><div class="brand"><span class="mark" aria-hidden="true"></span><h1>Condiciones para profesionales</h1></div></header><section class="card">'+
-    '<p class="note"><b>Borrador pendiente de revisión legal.</b> Este texto es una base de trabajo y debe ser revisado por un abogado antes de usar la app con clientes reales.</p>'+
-    '<h3>Qué es esta herramienta</h3><p>Una aplicación para que tus clientes registren su alimentación y su peso, y para que tú puedas verlo, ajustar sus objetivos y dejarles notas. Es una ayuda orientativa; no es un producto sanitario ni sustituye tu criterio profesional.</p>'+
-    '<h3>Quién es responsable de los datos</h3><p>Tú eres responsable del tratamiento de los datos de salud de tus clientes que consultas con esta herramienta. El titular de la app actúa como encargado del tratamiento: los aloja y los pone a tu disposición, solo para prestar el servicio, y no los usa para otros fines.</p>'+
-    '<h3>Tus obligaciones</h3><ul class="plain"><li>Informar a tus clientes de que usas esta herramienta y de para qué usas sus datos.</li><li>Tener una base legal para tratar sus datos de salud (normalmente su consentimiento explícito, que la app recoge al vincular).</li><li>Usar los datos solo para el seguimiento nutricional del propio cliente y guardar la confidencialidad.</li><li>Dejar de acceder cuando el cliente revoque el vínculo o termine la relación profesional.</li><li>No compartir las cuentas ni el código de invitación con terceros.</li></ul>'+
-    '<h3>Qué ve cada parte</h3><p>Al vincularse, el cliente comparte contigo las comidas, el peso, las medidas, el seguimiento, su foto de perfil si la pone y las notas del diario del perfil que elija. Las fotos de progreso solo las ves si el cliente decide compartirlas, y las pierdes de vista si deja de hacerlo. El cliente puede dejar de compartir en cualquier momento y entonces dejas de ver sus datos al instante. Tus notas privadas no las ve el cliente.</p>'+
-    '<h3>Prueba gratuita y precio</h3><p>La cuenta empieza en prueba gratuita con un máximo de clientes. Las condiciones económicas de la versión de pago se comunicarán antes de cobrar nada.</p>'+
-    '<div class="btns"><button class="btn main" data-act="privback">Volver</button></div></section>';
-}
 
 function render(){renderMain();chatBadges();}
 function renderMain(){
   var y=window.scrollY;
   if(ui.screen){
-    app.innerHTML=ui.screen==='welcome'?vWelcome():ui.screen==='profiles'?vProfiles():ui.screen==='auth'?vAuth():ui.screen==='newpw'?vNewPw():ui.screen==='claim'?vClaim():ui.screen==='privacy'?vPrivacy():ui.screen==='report'?vReport():ui.screen==='pro'?(PRO?vPro():'<p class="muted" style="padding:24px 16px">Cargando…</p>'):ui.screen==='proterms'?vProTerms():ui.screen==='chat'?vChat():vOnb();
+    app.innerHTML=ui.screen==='welcome'?vWelcome():ui.screen==='profiles'?vProfiles():ui.screen==='auth'?vAuth():ui.screen==='newpw'?vNewPw():ui.screen==='claim'?vClaim():ui.screen==='privacy'?vPrivacy():ui.screen==='terms'?vTerms():ui.screen==='legal'?vLegal():ui.screen==='report'?vReport():ui.screen==='pro'?(PRO?vPro():'<p class="muted" style="padding:24px 16px">Cargando…</p>'):ui.screen==='proterms'?vProTerms():ui.screen==='chat'?vChat():vOnb();
     document.title='Plan';
     return;
   }
@@ -2881,6 +3000,8 @@ function profileAct(a,b){
   var f=b.dataset.f,v=b.dataset.v,i;
   switch(a){
   case 'privacy':if(ui.screen==='auth')readAu();ui.prev=ui.screen;ui.screen='privacy';render();toTop();return true;
+  case 'terms':if(ui.screen==='auth')readAu();ui.prev=ui.screen;ui.screen='terms';render();toTop();return true;
+  case 'legal':if(ui.screen==='auth')readAu();ui.prev=ui.screen;ui.screen='legal';render();toTop();return true;
   case 'privback':ui.screen=ui.prev||null;ui.prev=null;render();toTop();return true;
   case 'acctexport':exportAll();return true;
   case 'recipe':ui.rcp=ui.rcp===b.dataset.k?null:b.dataset.k;render();return true;

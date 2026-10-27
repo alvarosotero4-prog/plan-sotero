@@ -29,3 +29,7 @@ Los datos de entreno que se registraron antes (fuerza) se conservan en el dispos
 - Pendiente: cobro (Stripe) y revisión legal de las condiciones para profesionales (ahora son un borrador).
 - Fotos de progreso: se guardan en el móvil del cliente. Si el cliente lo activa (casilla opcional al vincularse o botón en Ajustes, Cuenta y datos), se sube una copia a un almacenamiento privado de Supabase y el nutricionista la ve en la ficha del cliente (galería y comparador). Si el cliente deja de compartir, borra la foto o se desvincula, se elimina la copia. Requiere la sección 7 de `supabase/profesionales.sql`.
 - Foto de perfil: cada perfil puede tener una foto (Ajustes → Plan → Perfil). Se guarda como miniatura de 256 px dentro de los datos del perfil, y el nutricionista vinculado la ve en su lista de clientes y en la ficha para identificarlo.
+- Textos legales: la app incluye Aviso legal, Privacidad, Condiciones de uso y Condiciones para profesionales (con el encargo de tratamiento). Son borradores pendientes de revisión legal. Los datos del titular están en la constante `LEGAL` del código (nombre, NIF, domicilio, correo, región); cuando los rellenes y un abogado revise los textos, pon `draft:false`. Al crear la cuenta se guarda la versión y la fecha de lo aceptado.
+- Alta de profesionales: piden nº de colegiado o de registro (columna `license`; tú marcas `license_checked` cuando lo compruebes, ver comentarios al final del SQL).
+- Tipografías: Bricolage Grotesque e Inter van incluidas en la carpeta `fonts/` (licencia SIL OFL), no se cargan desde Google.
+
