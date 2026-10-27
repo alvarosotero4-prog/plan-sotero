@@ -519,11 +519,12 @@ function coachMenu(){return S.coach&&S.coach.menu&&typeof S.coach.menu==='object
 function nutriMode(){return proProf()||!!coachMenu();}
 function tgtOn(){return !proProf()||!!(S.coach&&S.coach.t);}
 /* el menú del nutricionista se carga solo en las comidas de hoy y de los días siguientes (una vez por día) */
+function mver(){var t=JSON.stringify(coachMenu()||''),h=0,i;for(i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))|0;return String(h);}
 function ensureMenu(d){
-  if(!coachMenu()||!d||diffDays(d,todayS())<0||S.ml[d])return;
+  if(!coachMenu()||!d||diffDays(d,todayS())<0||S.ml[d]===mver())return;
   var k=dayKind(d);S.logs[d]=S.logs[d]||{};
   slotsFor(d).forEach(function(sl){var cur=S.logs[d][sl.id];if(cur&&cur.length)return;var pl=planSlot(k,sl.id,d);if(pl.length)S.logs[d][sl.id]=pl.map(function(x){return {f:x.f,g:x.g};});});
-  S.ml[d]=true;save();
+  S.ml[d]=mver();save();
 }
 function coachSlot(slot,d){
   var m=coachMenu();
@@ -2353,9 +2354,10 @@ function coachApply(){
   var pp=Array.isArray(l.pro_plans)?l.pro_plans[0]:l.pro_plans,pr=l.professionals||{};
   if(Array.isArray(pr))pr=pr[0]||{};
   if(pp&&(!S.coach||S.coach.link!==l.id||(Date.parse(pp.updated_at)||0)>(Date.parse(S.coach.at)||0))){
+    var mv0=mver();
     S.coach={link:l.id,at:pp.updated_at,pro:pr.name||'',biz:pr.business||'',note:pp.note||'',t:pp.targets&&pp.targets.f&&pp.targets.r?clone(pp.targets):null,menu:pp.menu&&typeof pp.menu==='object'&&Object.keys(pp.menu).length?clone(pp.menu):null};
     if(S.coach.t)S.settings.t=clone(S.coach.t);
-    if(S.coach.menu){var tt0=todayS();Object.keys(S.ml||{}).forEach(function(x){if(diffDays(x,tt0)>0){delete S.ml[x];delete S.logs[x];}});}
+    if(S.coach.menu&&mver()!==mv0){var tt0=todayS();Object.keys(S.ml||{}).forEach(function(x){if(diffDays(x,tt0)>0){delete S.ml[x];delete S.logs[x];}});}
     save();toast('Tu nutricionista ha actualizado tu plan');return true;
   }
   return false;
