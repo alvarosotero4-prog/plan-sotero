@@ -127,6 +127,15 @@ input[type=text],input[type=time],input[type=email],input[type=password],select{
 .mac b small{font-size:14px;color:var(--ink2);font-weight:500}
 .mac .l{font-size:12px;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
 .mac.p i{background:var(--p)} .mac.c i{background:var(--c)} .mac.g i{background:var(--g)}
+.fold2{margin:10px 0}.fold2 summary{cursor:pointer;font-weight:600;padding:6px 0}
+.shopg h3{margin:0 0 6px}
+.shr{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
+.shopg h3+.shr{border-top:0}
+.shr input{width:22px;height:22px;accent-color:var(--accent);margin:0}
+.shr .shn{display:flex;flex-direction:column;min-width:0}
+.shr .shn small{color:var(--ink2);font-size:12.5px}
+.shr .shq{font-weight:600;white-space:nowrap}
+.shr.on .shn,.shr.on .shq{opacity:.5;text-decoration:line-through}
 .plan-line{font-size:13px;color:var(--ink2);border-top:1px solid var(--line);padding-top:10px}
 
 /* schedule list */
@@ -380,6 +389,7 @@ button:active:not(:disabled){transform:scale(.97)}
   border:1px solid var(--line);border-radius:26px;box-shadow:0 18px 40px -14px rgba(14,29,44,.35)}
 .tabs button{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:0;border-radius:20px;padding:8px 2px 7px;
   font-family:var(--font-b);font-size:11.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink2);background:none}
+.tabs.many button{font-size:10px;padding-inline:0}.tabs.many button svg{width:20px;height:20px}
 .tabs button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tabs button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent);border:0}
 .tabs button .bdg{position:absolute;top:4px;left:calc(50% + 6px);margin:0}
@@ -549,244 +559,244 @@ var BASE=[
 
 /* productos de Mercadona transcritos de la etiqueta (por 100 g; por 100 ml donde se indica). id = m + código de la hoja de cálculo */
 var MERC=[
-['m1','Aceite de coco virgen Hacendado',900,0,0,100,10,0],
-['m2','Aceite de girasol refinado 0,2º Hacendado',826,0,0,92,10,0],
-['m4','Aceite de oliva 0,4º Hacendado',822,0,0,91.4,10,0],
-['m6','Aceite de oliva 1º Hacendado',822,0,0,91.4,10,0],
-['m13','Aceite de oliva virgen extra Picual Casa Juncal',824,0,0,92,10,0],
-['m9001','Aceitera de oliva virgen extra Hacendado',822,0,0,91.4,10,0],
-['m114','Aceitunas negras sin hueso Hacendado',125,0.5,0,13,100,0],
-['m101','Aceitunas verdes Chupadedos Huerta de Barros partidas aliñadas',140,1.4,0,14,100,0],
-['m107','Aceitunas verdes rellenas de anchoa Hacendado',159,1.5,0,16,100,0],
-['m125','Aceitunas verdes sin hueso Hacendado',172,1,0,18,100,0],
-['m498','Alas de pollo adobadas picantes',172,18,3.3,9.6,100,0],
-['m495','Alas partidas de pollo',133,21,0,5.4,100,0],
-['m637','Albóndigas de cerdo',232,16,0,19,100,0],
-['m638','Albóndigas de pollo',167,17.9,1.4,9.6,100,0],
-['m38','Alioli con perejil Hacendado',685,0.6,1.2,75,15,0],
-['m57','Aliño de aceite con perejil y ajo Hacendado',739,0.7,8.2,78,30,0],
-['m39','Allioli Chovi',749,1.2,1.5,82,15,0],
-['m147','Almendra natural Hacendado',642,25.2,5.9,54.8,30,0],
-['m150','Almendra tostada Hacendado 0% sal añadida con piel',662,23.1,3,60.6,30,0],
-['m151','Almendra tostada y salada Hacendado con piel',626,22,4.3,55,30,0],
-['m9015','Altramuces Hacendado',105,12,9,1.7,100,0],
-['m281','Alubia blanca Hacendado (crudo)',292,21.4,40,1,100,0],
-['m282','Alubia cocida blanca Hacendado',83,5.8,10.7,0.4,200,0],
-['m286','Alubia cocida roja Hacendado',89,6.3,11.5,0.4,200,0],
-['m267','Arroz basmati aromático Hacendado (crudo)',355,9,78,0.6,80,0],
-['m268','Arroz cocido basmati Sabroz',158,3.3,31,2.1,125,125],
-['m269','Arroz cocido integral Sabroz',164,3.8,31,2.2,125,125],
-['m270','Arroz cocido redondo Sabroz',148,2.6,28,2.7,125,125],
-['m271','Arroz integral largo Hacendado (crudo)',350,7.6,72,2.8,80,0],
-['m272','Arroz largo Hacendado (crudo)',347,6.5,78,0.8,80,0],
-['m273','Arroz redondo Hacendado (crudo)',344,8.2,75,1,80,0],
-['m274','Arroz redondo J Sendra Hacendado (crudo)',349,6.7,78,0.9,80,0],
-['m276','Arroz redondo SOS (crudo)',351,7.3,77,1.3,80,0],
-['m9013','Arroz vaporizado Brillante',353,7.9,76,1.3,80,0],
-['m277','Arroz vaporizado Hacendado (crudo)',345,7.9,76,0.7,80,0],
-['m156','Avellana tostada Hacendado 0% sal añadida',710,18,3,68,30,0],
-['m690','Avena molida Hacendado',384,12.2,59.9,7.1,100,0],
-['m9012','Azúcar blanco Azucarera',400,0,100,0,10,0],
-['m366','Azúcar glas Hacendado',395,0,98,0,10,0],
-['m130','Banderillas Gildas Hacendado pinchos de aceituna, anchoa y guindilla',231,5.7,0.7,22.4,18.75,18.75],
-['m703','Barritas con proteínas sabor coco y chocolate Enervit Sport',402,26,45,13,40,40],
-['m500','Brochetas de pollo, pimiento verde y tocino de cerdo con varilla',154,15.3,0,10.3,100,0],
-['m641','Burger de cerdo',216,15,3.5,16,90,90],
-['m643','Burger de pavo y espinacas',129,14,1,6.9,120,120],
-['m644','Burger de pollo',123,16,1.6,5.8,90,90],
-['m647','Burger de vacuno',219,17,4.1,15,90,90],
-['m648','Burger de vacuno y cerdo',223,17,2.7,16,90,90],
-['m160','Cacahuete en polvo desgrasado +Proteínas 14 g 70% reducido en grasa',416,46.7,21,13.2,30,30],
-['m158','Cacahuete frito con sal Hacendado pelado',600,23,14,48.1,30,0],
-['m161','Cacahuete tostado Hacendado 0% sal añadida',595,25,10,48,30,0],
-['m480','Cacao puro en polvo La Chocolatera',375,25.5,16.3,16,100,0],
-['m481','Cacao soluble cero ColaCao (preparado)',324,12,44,5.8,100,0],
-['m9010','Café molido Colombia Hacendado 100 % arábica',341,15,15,14,10,0],
-['m9009','Café molido descafeinado Hacendado',327,14,13,13,10,0],
-['m9011','Café molido fuerte Hacendado',305,18,12,9.2,10,0],
-['m9008','Café molido mezcla Hacendado',321,17,18,9.5,10,0],
-['m9007','Café molido natural Hacendado',324,17,14,11,10,0],
-['m59','Carne de pimiento choricero Hacendado',37.6,1.6,5.3,0.6,30,0],
-['m549','Carrillada de cerdo',146,20.1,0,7.3,100,0],
-['m164','Castañas cocidas y peladas Hacendado',172,4.1,33,1.5,200,0],
-['m551','Cerdo a tacos',129,23.1,0,3.9,100,0],
-['m705','Cereales avena Crunchy Hacendado',390,13,66,5.8,100,0],
-['m706','Cereales avena Crunchy Hacendado de cacao',389,13,65,6.4,100,0],
-['m707','Cereales Cereal Mix Hacendado 0% azúcares añadidos',372,9.4,74.8,2.7,100,0],
-['m708','Cereales copos de maíz Corn Flakes Hacendado 0% azúcares añadidos',373,6.7,82,1.1,100,0],
-['m712','Cereales copos de trigo espelta integral Hacendado 0% azúcares añadidos',364,14.6,66,2.7,100,0],
-['m713','Cereales copos de trigo integral y arroz Hacendado 0% azúcares añadidos',373,10.3,75,1.6,100,0],
-['m722','Cereales crujientes avena tostada Hacendado con semillas y frutos secos',437,13,52,16,100,0],
-['m60','Chili con carne Hacendado (preparado)',114,8.2,7.7,4.7,420,420],
-['m405','Chocolate extrafino con leche Hacendado 0% azúcares añadidos',465,9,47,31,100,0],
-['m430','Chocolate negro 85% cacao Hacendado',597,12,20,49,100,0],
-['m552','Chuletas aguja de cerdo (preparado)',189,18,1,13,100,0],
-['m553','Chuletas de cerdo sajonia',112,11,3.2,6.3,100,0],
-['m503','Chuletas de pavo contramuslo',145,19,0,7.7,100,0],
-['m171','Cocktail frutos secos natural Hacendado',636,21,5.7,57,30,0],
-['m177','Combinado frutos secos Hacendado',494,14,36,31.3,30,0],
-['m461','Confitura de fresa Hacendado 0% azúcares añadidos',28,0.6,14.8,0,25,25],
-['m506','Contramuslos de pollo deshuesados y sin piel',116,25,0,1.7,100,0],
-['m724','Copos de avena sin gluten Hacendado',370,14,58,6.5,100,0],
-['m556','Costilla de cerdo churrasco',279,17.1,0,23.6,100,0],
-['m557','Costilla de cerdo ibérico adobada',320,15,0,29,100,0],
-['m558','Costillas de cerdo carnosas a tacos',279,17.1,0,23.6,100,0],
-['m278','Cous cous mediano Hacendado (seco)',346,12,69,1.6,80,0],
-['m436','Crema de cacahuete 100% Hacendado',608,30,12,47,15,15],
-['m19','Crema de vinagre balsámico de Módena Hacendado',178,1.1,41,0,10,0],
-['m508','Cuartos traseros familiar de pollo',224,19,0,16.5,100,0],
-['m178','Dátiles desecados sin hueso Hacendado',296,2.2,68,0,30,0],
-['m369','Edulcorante Eritritol y Sucralosa Hacendado',0,0,99.5,0,10,0],
-['m370','Edulcorante granulado stevia Hacendado',0,0,97.6,0,10,0],
-['m375','Edulcorante sacarina en sobres Hacendado',327,0,81.7,0,1,1],
-['m9004','Entrecot de vacuno añojo fino para barbacoa o plancha',161,22,0.6,8,100,0],
-['m302','Fideo cabello de ángel Hacendado (seco)',354,13,71,1.5,80,0],
-['m303','Fideo grueso Hacendado (seco)',361,13,72,1.5,80,0],
-['m304','Fideo mediano Hacendado (seco)',361,13,72,1.5,80,0],
-['m312','Fideos orientales Yatekomo sabor pollo Gallina Blanca (preparado)',96,2.5,12,4.1,290,290],
-['m313','Fideuá Hacendado (seco)',361,13,72,1.5,80,0],
-['m511','Filetes de pavo contramuslo',124,20,1,5,100,0],
-['m569','Filetes lomo de cerdo adobado',117,20,0.8,3.6,100,0],
-['m566','Filetes lomo de cerdo familiar',152,18,0,8.9,100,0],
-['m9003','Filetes lomo de vacuno añojo para plancha',145,23,0.5,5.7,100,0],
-['m512','Filetes pechuga de pavo',103,24,0,0.9,100,0],
-['m513','Filetes pechuga de pavo marinados extra tiernos',88,20,1,0.8,100,0],
-['m514','Filetes pechuga de pollo',106,24,0,1.1,100,0],
-['m515','Filetes pechuga de pollo certificado alimentado con un 50% de maíz',103,23,0.1,1.3,100,0],
-['m516','Filetes pechuga de pollo corte fino',106,24,0,1.1,100,0],
-['m534','Filetes pechuga de pollo finas hierbas marinadas',86.5,17.6,1.2,1.1,100,0],
-['m535','Filetes pechuga de pollo marinadas empanadas sin gluten',131,16.6,14.6,0.7,100,0],
-['m567','Filetes secreto de cerdo',146,19.1,0,7.5,100,0],
-['m686','Gallina',169,19.8,1.9,9.1,100,0],
-['m9014','Garbanza cocida Hacendado',90,5.5,9.5,2.2,200,0],
-['m291','Garbanzo cocido Hacendado',90,5.5,9.5,2.2,200,0],
-['m294','Garbanzo Hacendado (crudo)',348,18.6,47.5,6.1,100,0],
-['m295','Garbanzo lechoso Andaluz Hacendado (crudo)',341,21.3,44.6,4.7,100,0],
-['m445','Gotas de chocolate negro para fundir Hacendado',501,6,59,25,100,0],
-['m61','Guacamole Hacendado',149,1.9,2,13.7,30,0],
-['m606','Hamburguesa de cordero al romero',176,18.4,0.5,11.2,120,120],
-['m652','Hamburguesa de lomo de vacuno',240,19,0.5,18,120,120],
-['m646','Hamburguesa de vaca madurada',250,17,0.5,20,180,180],
-['m315','Hélices con vegetales Hacendado (seco)',362,13,72,1.5,80,0],
-['m520','Hígados y corazones de pollo',113,19,0,4.3,100,0],
-['m521','Jamoncitos de pollo',124,20,0,4.9,100,0],
-['m811','Jamón cocido extra Hacendado finas lonchas',101,18.6,0.9,2.5,200,0],
-['m815','Jamón cocido Hacendado lonchas',102,19,0.9,2.5,200,0],
-['m818','Jamón de pavo Hacendado finas lonchas',85,14,1.5,2.5,100,0],
-['m42','Ketchup Hacendado',115,1.3,27,0,15,0],
-['m568','Lagarto de cerdo',152,18,0,8.9,100,0],
-['m297','Lenteja cocida Hacendado',89,8.2,10.7,0.4,200,0],
-['m300','Lenteja pardina Hacendado (crudo)',320,24.5,48.1,1.2,100,0],
-['m20','Limón exprimido Hacendado',29,0,7.1,0,10,0],
-['m825','Longaniza de pavo extra Hacendado lonchas',315,31,3.1,18,100,0],
-['m617','Longaniza fresca de pollo (crudo)',130,16,2,6,100,0],
-['m616','Longaniza fresca estilo criollo (crudo)',318,16,1,30,100,0],
-['m316','Macarrón fino Hacendado (seco)',361,13,72,1.5,80,0],
-['m318','Macarrón Hacendado (seco)',354,13,71,1.5,80,0],
-['m346','Macarrón rayado integral Hacendado (seco)',345,13.5,62,2.4,80,0],
-['m524','Magret de pato',363,14,2.5,33,100,0],
-['m575','Manteca de cerdo Hacendado',899,0,0,99,100,0],
-['m45','Mayonesa Hacendado',599,0.6,2.4,65,15,0],
-['m48','Mayonesa Hellmann\'s',554,0.8,2.2,61,15,0],
-['m50','Mayonesa Ybarra',618,0.9,3.4,67,15,15],
-['m185','Maíz palomitas Hacendado',340,10,59,4.4,30,0],
-['m526','Medio pollo troceado',141,20.8,0,6.4,100,0],
-['m463','Mermelada de albaricoque Hacendado',194,0.5,48,0,25,25],
-['m464','Mermelada de arándanos Hacendado',206,0.5,49,0.5,20,0],
-['m465','Mermelada de ciruela y kiwi Hacendado',188,0,47,0,25,25],
-['m466','Mermelada de frambuesa Hacendado',188,0.7,43,0,20,0],
-['m467','Mermelada de fresa Hacendado',194,0.5,47,0,25,25],
-['m469','Mermelada de higo Hacendado',205,0.5,50,0,20,0],
-['m470','Mermelada de melocotón Hacendado',194,0.5,48,0,25,25],
-['m472','Mermelada de naranja amarga Hacendado',234,0.5,58,0,25,25],
-['m473','Mermelada de tomate Hacendado',194,0.5,48,0,25,25],
-['m9016','Miel de caña de azúcar Nuestra Señora del Carmen',290,0,75,0,20,0],
-['m475','Miel de flores Hacendado',333,0,83,0,20,0],
-['m477','Miel de naranjo Hacendado',333,0,83,0,20,0],
-['m51','Mostaza clásica Hacendado',75,3.8,2.3,5.3,15,0],
-['m52','Mostaza de Dijon Hacendado',149,7.2,1.8,11,15,0],
-['m730','Muesli Crunchy Hacendado con frutos secos',458,8,63,18,100,0],
-['m727','Muesli Crunchy Hacendado sin azúcares añadidos',401,8.8,52,12,100,0],
-['m733','Muesli Hacendado con frutas',361,9.1,59,7.6,100,0],
-['m529','Muslos de pollo deshuesados con piel',224,19,0,16.5,100,0],
-['m322','Noodles de arroz Hacendado (seco)',347,5.3,79,0.7,80,0],
-['m323','Noodles Ramen Hacendado (seco)',179,6.5,32,2.4,80,0],
-['m190','Nuez natural Hacendado',716,17,2.2,69.6,30,0],
-['m191','Nuez natural Hacendado pelada',716,17,2.2,69.6,30,0],
-['m193','Nuez Pecana natural Hacendado pelada',715,11,4,72.2,30,0],
-['m324','Pajaritas vegetales Hacendado (seco)',346,13,68,1.5,80,0],
-['m197','Palomitas de maíz con sal Hacendado para microondas',456,9.8,55,20,90,90],
-['m578','Panceta de cerdo',305,16.7,0,26.5,100,0],
-['m333','Pasta fresca gnocchi Hacendado',174,4.5,37.6,0.4,80,0],
-['m340','Pasta fusilli 100% lentejas rojas Felicia (seco)',334,26,50,1.7,80,0],
-['m351','Pasta trottole vegetales Hacendado (seco)',362,13,72,1.5,80,0],
-['m842','Pechuga de pollo 92% Hacendado lonchas',89,18.1,0,1.7,100,0],
-['m844','Pechuga de pollo braseada Hacendado lonchas',84,16.9,1.3,1.2,100,0],
-['m531','Pechugas enteras familiar de pollo',106,24,0,1.1,100,0],
-['m845','Pechuguita de pollo 99% La Carloteña asada al horno lonchas',125,26.8,0,2,100,0],
-['m142','Pepinillos pequeños Hacendado',17,1.5,1.1,0,100,0],
-['m202','Pipas de calabaza natural Hacendado peladas',566,38,2,44,30,0],
-['m208','Pipas girasol tostadas Hacendado gigante aguasal',636,28.7,5.5,53.7,30,0],
-['m209','Pipas girasol tostadas Hacendado gigante con sal',612,30.2,4,52.5,30,0],
-['m210','Pistacho natural Hacendado pelado',607,25,11.5,49.6,30,0],
-['m211','Pistacho tostado Hacendado 0% sal añadida',616,21.6,11,52.5,30,0],
-['m213','Pistacho tostado Hacendado con sal',616,22.8,10.6,51.5,30,0],
-['m846','Pollo 97% relleno La Carloteña asado al horno lonchas',166,18.5,1.7,9.5,100,0],
-['m453','Porciones de chocolate negro 72% cacao extrafino Hacendado',568,10,32,42,100,0],
-['m454','Porciones de Chocolate negro 85% cacao extrafino Hacendado',608,11,18,52,100,0],
-['m656','Preparado de carne picada cerdo',206,17,2,16,100,0],
-['m662','Preparado de carne picada vacuno',204,19,0.5,14,100,0],
-['m9005','Puchero vacuno y pollo',396,15.4,0,40.6,100,0],
-['m279','Quinoa cocida blanca y roja Sabroz',151,5.4,27,1.7,125,125],
-['m280','Quinoa Hacendado (crudo)',389,14,66,6.1,80,0],
-['m847','Salchichón de pavo extra Hacendado lonchas',273,25,5,17,100,0],
-['m64','Salsa Barbacoa Hacendado',147,1.1,35,0,30,0],
-['m66','Salsa Burger Hacendado (por 100 ml)',340,1.5,11.5,31.5,30,0],
-['m67','Salsa César Hacendado',342,2.3,13.5,31,30,0],
-['m84','Salsa de Soja Hacendado',66,7.3,6.3,0,30,0],
-['m85','Salsa de Soja sin gluten Hacendado',57,10,2,0,30,0],
-['m88','Salsa de tomate con Albahaca Hacendado',34,1.1,5.8,0,30,0],
-['m44','Salsa de tomate Zero sin azúcares añadidos Hacendado',83,1.7,17.8,0,15,0],
-['m73','Salsa fresca Queso Hacendado',120,4.9,5.4,8.7,30,0],
-['m53','Salsa Light Hacendado',292,0.8,4.7,30,15,0],
-['m77','Salsa Mexicana Hacendado',38,1.4,6.8,0.1,30,0],
-['m78','Salsa Miel y Mostaza Hacendado',158,1.3,36,1.1,30,0],
-['m54','Salsa Original Ligeresa (por 100 ml)',178,0.5,7.5,16,15,15],
-['m79','Salsa Pesto con albahaca Hacendado',570,5.9,7.7,57,30,0],
-['m81','Salsa Piri Piri Hacendado',14,0.6,0.7,0.7,30,0],
-['m86','Salsa Teriyaki Hacendado (por 100 ml)',188,3.9,41.6,0,30,0],
-['m91','Salsa Yogur Hacendado',257,0.8,8.7,23.9,30,0],
-['m9006','Sangre hervida de pollo',52,12.1,0.1,0.33,100,0],
-['m215','Semillas de chía Hacendado',464,22,2.6,34,30,0],
-['m378','Sirope de agave Hacendado',309,0,77.2,0,10,0],
-['m301','Soja texturizada Luengo (crudo)',361,50,13,8.8,100,0],
-['m587','Solomillo de cerdo',131,21,0,5.1,100,0],
-['m541','Solomillo de pavo',96,23,1,0.5,100,0],
-['m9002','Solomillo de vacuno añojo para plancha',116,21,0.5,3.3,100,0],
-['m543','Solomillos de pollo',106,24,0,1.1,100,0],
-['m355','Spaghetti fino Hacendado (seco)',361,13,72,1.5,80,0],
-['m356','Spaghetti Hacendado (seco)',354,13,71,1.5,80,0],
-['m359','Spaghetti integral Hacendado (seco)',345,13.5,62,2.4,80,0],
-['m360','Spaghetti sin gluten Felicia (seco)',341,6.3,73,2,80,0],
-['m674','Steak Tartar de vacuno marinado',111,16,2.8,4,100,0],
-['m546','Tacos de pavo',108,21,0,2.9,100,0],
-['m361','Tallarines Hacendado (seco)',361,13,72,1.5,80,0],
-['m547','Taquitos de pollo',98,22,0,1.2,100,0],
-['m850','Tiras de pechuga pollo 99% al horno Hacendado',107,23.4,0.6,1.2,100,0],
-['m92','Tomate frito estilo casero Hacendado',104,2,12.4,5,30,0],
-['m96','Tomate frito Hacendado',81,1.4,11.6,3,30,0],
-['m93','Tomate frito Hacendado con aceite de oliva',77,1.5,9.5,3.5,30,0],
-['m98','Tomate frito receta artesana Hacendado',201,1.6,14.3,15,30,0],
-['m100','Tomate frito sin azúcares añadidos Hacendado',65,1.5,6.5,3.5,30,0],
-['m800','Tortitas de arroz con chocolate blanco sabor yogur Hacendado',467,7.2,63,20,100,0],
-['m802','Tortitas de arroz Hacendado',363,8.5,75,2.8,100,0],
-['m803','Tortitas de legumbres y arroz Hacendado',366,25,55,3.1,100,0],
-['m804','Tortitas de maíz campestre Hacendado',414,6.7,76,8.4,100,0],
-['m807','Tortitas de maíz con sabor a jamón Hacendado',417,7,77,8.7,100,0],
-['m34','Vinagre balsámico de Módena Hacendado',123,1,25,0,10,0],
-['m35','Vinagre de Jerez reserva Hacendado',37,0,0,0,10,0],
-['m36','Vinagre de manzana Hacendado',17,0,0,0,10,0]
-].map(function(a){return {id:a[0],name:a[1],kcal:a[2],p:a[3],c:a[4],g:a[5],def:a[6],piece:a[7]||0,mer:true};});
+['m1','Aceite de coco virgen Hacendado',900,0,0,100,10,0,'de',450,1],
+['m2','Aceite de girasol refinado 0,2º Hacendado',826,0,0,92,10,0,'de',1000,1],
+['m4','Aceite de oliva 0,4º Hacendado',822,0,0,91.4,10,0,'de',1000,1],
+['m6','Aceite de oliva 1º Hacendado',822,0,0,91.4,10,0,'de',1000,1],
+['m13','Aceite de oliva virgen extra Picual Casa Juncal',824,0,0,92,10,0,'de',500,1],
+['m9001','Aceitera de oliva virgen extra Hacendado',822,0,0,91.4,10,0,'de',700,1],
+['m114','Aceitunas negras sin hueso Hacendado',125,0.5,0,13,100,0,'de',0,0],
+['m101','Aceitunas verdes Chupadedos Huerta de Barros partidas aliñadas',140,1.4,0,14,100,0,'de',0,0],
+['m107','Aceitunas verdes rellenas de anchoa Hacendado',159,1.5,0,16,100,0,'de',0,0],
+['m125','Aceitunas verdes sin hueso Hacendado',172,1,0,18,100,0,'de',0,0],
+['m498','Alas de pollo adobadas picantes',172,18,3.3,9.6,100,0,'ca',510,0],
+['m495','Alas partidas de pollo',133,21,0,5.4,100,0,'ca',530,0],
+['m637','Albóndigas de cerdo',232,16,0,19,100,0,'ca',840,0],
+['m638','Albóndigas de pollo',167,17.9,1.4,9.6,100,0,'ca',840,0],
+['m38','Alioli con perejil Hacendado',685,0.6,1.2,75,15,0,'de',310,1],
+['m57','Aliño de aceite con perejil y ajo Hacendado',739,0.7,8.2,78,30,0,'de',150,1],
+['m39','Allioli Chovi',749,1.2,1.5,82,15,0,'de',180,1],
+['m147','Almendra natural Hacendado',642,25.2,5.9,54.8,30,0,'de',200,0],
+['m150','Almendra tostada Hacendado 0% sal añadida con piel',662,23.1,3,60.6,30,0,'de',200,0],
+['m151','Almendra tostada y salada Hacendado con piel',626,22,4.3,55,30,0,'de',200,0],
+['m9015','Altramuces Hacendado',105,12,9,1.7,100,0,'de',0,0],
+['m281','Alubia blanca Hacendado (crudo)',292,21.4,40,1,100,0,'de',1000,0],
+['m282','Alubia cocida blanca Hacendado',83,5.8,10.7,0.4,200,0,'de',0,0],
+['m286','Alubia cocida roja Hacendado',89,6.3,11.5,0.4,200,0,'de',0,0],
+['m267','Arroz basmati aromático Hacendado (crudo)',355,9,78,0.6,80,0,'pa',1000,0],
+['m268','Arroz cocido basmati Sabroz',158,3.3,31,2.1,125,125,'pa',250,0],
+['m269','Arroz cocido integral Sabroz',164,3.8,31,2.2,125,125,'pa',250,0],
+['m270','Arroz cocido redondo Sabroz',148,2.6,28,2.7,125,125,'pa',250,0],
+['m271','Arroz integral largo Hacendado (crudo)',350,7.6,72,2.8,80,0,'pa',1000,0],
+['m272','Arroz largo Hacendado (crudo)',347,6.5,78,0.8,80,0,'pa',1000,0],
+['m273','Arroz redondo Hacendado (crudo)',344,8.2,75,1,80,0,'pa',1000,0],
+['m274','Arroz redondo J Sendra Hacendado (crudo)',349,6.7,78,0.9,80,0,'pa',1000,0],
+['m276','Arroz redondo SOS (crudo)',351,7.3,77,1.3,80,0,'pa',1000,0],
+['m9013','Arroz vaporizado Brillante',353,7.9,76,1.3,80,0,'pa',1000,0],
+['m277','Arroz vaporizado Hacendado (crudo)',345,7.9,76,0.7,80,0,'pa',1000,0],
+['m156','Avellana tostada Hacendado 0% sal añadida',710,18,3,68,30,0,'de',200,0],
+['m690','Avena molida Hacendado',384,12.2,59.9,7.1,100,0,'pa',500,0],
+['m9012','Azúcar blanco Azucarera',400,0,100,0,10,0,'de',1000,0],
+['m366','Azúcar glas Hacendado',395,0,98,0,10,0,'de',500,0],
+['m130','Banderillas Gildas Hacendado pinchos de aceituna, anchoa y guindilla',231,5.7,0.7,22.4,18.75,18.75,'de',0,0],
+['m703','Barritas con proteínas sabor coco y chocolate Enervit Sport',402,26,45,13,40,40,'pa',120,0],
+['m500','Brochetas de pollo, pimiento verde y tocino de cerdo con varilla',154,15.3,0,10.3,100,0,'ca',370,0],
+['m641','Burger de cerdo',216,15,3.5,16,90,90,'ca',540,0],
+['m643','Burger de pavo y espinacas',129,14,1,6.9,120,120,'ca',240,0],
+['m644','Burger de pollo',123,16,1.6,5.8,90,90,'ca',540,0],
+['m647','Burger de vacuno',219,17,4.1,15,90,90,'ca',540,0],
+['m648','Burger de vacuno y cerdo',223,17,2.7,16,90,90,'ca',540,0],
+['m160','Cacahuete en polvo desgrasado +Proteínas 14 g 70% reducido en grasa',416,46.7,21,13.2,30,30,'de',0,0],
+['m158','Cacahuete frito con sal Hacendado pelado',600,23,14,48.1,30,0,'de',250,0],
+['m161','Cacahuete tostado Hacendado 0% sal añadida',595,25,10,48,30,0,'de',400,0],
+['m480','Cacao puro en polvo La Chocolatera',375,25.5,16.3,16,100,0,'de',265,0],
+['m481','Cacao soluble cero ColaCao (preparado)',324,12,44,5.8,100,0,'de',0,0],
+['m9010','Café molido Colombia Hacendado 100 % arábica',341,15,15,14,10,0,'de',0,0],
+['m9009','Café molido descafeinado Hacendado',327,14,13,13,10,0,'de',0,0],
+['m9011','Café molido fuerte Hacendado',305,18,12,9.2,10,0,'de',0,0],
+['m9008','Café molido mezcla Hacendado',321,17,18,9.5,10,0,'de',0,0],
+['m9007','Café molido natural Hacendado',324,17,14,11,10,0,'de',0,0],
+['m59','Carne de pimiento choricero Hacendado',37.6,1.6,5.3,0.6,30,0,'de',140,0],
+['m549','Carrillada de cerdo',146,20.1,0,7.3,100,0,'ca',500,0],
+['m164','Castañas cocidas y peladas Hacendado',172,4.1,33,1.5,200,0,'de',100,0],
+['m551','Cerdo a tacos',129,23.1,0,3.9,100,0,'ca',560,0],
+['m705','Cereales avena Crunchy Hacendado',390,13,66,5.8,100,0,'pa',400,0],
+['m706','Cereales avena Crunchy Hacendado de cacao',389,13,65,6.4,100,0,'pa',400,0],
+['m707','Cereales Cereal Mix Hacendado 0% azúcares añadidos',372,9.4,74.8,2.7,100,0,'pa',375,0],
+['m708','Cereales copos de maíz Corn Flakes Hacendado 0% azúcares añadidos',373,6.7,82,1.1,100,0,'pa',0,0],
+['m712','Cereales copos de trigo espelta integral Hacendado 0% azúcares añadidos',364,14.6,66,2.7,100,0,'pa',400,0],
+['m713','Cereales copos de trigo integral y arroz Hacendado 0% azúcares añadidos',373,10.3,75,1.6,100,0,'pa',500,0],
+['m722','Cereales crujientes avena tostada Hacendado con semillas y frutos secos',437,13,52,16,100,0,'pa',400,0],
+['m60','Chili con carne Hacendado (preparado)',114,8.2,7.7,4.7,420,420,'de',0,0],
+['m405','Chocolate extrafino con leche Hacendado 0% azúcares añadidos',465,9,47,31,100,0,'de',100,0],
+['m430','Chocolate negro 85% cacao Hacendado',597,12,20,49,100,0,'de',100,0],
+['m552','Chuletas aguja de cerdo (preparado)',189,18,1,13,100,0,'ca',0,0],
+['m553','Chuletas de cerdo sajonia',112,11,3.2,6.3,100,0,'ca',400,0],
+['m503','Chuletas de pavo contramuslo',145,19,0,7.7,100,0,'ca',460,0],
+['m171','Cocktail frutos secos natural Hacendado',636,21,5.7,57,30,0,'de',200,0],
+['m177','Combinado frutos secos Hacendado',494,14,36,31.3,30,0,'de',200,0],
+['m461','Confitura de fresa Hacendado 0% azúcares añadidos',28,0.6,14.8,0,25,25,'de',0,0],
+['m506','Contramuslos de pollo deshuesados y sin piel',116,25,0,1.7,100,0,'ca',550,0],
+['m724','Copos de avena sin gluten Hacendado',370,14,58,6.5,100,0,'pa',500,0],
+['m556','Costilla de cerdo churrasco',279,17.1,0,23.6,100,0,'ca',900,0],
+['m557','Costilla de cerdo ibérico adobada',320,15,0,29,100,0,'ca',500,0],
+['m558','Costillas de cerdo carnosas a tacos',279,17.1,0,23.6,100,0,'ca',620,0],
+['m278','Cous cous mediano Hacendado (seco)',346,12,69,1.6,80,0,'pa',1000,0],
+['m436','Crema de cacahuete 100% Hacendado',608,30,12,47,15,15,'de',500,0],
+['m19','Crema de vinagre balsámico de Módena Hacendado',178,1.1,41,0,10,0,'de',250,0],
+['m508','Cuartos traseros familiar de pollo',224,19,0,16.5,100,0,'ca',1600,0],
+['m178','Dátiles desecados sin hueso Hacendado',296,2.2,68,0,30,0,'de',250,0],
+['m369','Edulcorante Eritritol y Sucralosa Hacendado',0,0,99.5,0,10,0,'de',200,0],
+['m370','Edulcorante granulado stevia Hacendado',0,0,97.6,0,10,0,'de',200,0],
+['m375','Edulcorante sacarina en sobres Hacendado',327,0,81.7,0,1,1,'de',60,0],
+['m9004','Entrecot de vacuno añojo fino para barbacoa o plancha',161,22,0.6,8,100,0,'ca',500,0],
+['m302','Fideo cabello de ángel Hacendado (seco)',354,13,71,1.5,80,0,'pa',500,0],
+['m303','Fideo grueso Hacendado (seco)',361,13,72,1.5,80,0,'pa',500,0],
+['m304','Fideo mediano Hacendado (seco)',361,13,72,1.5,80,0,'pa',500,0],
+['m312','Fideos orientales Yatekomo sabor pollo Gallina Blanca (preparado)',96,2.5,12,4.1,290,290,'pa',0,0],
+['m313','Fideuá Hacendado (seco)',361,13,72,1.5,80,0,'pa',500,0],
+['m511','Filetes de pavo contramuslo',124,20,1,5,100,0,'ca',600,0],
+['m569','Filetes lomo de cerdo adobado',117,20,0.8,3.6,100,0,'ca',470,0],
+['m566','Filetes lomo de cerdo familiar',152,18,0,8.9,100,0,'ca',990,0],
+['m9003','Filetes lomo de vacuno añojo para plancha',145,23,0.5,5.7,100,0,'ca',500,0],
+['m512','Filetes pechuga de pavo',103,24,0,0.9,100,0,'ca',580,0],
+['m513','Filetes pechuga de pavo marinados extra tiernos',88,20,1,0.8,100,0,'ca',600,0],
+['m514','Filetes pechuga de pollo',106,24,0,1.1,100,0,'ca',520,0],
+['m515','Filetes pechuga de pollo certificado alimentado con un 50% de maíz',103,23,0.1,1.3,100,0,'ca',590,0],
+['m516','Filetes pechuga de pollo corte fino',106,24,0,1.1,100,0,'ca',500,0],
+['m534','Filetes pechuga de pollo finas hierbas marinadas',86.5,17.6,1.2,1.1,100,0,'ca',600,0],
+['m535','Filetes pechuga de pollo marinadas empanadas sin gluten',131,16.6,14.6,0.7,100,0,'ca',480,0],
+['m567','Filetes secreto de cerdo',146,19.1,0,7.5,100,0,'ca',470,0],
+['m686','Gallina',169,19.8,1.9,9.1,100,0,'ca',450,0],
+['m9014','Garbanza cocida Hacendado',90,5.5,9.5,2.2,200,0,'de',0,0],
+['m291','Garbanzo cocido Hacendado',90,5.5,9.5,2.2,200,0,'de',0,0],
+['m294','Garbanzo Hacendado (crudo)',348,18.6,47.5,6.1,100,0,'de',1000,0],
+['m295','Garbanzo lechoso Andaluz Hacendado (crudo)',341,21.3,44.6,4.7,100,0,'de',1000,0],
+['m445','Gotas de chocolate negro para fundir Hacendado',501,6,59,25,100,0,'de',250,0],
+['m61','Guacamole Hacendado',149,1.9,2,13.7,30,0,'de',500,0],
+['m606','Hamburguesa de cordero al romero',176,18.4,0.5,11.2,120,120,'ca',240,0],
+['m652','Hamburguesa de lomo de vacuno',240,19,0.5,18,120,120,'ca',240,0],
+['m646','Hamburguesa de vaca madurada',250,17,0.5,20,180,180,'ca',180,0],
+['m315','Hélices con vegetales Hacendado (seco)',362,13,72,1.5,80,0,'pa',1000,0],
+['m520','Hígados y corazones de pollo',113,19,0,4.3,100,0,'ca',390,0],
+['m521','Jamoncitos de pollo',124,20,0,4.9,100,0,'ca',920,0],
+['m811','Jamón cocido extra Hacendado finas lonchas',101,18.6,0.9,2.5,200,0,'ca',200,0],
+['m815','Jamón cocido Hacendado lonchas',102,19,0.9,2.5,200,0,'ca',200,0],
+['m818','Jamón de pavo Hacendado finas lonchas',85,14,1.5,2.5,100,0,'ca',225,0],
+['m42','Ketchup Hacendado',115,1.3,27,0,15,0,'de',600,0],
+['m568','Lagarto de cerdo',152,18,0,8.9,100,0,'ca',500,0],
+['m297','Lenteja cocida Hacendado',89,8.2,10.7,0.4,200,0,'de',0,0],
+['m300','Lenteja pardina Hacendado (crudo)',320,24.5,48.1,1.2,100,0,'de',1000,0],
+['m20','Limón exprimido Hacendado',29,0,7.1,0,10,0,'de',280,1],
+['m825','Longaniza de pavo extra Hacendado lonchas',315,31,3.1,18,100,0,'ca',125,0],
+['m617','Longaniza fresca de pollo (crudo)',130,16,2,6,100,0,'ca',550,0],
+['m616','Longaniza fresca estilo criollo (crudo)',318,16,1,30,100,0,'ca',380,0],
+['m316','Macarrón fino Hacendado (seco)',361,13,72,1.5,80,0,'pa',500,0],
+['m318','Macarrón Hacendado (seco)',354,13,71,1.5,80,0,'pa',1000,0],
+['m346','Macarrón rayado integral Hacendado (seco)',345,13.5,62,2.4,80,0,'pa',500,0],
+['m524','Magret de pato',363,14,2.5,33,100,0,'ca',380,0],
+['m575','Manteca de cerdo Hacendado',899,0,0,99,100,0,'ca',220,0],
+['m45','Mayonesa Hacendado',599,0.6,2.4,65,15,0,'de',490,1],
+['m48','Mayonesa Hellmann\'s',554,0.8,2.2,61,15,0,'de',450,1],
+['m50','Mayonesa Ybarra',618,0.9,3.4,67,15,15,'de',0,0],
+['m185','Maíz palomitas Hacendado',340,10,59,4.4,30,0,'de',300,0],
+['m526','Medio pollo troceado',141,20.8,0,6.4,100,0,'ca',900,0],
+['m463','Mermelada de albaricoque Hacendado',194,0.5,48,0,25,25,'de',440,0],
+['m464','Mermelada de arándanos Hacendado',206,0.5,49,0.5,20,0,'de',330,0],
+['m465','Mermelada de ciruela y kiwi Hacendado',188,0,47,0,25,25,'de',340,0],
+['m466','Mermelada de frambuesa Hacendado',188,0.7,43,0,20,0,'de',340,0],
+['m467','Mermelada de fresa Hacendado',194,0.5,47,0,25,25,'de',0,0],
+['m469','Mermelada de higo Hacendado',205,0.5,50,0,20,0,'de',340,0],
+['m470','Mermelada de melocotón Hacendado',194,0.5,48,0,25,25,'de',440,0],
+['m472','Mermelada de naranja amarga Hacendado',234,0.5,58,0,25,25,'de',440,0],
+['m473','Mermelada de tomate Hacendado',194,0.5,48,0,25,25,'de',440,0],
+['m9016','Miel de caña de azúcar Nuestra Señora del Carmen',290,0,75,0,20,0,'de',300,0],
+['m475','Miel de flores Hacendado',333,0,83,0,20,0,'de',1000,0],
+['m477','Miel de naranjo Hacendado',333,0,83,0,20,0,'de',500,0],
+['m51','Mostaza clásica Hacendado',75,3.8,2.3,5.3,15,0,'de',388,0],
+['m52','Mostaza de Dijon Hacendado',149,7.2,1.8,11,15,0,'de',200,0],
+['m730','Muesli Crunchy Hacendado con frutos secos',458,8,63,18,100,0,'pa',500,0],
+['m727','Muesli Crunchy Hacendado sin azúcares añadidos',401,8.8,52,12,100,0,'pa',500,0],
+['m733','Muesli Hacendado con frutas',361,9.1,59,7.6,100,0,'pa',0,0],
+['m529','Muslos de pollo deshuesados con piel',224,19,0,16.5,100,0,'ca',500,0],
+['m322','Noodles de arroz Hacendado (seco)',347,5.3,79,0.7,80,0,'pa',200,0],
+['m323','Noodles Ramen Hacendado (seco)',179,6.5,32,2.4,80,0,'pa',200,0],
+['m190','Nuez natural Hacendado',716,17,2.2,69.6,30,0,'de',600,0],
+['m191','Nuez natural Hacendado pelada',716,17,2.2,69.6,30,0,'de',200,0],
+['m193','Nuez Pecana natural Hacendado pelada',715,11,4,72.2,30,0,'de',200,0],
+['m324','Pajaritas vegetales Hacendado (seco)',346,13,68,1.5,80,0,'pa',500,0],
+['m197','Palomitas de maíz con sal Hacendado para microondas',456,9.8,55,20,90,90,'de',0,0],
+['m578','Panceta de cerdo',305,16.7,0,26.5,100,0,'ca',550,0],
+['m333','Pasta fresca gnocchi Hacendado',174,4.5,37.6,0.4,80,0,'pa',500,0],
+['m340','Pasta fusilli 100% lentejas rojas Felicia (seco)',334,26,50,1.7,80,0,'pa',250,0],
+['m351','Pasta trottole vegetales Hacendado (seco)',362,13,72,1.5,80,0,'pa',500,0],
+['m842','Pechuga de pollo 92% Hacendado lonchas',89,18.1,0,1.7,100,0,'ca',200,0],
+['m844','Pechuga de pollo braseada Hacendado lonchas',84,16.9,1.3,1.2,100,0,'ca',225,0],
+['m531','Pechugas enteras familiar de pollo',106,24,0,1.1,100,0,'ca',1090,0],
+['m845','Pechuguita de pollo 99% La Carloteña asada al horno lonchas',125,26.8,0,2,100,0,'ca',125,0],
+['m142','Pepinillos pequeños Hacendado',17,1.5,1.1,0,100,0,'de',0,0],
+['m202','Pipas de calabaza natural Hacendado peladas',566,38,2,44,30,0,'de',200,0],
+['m208','Pipas girasol tostadas Hacendado gigante aguasal',636,28.7,5.5,53.7,30,0,'de',200,0],
+['m209','Pipas girasol tostadas Hacendado gigante con sal',612,30.2,4,52.5,30,0,'de',200,0],
+['m210','Pistacho natural Hacendado pelado',607,25,11.5,49.6,30,0,'de',100,0],
+['m211','Pistacho tostado Hacendado 0% sal añadida',616,21.6,11,52.5,30,0,'de',250,0],
+['m213','Pistacho tostado Hacendado con sal',616,22.8,10.6,51.5,30,0,'de',250,0],
+['m846','Pollo 97% relleno La Carloteña asado al horno lonchas',166,18.5,1.7,9.5,100,0,'ca',150,0],
+['m453','Porciones de chocolate negro 72% cacao extrafino Hacendado',568,10,32,42,100,0,'de',200,0],
+['m454','Porciones de Chocolate negro 85% cacao extrafino Hacendado',608,11,18,52,100,0,'de',200,0],
+['m656','Preparado de carne picada cerdo',206,17,2,16,100,0,'ca',500,0],
+['m662','Preparado de carne picada vacuno',204,19,0.5,14,100,0,'ca',400,0],
+['m9005','Puchero vacuno y pollo',396,15.4,0,40.6,100,0,'ca',1200,0],
+['m279','Quinoa cocida blanca y roja Sabroz',151,5.4,27,1.7,125,125,'pa',250,0],
+['m280','Quinoa Hacendado (crudo)',389,14,66,6.1,80,0,'pa',500,0],
+['m847','Salchichón de pavo extra Hacendado lonchas',273,25,5,17,100,0,'ca',150,0],
+['m64','Salsa Barbacoa Hacendado',147,1.1,35,0,30,0,'de',350,0],
+['m66','Salsa Burger Hacendado (por 100 ml)',340,1.5,11.5,31.5,30,0,'de',250,1],
+['m67','Salsa César Hacendado',342,2.3,13.5,31,30,0,'de',310,1],
+['m84','Salsa de Soja Hacendado',66,7.3,6.3,0,30,0,'de',250,1],
+['m85','Salsa de Soja sin gluten Hacendado',57,10,2,0,30,0,'de',250,1],
+['m88','Salsa de tomate con Albahaca Hacendado',34,1.1,5.8,0,30,0,'de',400,0],
+['m44','Salsa de tomate Zero sin azúcares añadidos Hacendado',83,1.7,17.8,0,15,0,'de',600,0],
+['m73','Salsa fresca Queso Hacendado',120,4.9,5.4,8.7,30,0,'de',180,0],
+['m53','Salsa Light Hacendado',292,0.8,4.7,30,15,0,'de',500,1],
+['m77','Salsa Mexicana Hacendado',38,1.4,6.8,0.1,30,0,'de',300,0],
+['m78','Salsa Miel y Mostaza Hacendado',158,1.3,36,1.1,30,0,'de',340,0],
+['m54','Salsa Original Ligeresa (por 100 ml)',178,0.5,7.5,16,15,15,'de',0,0],
+['m79','Salsa Pesto con albahaca Hacendado',570,5.9,7.7,57,30,0,'de',190,0],
+['m81','Salsa Piri Piri Hacendado',14,0.6,0.7,0.7,30,0,'de',195,1],
+['m86','Salsa Teriyaki Hacendado (por 100 ml)',188,3.9,41.6,0,30,0,'de',250,1],
+['m91','Salsa Yogur Hacendado',257,0.8,8.7,23.9,30,0,'de',310,1],
+['m9006','Sangre hervida de pollo',52,12.1,0.1,0.33,100,0,'ca',500,0],
+['m215','Semillas de chía Hacendado',464,22,2.6,34,30,0,'de',250,0],
+['m378','Sirope de agave Hacendado',309,0,77.2,0,10,0,'de',350,0],
+['m301','Soja texturizada Luengo (crudo)',361,50,13,8.8,100,0,'de',200,0],
+['m587','Solomillo de cerdo',131,21,0,5.1,100,0,'ca',500,0],
+['m541','Solomillo de pavo',96,23,1,0.5,100,0,'ca',600,0],
+['m9002','Solomillo de vacuno añojo para plancha',116,21,0.5,3.3,100,0,'ca',300,0],
+['m543','Solomillos de pollo',106,24,0,1.1,100,0,'ca',400,0],
+['m355','Spaghetti fino Hacendado (seco)',361,13,72,1.5,80,0,'pa',500,0],
+['m356','Spaghetti Hacendado (seco)',354,13,71,1.5,80,0,'pa',1000,0],
+['m359','Spaghetti integral Hacendado (seco)',345,13.5,62,2.4,80,0,'pa',500,0],
+['m360','Spaghetti sin gluten Felicia (seco)',341,6.3,73,2,80,0,'pa',500,0],
+['m674','Steak Tartar de vacuno marinado',111,16,2.8,4,100,0,'ca',200,0],
+['m546','Tacos de pavo',108,21,0,2.9,100,0,'ca',570,0],
+['m361','Tallarines Hacendado (seco)',361,13,72,1.5,80,0,'pa',500,0],
+['m547','Taquitos de pollo',98,22,0,1.2,100,0,'ca',360,0],
+['m850','Tiras de pechuga pollo 99% al horno Hacendado',107,23.4,0.6,1.2,100,0,'ca',140,0],
+['m92','Tomate frito estilo casero Hacendado',104,2,12.4,5,30,0,'de',380,0],
+['m96','Tomate frito Hacendado',81,1.4,11.6,3,30,0,'de',560,0],
+['m93','Tomate frito Hacendado con aceite de oliva',77,1.5,9.5,3.5,30,0,'de',630,0],
+['m98','Tomate frito receta artesana Hacendado',201,1.6,14.3,15,30,0,'de',560,0],
+['m100','Tomate frito sin azúcares añadidos Hacendado',65,1.5,6.5,3.5,30,0,'de',560,0],
+['m800','Tortitas de arroz con chocolate blanco sabor yogur Hacendado',467,7.2,63,20,100,0,'pa',120,0],
+['m802','Tortitas de arroz Hacendado',363,8.5,75,2.8,100,0,'pa',124,0],
+['m803','Tortitas de legumbres y arroz Hacendado',366,25,55,3.1,100,0,'pa',109,0],
+['m804','Tortitas de maíz campestre Hacendado',414,6.7,76,8.4,100,0,'pa',140,0],
+['m807','Tortitas de maíz con sabor a jamón Hacendado',417,7,77,8.7,100,0,'pa',140,0],
+['m34','Vinagre balsámico de Módena Hacendado',123,1,25,0,10,0,'de',500,1],
+['m35','Vinagre de Jerez reserva Hacendado',37,0,0,0,10,0,'de',250,1],
+['m36','Vinagre de manzana Hacendado',17,0,0,0,10,0,'de',1000,1]
+].map(function(a){return {id:a[0],name:a[1],kcal:a[2],p:a[3],c:a[4],g:a[5],def:a[6],piece:a[7]||0,mer:true,grp:a[8],pack:a[9]||0,liq:!!a[10]};});
 
 var SLOTS=[{id:'breakfast',name:'Desayuno'},{id:'mid',name:'Tras el entreno'},{id:'lunch',name:'Comida'},{id:'snack',name:'Merienda'},{id:'dinner',name:'Cena'}];
 var MENU={
@@ -833,6 +843,7 @@ function mergeState(o){
     meals:Array.isArray(o.meals)?JSON.parse(JSON.stringify(o.meals)):[],fav:Array.isArray(o.fav)?o.fav.filter(function(x){return typeof x==='string';}):[],coach:o.coach&&typeof o.coach==='object'?JSON.parse(JSON.stringify(o.coach)):null,track:JSON.parse(JSON.stringify(o.track||{})),lifts:JSON.parse(JSON.stringify(o.lifts||{})),feel:JSON.parse(JSON.stringify(o.feel||{})),notes:JSON.parse(JSON.stringify(o.notes||{})),tags:JSON.parse(JSON.stringify(o.tags||{})),
     skin:Array.isArray(o.skin)?JSON.parse(JSON.stringify(o.skin)):b.skin,
     ml:o.ml&&typeof o.ml==='object'?JSON.parse(JSON.stringify(o.ml)):{},
+    shop:o.shop&&typeof o.shop==='object'?JSON.parse(JSON.stringify(o.shop)):{},
     intake:o.intake&&typeof o.intake==='object'?JSON.parse(JSON.stringify(o.intake)):null,
     profile:o.profile&&typeof o.profile==='object'?JSON.parse(JSON.stringify(o.profile)):null,
     avatar:avOk(o.avatar)?o.avatar:null};
@@ -1379,9 +1390,10 @@ function header(){
 }
 function tabs(){
   var T=[['hoy','Hoy'],['comidas','Comidas'],['peso','Progreso'],['alim','Alimentos'],['ajustes','Ajustes']];
+  if(coachMenu())T.splice(2,0,['cesta','Cesta']);
   if(isAdm())T.push(['admin','Admin']);
-  var IC={hoy:'<path d="M3.5 11.2 12 4l8.5 7.2V19a1.5 1.5 0 0 1-1.5 1.5h-4.5V15h-5v5.5H5A1.5 1.5 0 0 1 3.5 19z"/>',comidas:'<circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="3.6"/>',peso:'<path d="M3.5 17.5 9 12l3.8 3.8L20.5 7"/><path d="M15 7h5.5v5.5"/>',alim:'<path d="M5 9.5h14l-1.4 9.2a1.5 1.5 0 0 1-1.5 1.3H7.9a1.5 1.5 0 0 1-1.5-1.3z"/><path d="M8.8 9.5a3.2 3.2 0 0 1 6.4 0"/>',ajustes:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',admin:'<path d="M12 3.5 5 6.2v5.3c0 4.2 2.8 7.4 7 9 4.2-1.6 7-4.8 7-9V6.2z"/><path d="m9.2 12 2 2 3.6-4"/>'};
-  return '<nav class="tabs" role="tablist" aria-label="Secciones">'+T.map(function(t){return '<button role="tab" aria-selected="'+(ui.tab===t[0]&&t[0]!=='admin')+'" data-act="'+(t[0]==='admin'?'admgo':'tab')+'" data-t="'+t[0]+'"><svg viewBox="0 0 24 24" aria-hidden="true">'+IC[t[0]]+'</svg><span>'+t[1]+'</span>'+(t[0]==='hoy'?' <span class="bdg" data-badge="all" hidden></span>':'')+'</button>';}).join('')+'</nav>';
+  var IC={hoy:'<path d="M3.5 11.2 12 4l8.5 7.2V19a1.5 1.5 0 0 1-1.5 1.5h-4.5V15h-5v5.5H5A1.5 1.5 0 0 1 3.5 19z"/>',comidas:'<circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="3.6"/>',peso:'<path d="M3.5 17.5 9 12l3.8 3.8L20.5 7"/><path d="M15 7h5.5v5.5"/>',cesta:'<path d="M3.5 4.5h2.3l2 10.2h9.9l1.9-7.4H6.6"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="16.5" cy="19" r="1.4"/>',alim:'<path d="M5 9.5h14l-1.4 9.2a1.5 1.5 0 0 1-1.5 1.3H7.9a1.5 1.5 0 0 1-1.5-1.3z"/><path d="M8.8 9.5a3.2 3.2 0 0 1 6.4 0"/>',ajustes:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',admin:'<path d="M12 3.5 5 6.2v5.3c0 4.2 2.8 7.4 7 9 4.2-1.6 7-4.8 7-9V6.2z"/><path d="m9.2 12 2 2 3.6-4"/>'};
+  return '<nav class="tabs'+(T.length>6?' many':'')+'" role="tablist" aria-label="Secciones">'+T.map(function(t){return '<button role="tab" aria-selected="'+(ui.tab===t[0]&&t[0]!=='admin')+'" data-act="'+(t[0]==='admin'?'admgo':'tab')+'" data-t="'+t[0]+'"><svg viewBox="0 0 24 24" aria-hidden="true">'+IC[t[0]]+'</svg><span>'+t[1]+'</span>'+(t[0]==='hoy'?' <span class="bdg" data-badge="all" hidden></span>':'')+'</button>';}).join('')+'</nav>';
 }
 function strip(){
   var mon=mondayOf(ui.date),t=todayS(),h='<div class="stripbar"><button class="arrow" data-act="wk" data-n="-7" aria-label="Semana anterior">‹</button><div class="strip">';
@@ -3269,6 +3281,8 @@ function proMenuCard(c){
     if(ui.pms===sl.id)h+='<div class="pick"><input type="text" id="pmq" data-pmq="1" placeholder="Buscar alimento" value="'+esc(ui.pmq||'')+'" autocomplete="off"><div class="picklist" id="pmlist">'+pmPickList(sl.id)+'</div></div>';
     h+='</div>';
   });
+  var sl0=shopList(m);
+  h+='<details class="fold2"><summary>Cesta de la compra de la semana ('+sl0.length+')</summary>'+(sl0.length?'<p class="muted">Es lo que verá el cliente en su pestaña Cesta, calculado con el menú de arriba (incluso antes de guardarlo).</p>'+shopGroups(sl0).map(function(g){return '<p class="num"><b>'+esc(g.n)+'</b></p>'+g.it.map(function(it){var hh=shopHint(it);return '<div class="pmrow"><span class="pmn">'+esc(it.f.name)+(hh?' <small class="muted">'+esc(hh)+'</small>':'')+'</span><span class="num"><b>'+esc(shopQty(it))+'</b></span></div>';}).join('');}).join(''):'<p class="muted">Añade alimentos al menú para ver la cesta.</p>')+'</details>';
   h+='<p class="muted num">Total del día: <b>'+f0(tot.kcal)+' kcal</b> · P '+f0(tot.p)+' g · C '+f0(tot.c)+' g · G '+f0(tot.g)+' g</p>'+
     '<div class="btns"><button class="btn sm" data-act="pmcopywk">Copiar a lunes–viernes</button><button class="btn sm" data-act="pmcopyall">Copiar a toda la semana</button><button class="btn sm" data-act="pmclear">Vaciar este día</button></div>'+
     '<div class="btns"><button class="btn main" data-act="pmsave" data-id="'+c.link+'">Guardar menú</button></div></section>';
@@ -3286,6 +3300,74 @@ function proSaveMenu(c){
   ensureToken().then(function(){return sbReq('POST','/rest/v1/pro_plans?on_conflict=link_id',[body],AUTH.access,{'Prefer':'resolution=merge-duplicates,return=minimal'});}).then(function(){
     c.plan=Object.assign({},c.plan||{},{menu:clone(out),updated_at:body.updated_at});ui.pmenu[c.link]=clone(out);render();toast('Menú guardado. El cliente lo verá al abrir la app.');
   },function(e){toast(e&&e.net?'Sin conexión: no se pudo guardar':'No se pudo guardar el menú');});
+}
+
+/* ---------- cesta de la compra: suma el menú semanal que fija el nutricionista ---------- */
+var SHOP_G=[['fv','Fruta y verdura'],['ca','Carne, pescado y huevos'],['la','Lácteos y bebidas vegetales'],['pa','Pan, cereales, arroz y pasta'],['de','Despensa'],['co','Congelados'],['ot','Otros']];
+var SHOP_B={avena:'pa',harina_avena:'pa',leche:'la',platano:'fv',manzana:'fv',naranja:'fv',fruta:'fv',whey:'de',yogur_prot:'la',yogur_griego:'la',yogur_0:'la',skyr:'la',queso_batido:'la',clara:'ca',huevo:'ca',pan:'pa',pan_integral:'pa',pan_integral_2:'pa',jamon_serrano:'ca',pavo_fiambre:'ca',arroz:'pa',pasta:'pa',patata:'fv',patata_air:'fv',boniato_air:'fv',legumbres:'de',pollo:'ca',pavo:'ca',ternera:'ca',merluza:'ca',atun:'ca',salmon:'ca',aceite:'de',verdura:'fv',tomate:'fv',nueces:'de',cacahuete:'de',mermelada:'de',tofu:'ca',soja_tex:'de',bebida_soja:'la',yogur_soja:'la',aguacate:'fv',almendras:'de',hummus:'de',tortitas_arroz:'pa',quinoa:'pa',tortitas:'pa'};
+var SHOP_LIQ={leche:1,bebida_soja:1};
+function shopWeekStart(off){return addDays(mondayOf(todayS()),7*(off||0));}
+/* menu = {"0":{breakfast:[{f,g}],…},…"6":{…}} (lunes=0); devuelve [{f:alimento,g:gramos de la semana}] */
+function shopList(menu){
+  var tot={},ord=[];
+  Object.keys(menu||{}).forEach(function(d){
+    if(!/^[0-6]$/.test(d))return;var day=menu[d]||{};
+    Object.keys(day).forEach(function(sl){
+      if(sl==='_r')return;
+      (day[sl]||[]).forEach(function(x){
+        if(!x||!x.f||!(x.g>0)||x.f==='libre')return;
+        var f=findFood(x.f);if(!f)return;
+        if(!tot[x.f]){tot[x.f]={f:f,g:0};ord.push(x.f);}
+        tot[x.f].g+=x.g;
+      });
+    });
+  });
+  return ord.map(function(k){return tot[k];}).sort(function(a,b){return a.f.name.localeCompare(b.f.name,'es');});
+}
+function shopGrp(f){return f.grp||SHOP_B[f.id]||'ot';}
+function shopQty(it){
+  var f=it.f,liq=f.liq||SHOP_LIQ[f.id],g=it.g,q;
+  if(liq)q=g>=1000?f1(g/1000)+' L':f0(g)+' ml';else q=g>=1000?f1(g/1000)+' kg':f0(g)+' g';
+  return q;
+}
+function shopHint(it){
+  var f=it.f,h=[];
+  if(!f.mer&&f.piece>0&&!SHOP_LIQ[f.id])h.push('≈ '+Math.ceil(it.g/f.piece-0.05)+' ud');
+  if(f.mer&&f.pack>0){var n=Math.ceil(it.g/f.pack-0.02);h.push('≈ '+n+(n===1?' envase':' envases')+' de '+(f.pack>=1000?f1(f.pack/1000)+(f.liq?' L':' kg'):f.pack+(f.liq?' ml':' g')));}
+  return h.join(' · ');
+}
+function shopGroups(list){
+  return SHOP_G.map(function(g){return {k:g[0],n:g[1],it:list.filter(function(it){return shopGrp(it.f)===g[0];})};}).filter(function(g){return g.it.length;});
+}
+function shopText(list,wk){
+  var t='Cesta de la compra · semana del '+rangeLabel(wk,addDays(wk,6))+'\n';
+  shopGroups(list).forEach(function(g){t+='\n'+g.n+'\n';g.it.forEach(function(it){var h=shopHint(it);t+='- '+it.f.name+': '+shopQty(it)+(h?' ('+h+')':'')+'\n';});});
+  return t.trim();
+}
+function shopMark(id,on){
+  var wk=shopWeekStart(ui.cw||0);S.shop=S.shop||{};
+  var c=S.shop[wk]||(S.shop[wk]={});if(on)c[id]=true;else delete c[id];
+  Object.keys(S.shop).forEach(function(k){if(diffDays(todayS(),k)>35)delete S.shop[k];});
+  save();render();
+}
+function vCesta(){
+  var m=coachMenu();
+  var h='<section class="card"><h2>Cesta de la compra</h2>';
+  if(!m){return h+'<p class="muted">Cuando tu nutricionista fije tu menú semanal, aquí aparecerá la lista de la compra con todo lo que necesitas para la semana.</p></section>';}
+  var wk=shopWeekStart(ui.cw||0),list=shopList(m),done=(S.shop&&S.shop[wk])||{};
+  var nd=list.filter(function(it){return done[it.f.id];}).length;
+  h+='<p class="muted">Suma de lo que '+esc(S.coach.pro||'tu nutricionista')+' ha pautado en tu menú semanal. Las cantidades son en el peso que indica el menú (crudo si el menú lo dice así). Marca lo que ya has comprado.</p>'+
+    '<div class="chips" role="group" aria-label="Semana">'+[['Esta semana',0],['Próxima semana',1]].map(function(x){return '<button class="chip" aria-pressed="'+((ui.cw||0)===x[1])+'" data-act="shopwk" data-o="'+x[1]+'">'+x[0]+'</button>';}).join('')+'</div>'+
+    '<p class="num"><b>Semana del '+rangeLabel(wk,addDays(wk,6))+'</b> · '+nd+' de '+list.length+' comprados</p>';
+  if(!list.length)return h+'<p class="muted">El menú todavía no tiene alimentos.</p></section>';
+  h+='<div class="btns"><button class="btn sm" data-act="shopcopy">Copiar lista</button>'+(nd?'<button class="btn sm" data-act="shopreset">Desmarcar todo</button>':'')+'</div></section>';
+  shopGroups(list).forEach(function(g){
+    h+='<section class="card shopg"><h3>'+esc(g.n)+'</h3>'+g.it.map(function(it){
+      var id=it.f.id,on=!!done[id],hint=shopHint(it);
+      return '<label class="shr'+(on?' on':'')+'"><input type="checkbox" data-act="shopchk" data-f="'+esc(id)+'"'+(on?' checked':'')+'><span class="shn"><b>'+esc(it.f.name)+'</b>'+(hint?'<small>'+esc(hint)+'</small>':'')+'</span><span class="shq num">'+esc(shopQty(it))+'</span></label>';
+    }).join('')+'</section>';
+  });
+  return h+'<p class="note">Los envases son orientativos: dependen del formato que compres. Los productos de Mercadona salen con su envase habitual.</p>';
 }
 
 /* ---------- chat entre cliente y nutricionista ---------- */
@@ -3371,7 +3453,7 @@ function renderMain(){
     document.title='Plan';
     return;
   }
-  var v=ui.tab==='hoy'?vHoy():ui.tab==='comidas'?vComidas():ui.tab==='peso'?vPeso():ui.tab==='alim'?vAlimentos():ui.tab==='ajustes'?vAjustes():vPlan();
+  var v=ui.tab==='hoy'?vHoy():ui.tab==='comidas'?vComidas():ui.tab==='cesta'?vCesta():ui.tab==='peso'?vPeso():ui.tab==='alim'?vAlimentos():ui.tab==='ajustes'?vAjustes():vPlan();
   app.innerHTML=header()+tabs()+v;
   window.scrollTo(0,y);
   try{var at=document.querySelector('.tabs [aria-selected="true"]');if(at&&at.scrollIntoView)at.scrollIntoView({inline:'nearest',block:'nearest'});}catch(e){}
@@ -3501,6 +3583,10 @@ app.addEventListener('click',function(e){
   if(a==='tab'){ui.tab=b.dataset.t;ui.picker=null;ui.alt=null;ui.q='';render();return;}
   if(a==='date'){ui.date=d;ui.rwd=wdOf(d);render();return;}
   if(a==='wk'){ui.date=addDays(ui.date,+b.dataset.n);render();return;}
+  if(a==='shopwk'){ui.cw=+b.dataset.o||0;render();return;}
+  if(a==='shopchk'){shopMark(b.dataset.f,b.checked);return;}
+  if(a==='shopcopy'){copyText(shopText(shopList(coachMenu()),shopWeekStart(ui.cw||0)));return;}
+  if(a==='shopreset'){var wk=shopWeekStart(ui.cw||0);if(S.shop)delete S.shop[wk];save();render();return;}
   if(a==='check'){var c=S.checks[d]||(S.checks[d]={});if(b.checked)c[i]=true;else delete c[i];save();render();return;}
   if(a==='openpick'){ui.picker=ui.picker===s?null:s;ui.q='';render();var q=document.getElementById('q');if(q)q.focus();return;}
   if(a==='alt'){ui.alt=ui.alt===d+'|'+s?null:d+'|'+s;render();return;}
