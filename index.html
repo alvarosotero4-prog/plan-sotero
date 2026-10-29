@@ -181,6 +181,7 @@ a.btn{text-decoration:none;color:var(--ink);display:inline-flex;align-items:cent
 .ghost{color:var(--ink2);font-size:13px;border:1px dashed var(--line);border-radius:8px;padding:8px 10px}
 .pick{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
 .pick input{width:100%}
+.pick .fold2{margin:0;border-top:1px solid var(--line)}.pick .fold2 summary{padding:8px 0}.pick .fold2 .chips{padding-bottom:6px}
 .picklist{max-height:236px;overflow:auto;display:flex;flex-direction:column}
 .picklist button{display:flex;justify-content:space-between;gap:10px;background:none;border:0;border-bottom:1px solid var(--line);padding:9px 4px;text-align:left}
 .picklist button:hover{background:var(--surface2)}
@@ -1536,8 +1537,9 @@ function quickChips(d,slot){
   var lu=lastUse(),fav=S.fav.filter(function(id){return findFood(id);}),rec=lu.order.filter(function(id){return fav.indexOf(id)<0;}).slice(0,8);
   function chip(id){var f=findFood(id),g=lu.map[id]!=null?lu.map[id]:f.def;return '<button class="chip" data-act="quick" data-d="'+d+'" data-s="'+slot+'" data-f="'+esc(id)+'" data-g="'+g+'">'+esc(shortN(id))+' · '+f0(g)+' g</button>';}
   var h='';
-  if(fav.length)h+='<div><p class="muted">★ Favoritos</p><div class="chips">'+fav.map(chip).join('')+'</div></div>';
-  if(rec.length)h+='<div><p class="muted">Usados hace poco (con tus gramos de la última vez)</p><div class="chips">'+rec.map(chip).join('')+'</div></div>';
+  function fold(k,title,n,body,hint){return '<details class="fold2" data-wk="'+k+'"'+(ui.open[k]?' open':'')+'><summary>'+title+' <span class="muted">('+n+')</span></summary>'+(hint?'<p class="muted">'+hint+'</p>':'')+'<div class="chips">'+body+'</div></details>';}
+  if(fav.length)h+=fold('pk-fav','★ Favoritos',fav.length,fav.map(chip).join(''));
+  if(rec.length)h+=fold('pk-rec','Usados hace poco',rec.length,rec.map(chip).join(''),'Con los gramos de la última vez.');
   return h;
 }
 function lastSlotDay(d,slot){
@@ -1548,7 +1550,7 @@ function lastSlotDay(d,slot){
 function mealN(m){return slotN(m.items);}
 function mealChips(d,slot){
   if(!S.meals.length)return '';
-  return '<div><p class="muted">Mis comidas</p><div class="chips">'+S.meals.map(function(m,i){return '<button class="chip" data-act="usemeal" data-d="'+d+'" data-s="'+slot+'" data-m="'+i+'">'+esc(m.name)+' · '+f0(mealN(m).kcal)+' kcal</button>';}).join('')+'</div></div>';
+  return '<details class="fold2" data-wk="pk-meals"'+(ui.open['pk-meals']?' open':'')+'><summary>Mis comidas <span class="muted">('+S.meals.length+')</span></summary><div class="chips">'+S.meals.map(function(m,i){return '<button class="chip" data-act="usemeal" data-d="'+d+'" data-s="'+slot+'" data-m="'+i+'">'+esc(m.name)+' · '+f0(mealN(m).kcal)+' kcal</button>';}).join('')+'</div></details>';
 }
 function slotCard(d,s,k){
   var list=(S.logs[d]||{})[s.id]||[],n=slotN(list),t=slotTime(d,s.id),plan=planSlot(k,s.id,d);
@@ -1570,7 +1572,7 @@ function slotCard(d,s,k){
   if(rcp&&ui.rcp===d+'|'+s.id)h+=recipePanel(rcp);
   if(ui.alt===d+'|'+s.id) h+=altPanel(d,s,plan,list);
   if(ui.saving===d+'|'+s.id) h+='<div class="pick"><input type="text" id="mn" placeholder="Nombre de la comida, por ejemplo Arroz con pollo" autocomplete="off"><div class="btns"><button class="btn main sm" data-act="savemealok" data-d="'+d+'" data-s="'+s.id+'">Guardar</button><button class="btn sm" data-act="savemealno">Cancelar</button></div></div>';
-  if(ui.picker===s.id) h+='<div class="pick">'+quickChips(d,s.id)+mealChips(d,s.id)+'<input type="text" id="q" placeholder="Buscar alimento" value="'+esc(ui.q)+'" autocomplete="off"><div class="picklist" id="picklist">'+pickList(d,s.id)+'</div></div>';
+  if(ui.picker===s.id) h+='<div class="pick"><input type="text" id="q" placeholder="Buscar alimento" value="'+esc(ui.q)+'" autocomplete="off">'+quickChips(d,s.id)+mealChips(d,s.id)+'<div class="picklist" id="picklist">'+pickList(d,s.id)+'</div></div>';
   return h+'</section>';
 }
 function copySelect(d){
@@ -1966,7 +1968,7 @@ function vAjustes(){
   var seg=ui.set==='cuenta'?'cuenta':'plan';
   return '<div class="chips" role="group" aria-label="Ajustes">'+[['plan','Plan'],['cuenta','Cuenta y datos']].map(function(x){return '<button class="chip" aria-pressed="'+(seg===x[0])+'" data-act="set" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>'+(seg==='cuenta'?vCuenta():vPlan());
 }
-var APP_V='47';
+var APP_V='48';
 function appUpdate(){
   toast('Actualizando…');
   var done=function(){location.reload();};
